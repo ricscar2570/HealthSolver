@@ -1,4 +1,12 @@
 fastapi
 uvicorn
 sqlalchemy
+pydantic
+requests
 joblib
+sklearn
+shap
+cryptography
+prometheus-fastapi-instrumentator
+pandas
+numpy
