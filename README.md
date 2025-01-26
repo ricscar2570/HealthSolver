@@ -9,10 +9,10 @@ HealthSolver is a **Medical Decision Support System** powered by **Machine Learn
   Suggests the most suitable therapy based on patient data, such as age, BMI, and condition severity.
   
 - **Risk Analysis**  
-  Calculates the probability of side effects for proposed therapies using advanced predictive models.
+  Calculates the probability of side effects for proposed therapies using predictive models.
 
 - **Secure and Reliable**  
-  Protects sensitive patient data with **OAuth2** authentication and robust encryption.
+  Protects sensitive patient data with **OAuth2** authentication and encryption.
 
 - **Monitoring and Analytics**  
   Tracks API performance metrics with **Prometheus** and visualizes them using **Grafana**.
@@ -22,7 +22,7 @@ HealthSolver is a **Medical Decision Support System** powered by **Machine Learn
 ## **Technologies**
 HealthSolver integrates modern tools and frameworks to deliver a seamless experience:
 - **Frontend**: React  
-  Provides an intuitive interface for data input and result visualization.
+  Provides an interface for data input and result visualization.
 - **Backend**: FastAPI  
   Ensures fast and reliable processing of patient data.
 - **Database**: PostgreSQL  
@@ -32,7 +32,7 @@ HealthSolver integrates modern tools and frameworks to deliver a seamless experi
 - **Monitoring**: Prometheus and Grafana  
   Offers real-time insights into system performance.
 - **Security**: OAuth2 and Cryptography  
-  Safeguards data with state-of-the-art security mechanisms.
+  Safeguards data with security mechanisms.
 
 ---
 
