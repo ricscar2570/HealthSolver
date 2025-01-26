@@ -1,14 +1,10 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
 
-const Results = ({ recommendation }) => {
-  const { t } = useTranslation();
+const Results = () => {
   return (
     <div>
-      <h2>{t('results')}</h2>
-      <p>
-        <strong>{t('recommendation')}:</strong> {recommendation || t('no_results')}
-      </p>
+      <h2>Results</h2>
+      <p>Results will be displayed here after submitting the form.</p>
     </div>
   );
 };
