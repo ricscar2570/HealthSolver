@@ -1,6 +1,6 @@
 # HealthSolver
 
-HealthSolver is a **Medical Decision Support System** powered by **Machine Learning**. Designed for healthcare professionals, it provides intelligent recommendations for therapies and analyzes the risks of side effects, helping to streamline clinical decision-making and improve patient outcomes.
+HealthSolver is a **Medical Decision Support System** powered by **Machine Learning**. Designed for healthcare professionals, it provides recommendations for therapies and analyzes the risks of side effects, helping to streamline clinical decision-making and improve patient outcomes.
 
 ---
 
