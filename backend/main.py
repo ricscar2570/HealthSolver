@@ -1,23 +1,28 @@
-from fastapi import FastAPI
-from backend.routes import auth, mfa, pacs, analytics, cnn_api, ehr
-from backend.utils.logging import setup_logging
-from backend.web_socket import websocket_endpoint
+import logging
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from backend.routes.predict import router as predict_router
+from backend.utils.logging_config import setup_logging
+
+# Configura il logging
+setup_logging()
 
 app = FastAPI(title="HealthSolver API")
 
-# Configurazione logging avanzata
-setup_logging()
+# Middleware globale per la gestione degli errori
+@app.middleware("http")
+async def catch_exceptions_middleware(request: Request, call_next):
+    try:
+        return await call_next(request)
+    except HTTPException as e:
+        logging.error(f"HTTP Error: {e.detail}")
+        return JSONResponse(status_code=e.status_code, content={"error": e.detail})
+    except Exception as e:
+        logging.exception("Errore interno del server")
+        return JSONResponse(status_code=500, content={"error": "Internal Server Error", "details": str(e)})
 
-# Inclusione delle route API
-app.include_router(auth.router, prefix="/auth", tags=["Auth"])
-app.include_router(mfa.router, prefix="/mfa", tags=["MFA"])
-app.include_router(pacs.router, prefix="/pacs", tags=["PACS"])
-app.include_router(analytics.router, prefix="/dashboard", tags=["Dashboard"])
-app.include_router(cnn_api.router, prefix="/cnn", tags=["CNN AI"])
-app.include_router(ehr.router, prefix="/ehr", tags=["EHR"])
-
-# WebSockets per notifiche in tempo reale
-app.add_api_websocket_route("/ws", websocket_endpoint)
+# Registra le rotte
+app.include_router(predict_router)
 
 @app.get("/")
 def root():
