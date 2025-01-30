@@ -1,0 +1,11 @@
+groups:
+  - name: ModelPerformance
+    rules:
+      - alert: HighInferenceTime
+        expr: ml_max_prediction_time > 1
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Inferenza lenta"
+          description: "Il tempo di inferenza ha superato 1 secondo negli ultimi 30 secondi!"

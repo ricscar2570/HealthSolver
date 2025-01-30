@@ -1,0 +1,23 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "HealthSolver - ML Performance",
+    "panels": [
+      {
+        "type": "graph",
+        "title": "Numero totale di predizioni",
+        "targets": [{"expr": "ml_predictions_total", "legendFormat": "Predizioni Totali"}]
+      },
+      {
+        "type": "graph",
+        "title": "Tempo di Inferenza del Modello",
+        "targets": [{"expr": "ml_prediction_duration_seconds", "legendFormat": "Tempo (s)"}]
+      },
+      {
+        "type": "piechart",
+        "title": "Distribuzione delle Classi Predette",
+        "targets": [{"expr": "ml_class_distribution", "legendFormat": "{{class_label}}"}]
+      }
+    ]
+  }
+}

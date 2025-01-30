@@ -1,0 +1,15 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: "email"
+
+receivers:
+  - name: "email"
+    email_configs:
+      - to: "tuo@email.com"
+        from: "alertmanager@email.com"
+        smarthost: "smtp.server.com:587"
+        auth_username: "alertmanager@email.com"
+        auth_identity: "alertmanager@email.com"
+        auth_password: "tua_password"

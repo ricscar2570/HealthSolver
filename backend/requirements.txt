@@ -6,7 +6,7 @@ requests
 joblib
 sklearn
 shap
-cryptography
-prometheus-fastapi-instrumentator
+mlflow
 pandas
 numpy
+prometheus-fastapi-instrumentator
