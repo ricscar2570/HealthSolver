@@ -14,7 +14,7 @@ const App = () => {
       </header>
       <Tutorial />
       <PatientForm />
-      <Results />
+      <Results /> {/* Now includes ResultChart */}
       <PredictiveAnalysis />
       <PACSViewer />
       <ReportViewer />

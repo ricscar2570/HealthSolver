@@ -7,6 +7,7 @@ from app.models import (
 from app.database import SessionLocal, Patient
 from app.utils import log_audit, anonymize_data, generate_report
 import requests
+import random
 
 router = APIRouter()
 
@@ -44,3 +45,29 @@ async def sync_his(api_key: str, facility_id: int):
         return {"status": "Error", "details": str(e)}
     finally:
         db.close()
+
+ """
+    Returns dynamic data for the ResultChart component.
+    The data format is compatible with Chart.js.
+    """
+    data = {
+        "labels": ["Therapy A", "Therapy B", "Therapy C"],
+        "datasets": [
+            {
+                "label": "Risk Scores",
+                "data": [round(random.uniform(0.1, 0.9), 2) for _ in range(3)],
+                "backgroundColor": [
+                    "rgba(75, 192, 192, 0.2)",
+                    "rgba(255, 99, 132, 0.2)",
+                    "rgba(54, 162, 235, 0.2)",
+                ],
+                "borderColor": [
+                    "rgba(75, 192, 192, 1)",
+                    "rgba(255, 99, 132, 1)",
+                    "rgba(54, 162, 235, 1)",
+                ],
+                "borderWidth": 1,
+            }
+        ],
+    }
+    return data
