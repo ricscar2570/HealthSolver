@@ -13,6 +13,8 @@ const Login = () => {
     });
 
     if (response.ok) {
+      const data = await response.json();
+      localStorage.setItem("token", data.access_token);
       setMessage("Login successful!");
       window.location.href = "/mfa";
     } else {
