@@ -4,7 +4,7 @@ sqlalchemy
 pydantic
 requests
 joblib
-sklearn
+scikit-learn
 shap
 mlflow
 pandas
