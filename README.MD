@@ -16,7 +16,7 @@
 - Visualizzare previsioni e statistiche cliniche in tempo reale.
 - Consultare la spiegazione delle decisioni AI (Explainable AI con SHAP).
 
----
+
 
 ## 🚀 Come Avviare il Progetto
 
@@ -24,7 +24,7 @@
 ```bash
 git clone https://github.com/tuo-utente/HealthSolver.git
 cd HealthSolver
-
+```
 ⚡ Avvio in GitHub Codespaces (Raccomandato)
 
     💡 L'ambiente sarà configurato e avviato automaticamente.
