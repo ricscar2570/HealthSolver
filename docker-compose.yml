@@ -1,32 +1,111 @@
+# /docker-compose.yml (Root del progetto)
+version: "3.8"
+
 services:
-  fastapi:
-    build: .
+  redis:
+    image: "redis:alpine"
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - healthsolver_net
+
+  backend:
+    build: ./backend # Assumendo che il Dockerfile sia in backend/
+    container_name: backend
     ports:
       - "8000:8000"
     depends_on:
-      - prometheus
-      - grafana
+      - redis
+    environment:
+      # Aggiungere qui variabili d'ambiente necessarie per il backend
+      # Esempio: DATABASE_URL, SECRET_KEY (per Fernet), REDIS_HOST=redis
+      REDIS_HOST: redis
+      # Assicurati che il SECRET_KEY sia definito in modo sicuro (non hardcoded qui)
+      # SECRET_KEY: "una-chiave-segreta-molto-forte-generata-una-sola-volta"
+    volumes:
+      - ./backend:/app # Monta il codice per sviluppo (opzionale)
+    networks:
+      - healthsolver_net
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload # Comando per avviare FastAPI con Uvicorn
+
+  frontend:
+    build: ./frontend/src # Assumendo che il Dockerfile sia in frontend/src/
+    container_name: frontend
+    ports:
+      - "3000:3000" # Porta standard per React dev server
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend/src:/app # Monta il codice per sviluppo (opzionale)
+      - /app/node_modules # Non mappare node_modules dal host
+    networks:
+      - healthsolver_net
+    # Il comando potrebbe dipendere da come è configurato il Dockerfile/package.json
+    # command: npm start # Esempio
+
+  dashboard:
+    build: ./dashboard # Assumendo che il Dockerfile sia in dashboard/
+    container_name: dashboard
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend
+    volumes:
+      - ./dashboard:/app # Monta il codice per sviluppo (opzionale)
+    networks:
+      - healthsolver_net
+    command: streamlit run dashboard/dashboard.py --server.port=8501 --server.address=0.0.0.0
 
   prometheus:
-    image: prom/prometheus
+    image: prom/prometheus:v2.47.2 # Usa una versione specifica
+    container_name: prometheus
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus # Volume per persistenza dati Prometheus
     command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
     ports:
       - "9090:9090"
+    networks:
+      - healthsolver_net
 
   alertmanager:
-    image: prom/alertmanager
-    volumes:
-      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    image: prom/alertmanager:v0.26.0 # Usa una versione specifica
+    container_name: alertmanager
     ports:
       - "9093:9093"
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager_data:/alertmanager # Volume per persistenza dati Alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - healthsolver_net
 
   grafana:
-    image: grafana/grafana
+    image: grafana/grafana:10.1.5 # Usa una versione specifica
+    container_name: grafana
     ports:
-      - "3000:3000"
+      - "3001:3000" # Usa porta 3001 sul host per evitare conflitti con frontend dev
+    volumes:
+      - grafana_data:/var/lib/grafana # Volume per persistenza dati Grafana
     depends_on:
       - prometheus
-      - alertmanager
+      # - alertmanager # Non strettamente necessario per l'avvio
+    networks:
+      - healthsolver_net
+    # Potresti aggiungere qui env vars per configurare Grafana (es. datasource Prometheus)
+
+volumes:
+  prometheus_data: {}
+  alertmanager_data: {}
+  grafana_data: {} # Definisce il volume per Grafana
+
+networks:
+  healthsolver_net:
+    driver: bridge
