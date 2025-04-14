@@ -1,81 +1,75 @@
+// frontend/src/components/ReportViewer.js
 import React, { useState, useEffect } from 'react';
 
 const ReportViewer = () => {
-  const [reports, setReports] = useState([]);
+  // Rinominiamo lo stato per chiarezza
+  const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchReports = async () => {
+    const fetchAlerts = async () => {
       setLoading(true);
+      setError(null);
+      setAlerts([]); // Pulisci alert precedenti
       try {
-        const response = await fetch('http://localhost:8000/reports/');
+        // Chiama l'endpoint attivato per gli alert
+        const response = await fetch('http://localhost:8000/admin/alerts'); // URL aggiornato
+
         if (!response.ok) {
-          throw new Error('Failed to fetch reports');
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Failed to fetch alerts (${response.status})`);
         }
         const data = await response.json();
-        setReports(data.reports || []);
-        setError(null);
+        // Assumiamo che la risposta sia {"alerts": ["log line 1", "log line 2", ...]}
+        setAlerts(data.alerts || []);
+
       } catch (err) {
-        console.error('Error fetching reports:', err);
-        setError('Could not fetch reports. Please try again later.');
+        console.error('Error fetching alerts:', err);
+        setError(`Could not fetch alerts: ${err.message}`);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchReports();
-  }, []);
+    fetchAlerts();
+    // Aggiungi un intervallo per aggiornare gli alert periodicamente (opzionale)
+    // const intervalId = setInterval(fetchAlerts, 30000); // Aggiorna ogni 30 secondi
+    // return () => clearInterval(intervalId); // Pulisci intervallo allo smontaggio
+  }, []); // Esegui solo al montaggio (o periodicamente se si usa intervallo)
 
-  const downloadReport = async (reportId) => {
-    try {
-      const response = await fetch(`http://localhost:8000/reports/${reportId}/download`);
-      if (!response.ok) {
-        throw new Error('Failed to download report');
-      }
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `report_${reportId}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    } catch (err) {
-      console.error('Error downloading report:', err);
-      alert('Could not download the report. Please try again later.');
-    }
-  };
+  // La funzione download non è più applicabile agli alert
+  // const downloadReport = ... (rimuovere o commentare)
 
   return (
-    <div>
-      <h2>Report Viewer</h2>
-      {loading && <p>Loading reports...</p>}
+    <div style={{ border: '1px solid #ccc', padding: '20px', margin: '20px 0' }}>
+      {/* Titolo aggiornato */}
+      <h2>System Alerts Viewer</h2>
+
+      <button onClick={() => window.location.reload()} style={{ marginBottom: '15px' }} disabled={loading}>
+         {loading ? 'Loading...' : 'Refresh Alerts'}
+      </button>
+
+      {loading && <p>Loading alerts...</p>}
       {error && <p style={{ color: 'red' }}>{error}</p>}
-      {!loading && reports.length === 0 && <p>No reports available.</p>}
-      {!loading && reports.length > 0 && (
-        <table>
-          <thead>
-            <tr>
-              <th>Report ID</th>
-              <th>Patient ID</th>
-              <th>Generated On</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reports.map((report) => (
-              <tr key={report.id}>
-                <td>{report.id}</td>
-                <td>{report.patient_id}</td>
-                <td>{report.generated_on}</td>
-                <td>
-                  <button onClick={() => downloadReport(report.id)}>Download</button>
-                </td>
-              </tr>
+
+      {!loading && !error && alerts.length === 0 && <p>No system alerts recorded.</p>}
+
+      {!loading && !error && alerts.length > 0 && (
+        <div style={{ maxHeight: '400px', overflowY: 'scroll', border: '1px solid #eee', padding: '10px', background: '#f9f9f9' }}>
+          {/* Mostra gli alert come lista o testo preformattato */}
+          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+            {alerts.join('\n')}
+          </pre>
+          {/* Alternativa: Mappare come lista */}
+          {/* <ul>
+            {alerts.map((alert, index) => (
+              <li key={index} style={{ borderBottom: '1px dotted #ddd', padding: '5px 0' }}>
+                <pre style={{ margin: 0 }}>{alert}</pre>
+              </li>
             ))}
-          </tbody>
-        </table>
+          </ul> */}
+        </div>
       )}
     </div>
   );

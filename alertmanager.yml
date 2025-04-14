@@ -1,15 +1,92 @@
+# /alertmanager.yml (Root del progetto)
 global:
   resolve_timeout: 5m
 
-route:
-  receiver: "email"
+  # Impostazioni SMTP globali recuperate da variabili d'ambiente
+  # Queste saranno usate dal receiver 'email-notifications' se non specificate lì
+  smtp_from: $ALERTMANAGER_EMAIL_FROM # Obbligatorio nel receiver o qui
+  smtp_smarthost: $SMTP_SMARTHOST # Es: 'smtp.example.com:587' (Obbligatorio)
+  # Le seguenti sono necessarie se il server SMTP richiede autenticazione
+  smtp_auth_username: $SMTP_AUTH_USERNAME
+  smtp_auth_identity: $SMTP_AUTH_IDENTITY # Spesso uguale a username
+  smtp_auth_password: $SMTP_AUTH_PASSWORD # Usa file o secrets in produzione!
 
+route:
+  receiver: "default-receiver" # Un receiver di default che magari non fa nulla o logga
+  group_by: ['alertname', 'job', 'severity'] # Raggruppa alert simili
+  group_wait: 30s          # Attendi 30s per raggruppare alert prima di inviare
+  group_interval: 5m       # Attendi 5m prima di inviare un nuovo gruppo se arrivano nuovi alert
+  repeat_interval: 4h      # Invia nuovamente notifiche per alert attivi ogni 4 ore
+
+  # Route specifiche possono sovrascrivere il receiver di default
+  routes:
+    # Esempio: Invia alert critici via email
+    - matchers:
+        - severity="critical"
+      receiver: "email-notifications"
+      continue: false # Non processare altre route se questo match avviene
+
+    # Potresti aggiungere altre route per diverse severità o servizi
+
+# Definizione dei Receivers (dove inviare le notifiche)
 receivers:
-  - name: "email"
+  - name: "default-receiver"
+    # Questo receiver può essere vuoto se non deve fare nulla
+    # Oppure puoi configurare un webhook, slack, ecc.
+    webhook_configs:
+     - url: http://localhost:9999/dev/null # Esempio: invia a un endpoint fittizio
+
+  - name: "email-notifications"
     email_configs:
-      - to: "tuo@email.com"
-        from: "alertmanager@email.com"
-        smarthost: "smtp.server.com:587"
-        auth_username: "alertmanager@email.com"
-        auth_identity: "alertmanager@email.com"
-        auth_password: "tua_password"
+      - to: "$ALERTMANAGER_EMAIL_TO" # Destinatario principale (da env var)
+        # From, Smarthost, Auth sono ereditati da 'global'
+        # Puoi sovrascriverli qui se necessario per questo specifico receiver
+        send_resolved: true # Notifica anche quando l'alert è risolto
+        headers:
+          subject: '[FIRING:{{ .Alerts.Firing | len }}] HealthSolver Alert: {{ .CommonLabels.alertname }} ({{ .CommonLabels.severity }})'
+        html: |
+          {{ define "email.default.html" }}
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <meta charset="UTF-8">
+              <title>{{ template "email.default.subject" . }}</title>
+          </head>
+          <body>
+              <h2>HealthSolver Alert Notification</h2>
+              <p><b>Status:</b> {{ .Status | toUpper }}</p>
+              {{ if gt (len .Alerts.Firing) 0 }}
+              <p><b>Firing Alerts:</b></p>
+              <ul>
+                  {{ range .Alerts.Firing }}
+                  <li>
+                      <b>Alert:</b> {{ .Labels.alertname }}<br>
+                      <b>Severity:</b> {{ .Labels.severity | default "N/A" }}<br>
+                      <b>Summary:</b> {{ .Annotations.summary | default "N/A" }}<br>
+                      <b>Description:</b> {{ .Annotations.description | default "N/A" }}<br>
+                      <b>Starts At:</b> {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}<br>
+                      <small>Labels: {{ range $key, $value := .Labels }}<code>{{ $key }}={{ $value }}</code> {{ end }}</small>
+                  </li>
+                  {{ end }}
+              </ul>
+              {{ end }}
+              {{ if gt (len .Alerts.Resolved) 0 }}
+              <p><b>Resolved Alerts:</b></p>
+              <ul>
+                  {{ range .Alerts.Resolved }}
+                   <li><b>Alert:</b> {{ .Labels.alertname }} (Resolved at {{ .EndsAt.Format "15:04:05 MST" }})</li>
+                  {{ end }}
+              </ul>
+              {{ end }}
+              <hr>
+              <p><small>Group Labels: {{ range $key, $value := .GroupLabels }}<code>{{ $key }}={{ $value }}</code> {{ end }}</small></p>
+              <p><small>Common Labels: {{ range $key, $value := .CommonLabels }}<code>{{ $key }}={{ $value }}</code> {{ end }}</small></p>
+              <p><small>Common Annotations: {{ range $key, $value := .CommonAnnotations }}<code>{{ $key }}={{ $value }}</code> {{ end }}</small></p>
+              <p><a href="{{ .ExternalURL }}">Go to Alertmanager</a></p>
+          </body>
+          </html>
+          {{ end }}
+
+# Puoi includere file di template esterni se necessario
+# templates:
+#  - '/etc/alertmanager/templates/*.tmpl'
