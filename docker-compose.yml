@@ -1,111 +1,174 @@
-# /docker-compose.yml (Root del progetto)
+# /docker-compose.yml (Root del progetto - Versione Consolidata)
 version: "3.8"
 
 services:
   redis:
-    image: "redis:alpine"
+    image: "redis:7.2-alpine" # Usa una versione specifica di Redis
     container_name: redis
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data # Volume per persistenza Redis (opzionale ma consigliato)
     networks:
       - healthsolver_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
-    build: ./backend # Assumendo che il Dockerfile sia in backend/
+    build:
+      context: ./backend # Specifica il contesto della build
+      dockerfile: Dockerfile # Specifica il nome del Dockerfile (se non è 'Dockerfile')
     container_name: backend
     ports:
       - "8000:8000"
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy # Attendi che Redis sia healthy
     environment:
-      # Aggiungere qui variabili d'ambiente necessarie per il backend
-      # Esempio: DATABASE_URL, SECRET_KEY (per Fernet), REDIS_HOST=redis
-      REDIS_HOST: redis
-      # Assicurati che il SECRET_KEY sia definito in modo sicuro (non hardcoded qui)
-      # SECRET_KEY: "una-chiave-segreta-molto-forte-generata-una-sola-volta"
+      # === Variabili d'Ambiente per il Backend ===
+      DATABASE_URL: "sqlite:///./healthsolver.db" # O usa una connessione a un DB esterno
+      REDIS_HOST: "redis" # Nome del servizio Redis nel compose
+      REDIS_PORT: 6379
+      # !!! IMPORTANTE: Genera una chiave sicura e mettila qui o meglio in un file .env !!!
+      # Esempio: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'
+      APP_SECRET_KEY: ${APP_SECRET_KEY:-} # Carica da .env o lasciala vuota (NON SICURO!)
+      LOG_LEVEL: "INFO" # Livello di logging per il backend
+      # Aggiungi altre variabili d'ambiente se necessarie (es. API keys esterne)
     volumes:
-      - ./backend:/app # Monta il codice per sviluppo (opzionale)
+      # Monta il codice sorgente per sviluppo live-reload (opzionale)
+      - ./backend:/app
+      # Volume per il database SQLite (se usato) per persistenza
+      - backend_data:/app/data # Assumi che il DB sia in /app/data
+      # Volume per i log persistenti
+      - backend_logs:/app/logs
+      # Volume per i modelli salvati (se non inclusi nell'immagine)
+      - models_data:/app/models/saved_models
+      # Volume per MLflow data (se usi il tracking locale)
+      - mlflow_data:/mlflow_data
     networks:
       - healthsolver_net
-    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload # Comando per avviare FastAPI con Uvicorn
+    # Comando per avviare FastAPI con Uvicorn e reload per sviluppo
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app
 
   frontend:
-    build: ./frontend/src # Assumendo che il Dockerfile sia in frontend/src/
+    build:
+      context: ./frontend/src # Assumendo che il Dockerfile sia qui
+      dockerfile: Dockerfile
     container_name: frontend
     ports:
       - "3000:3000" # Porta standard per React dev server
     depends_on:
       - backend
     volumes:
-      - ./frontend/src:/app # Monta il codice per sviluppo (opzionale)
-      - /app/node_modules # Non mappare node_modules dal host
+      # Monta il codice sorgente per sviluppo live-reload (opzionale)
+      - ./frontend/src:/app
+      # Evita di mappare node_modules dal host (causa problemi)
+      - /app/node_modules
     networks:
       - healthsolver_net
-    # Il comando potrebbe dipendere da come è configurato il Dockerfile/package.json
-    # command: npm start # Esempio
+    # Il comando dipende da come è configurato il Dockerfile/package.json
+    # Esempio per un tipico setup React:
+    # command: npm start
 
   dashboard:
-    build: ./dashboard # Assumendo che il Dockerfile sia in dashboard/
+    build:
+      context: ./dashboard # Assumendo che il Dockerfile sia qui
+      dockerfile: Dockerfile
     container_name: dashboard
     ports:
       - "8501:8501"
     depends_on:
       - backend
     volumes:
-      - ./dashboard:/app # Monta il codice per sviluppo (opzionale)
+      # Monta il codice sorgente per sviluppo (opzionale)
+      - ./dashboard:/app
     networks:
       - healthsolver_net
-    command: streamlit run dashboard/dashboard.py --server.port=8501 --server.address=0.0.0.0
+    command: streamlit run dashboard.py --server.port=8501 --server.address=0.0.0.0 --server.enableCORS=false # Permetti connessioni dal frontend
 
   prometheus:
     image: prom/prometheus:v2.47.2 # Usa una versione specifica
     container_name: prometheus
+    ports:
+      - "9090:9090"
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro # Mount read-only
+      - ./alert_rules.yml:/etc/prometheus/alert_rules.yml:ro # Mount regole alert
       - prometheus_data:/prometheus # Volume per persistenza dati Prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
-    ports:
-      - "9090:9090"
+      - '--web.enable-lifecycle' # Permette ricarica config via API
     networks:
       - healthsolver_net
+    restart: unless-stopped
 
   alertmanager:
     image: prom/alertmanager:v0.26.0 # Usa una versione specifica
     container_name: alertmanager
     ports:
       - "9093:9093"
+    environment:
+      # === Variabili d'Ambiente per Alertmanager ===
+      # Recuperate da file .env o definite qui/nel sistema host
+      # Obbligatorie per la configurazione email in alertmanager.yml
+      ALERTMANAGER_EMAIL_FROM: ${ALERTMANAGER_EMAIL_FROM:-alertmanager@example.com}
+      SMTP_SMARTHOST: ${SMTP_SMARTHOST:-smtp.example.com:587}
+      SMTP_AUTH_USERNAME: ${SMTP_AUTH_USERNAME:-}
+      SMTP_AUTH_IDENTITY: ${SMTP_AUTH_IDENTITY:-} # Spesso uguale a username
+      SMTP_AUTH_PASSWORD: ${SMTP_AUTH_PASSWORD:-} # Usa Docker secrets o file per produzione!
+      ALERTMANAGER_EMAIL_TO: ${ALERTMANAGER_EMAIL_TO:-admin@example.com}
     volumes:
-      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro # Mount read-only
       - alertmanager_data:/alertmanager # Volume per persistenza dati Alertmanager
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager'
+      # Aggiungere qui altri parametri se necessario (es. web.external-url)
     networks:
       - healthsolver_net
+    restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:10.1.5 # Usa una versione specifica
+    image: grafana/grafana-oss:10.1.5 # Usa una versione specifica (OSS)
     container_name: grafana
     ports:
-      - "3001:3000" # Usa porta 3001 sul host per evitare conflitti con frontend dev
+      - "3001:3000" # Usa porta 3001 sul host
     volumes:
       - grafana_data:/var/lib/grafana # Volume per persistenza dati Grafana
+      # Puoi montare provisioning per datasource e dashboard qui (opzionale)
+      # - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      # Esempio: Configura utente admin e disabilita login form iniziale
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin} # Cambia questa password!
+      # GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      # GF_AUTH_ANONYMOUS_ENABLED: "true"
+      # GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"
+      # Aggiungi altre configurazioni Grafana via env vars se necessario
     depends_on:
       - prometheus
-      # - alertmanager # Non strettamente necessario per l'avvio
     networks:
       - healthsolver_net
-    # Potresti aggiungere qui env vars per configurare Grafana (es. datasource Prometheus)
+    restart: unless-stopped
 
+# Definizione dei volumi nominati per la persistenza
 volumes:
+  redis_data: {}
+  backend_data: {}
+  backend_logs: {}
+  models_data: {}
+  mlflow_data: {}
   prometheus_data: {}
   alertmanager_data: {}
-  grafana_data: {} # Definisce il volume per Grafana
+  grafana_data: {}
 
+# Definizione della rete comune
 networks:
   healthsolver_net:
     driver: bridge
