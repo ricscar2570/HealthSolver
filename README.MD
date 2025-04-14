@@ -100,16 +100,16 @@ GRAFANA_ADMIN_PASSWORD=mettiUnaPasswordForteQui!
 Una volta configurato il file .env, avviare tutti i servizi è un gioco da ragazzi:
 
 
-# Dalla directory principale del progetto (HealthSolver-main)
+Dalla directory principale del progetto (HealthSolver-main)
 
-# 1. Build (se è la prima volta o hai cambiato i Dockerfile) e Start dei container in background (-d)
+1. Build (se è la prima volta o hai cambiato i Dockerfile) e Start dei container in background (-d)
 docker-compose up -d --build
 
-# 2. Per fermare i container:
-# docker-compose down
+2. Per fermare i container:
+docker-compose down
 
-# 3. Per fermare e rimuovere i volumi (ATTENZIONE: perdi i dati persistenti!):
-# docker-compose down -v
+3. Per fermare e rimuovere i volumi (ATTENZIONE: perdi i dati persistenti!):
+docker-compose down -v
 
 🎉 Fatto! Ora i servizi dovrebbero essere attivi e accessibili:
 Servizio	URL Locale	Credenziali Default (se applicabile)	Note
@@ -138,37 +138,37 @@ Questo comando esegue lo script di training all'interno del container backend. M
     Opzione 1: Dentro il container (consigliato)
     
 
-# Installa dipendenze di sviluppo se non sono già nell'immagine Docker
-# docker-compose exec backend pip install -r requirements-dev.txt
+Installa dipendenze di sviluppo se non sono già nell'immagine Docker
+docker-compose exec backend pip install -r requirements-dev.txt
 
-# Esegui i test
+Esegui i test
 docker-compose exec backend pytest -v tests/backend/
 
 Opzione 2: Localmente (richiede ambiente Python configurato)
 
 
-    # Installa dipendenze di sviluppo
+    Installa dipendenze di sviluppo
     pip install -r requirements-dev.txt
 
-    # Esegui i test (dalla root del progetto)
+    Esegui i test (dalla root del progetto)
     pytest -v
 
 📄 Visualizzare i Log dei Servizi:
 
 
-# Visualizza log di tutti i servizi (seguendo l'output con -f)
+Visualizza log di tutti i servizi (seguendo l'output con -f)
 docker-compose logs -f
 
-# Visualizza log solo del backend
+Visualizza log solo del backend
 docker-compose logs -f backend
 
-# Visualizza log solo del frontend
+Visualizza log solo del frontend
 docker-compose logs -f frontend
 
 🔄 Ricaricare la Configurazione di Prometheus (senza riavvio):
 
 
-    # Assicurati che '--web.enable-lifecycle' sia nei command di Prometheus
+    Assicurati che '--web.enable-lifecycle' sia nei command di Prometheus
     curl -X POST http://localhost:9090/-/reload
 
 ```
