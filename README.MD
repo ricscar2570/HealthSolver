@@ -183,7 +183,7 @@ docker-compose logs -f frontend
 ```    
 curl -X POST http://localhost:9090/-/reload
 
-```
+
 
 🗺️ Struttura del Progetto: Una Mappa per l'Esploratore
 
