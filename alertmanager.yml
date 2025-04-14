@@ -1,15 +1,38 @@
+# /alertmanager.yml (Root del progetto)
 global:
   resolve_timeout: 5m
+  # Aggiungi qui variabili globali se necessario (es. smtp_smarthost)
+  # smtp_from: $ALERTMANAGER_EMAIL_FROM
+  # smtp_smarthost: $SMTP_SMARTHOST
+  # smtp_auth_username: $SMTP_AUTH_USERNAME
+  # smtp_auth_identity: $SMTP_AUTH_IDENTITY # Spesso uguale a username
+  # smtp_auth_password: $SMTP_AUTH_PASSWORD
 
 route:
-  receiver: "email"
+  receiver: "email-notifications" # Nome del receiver
+  group_by: ['alertname', 'severity'] # Raggruppa alert simili
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 1h # Non inviare lo stesso alert troppo spesso
+
+  # Potresti aggiungere route più specifiche qui basate su label
 
 receivers:
-  - name: "email"
+  - name: "email-notifications"
     email_configs:
-      - to: "tuo@email.com"
-        from: "alertmanager@email.com"
-        smarthost: "smtp.server.com:587"
-        auth_username: "alertmanager@email.com"
-        auth_identity: "alertmanager@email.com"
-        auth_password: "tua_password"
+      - to: "$ALERTMANAGER_EMAIL_TO" # Usa variabile d'ambiente
+        # Le seguenti configurazioni sono spesso definite globalmente
+        # ma possono essere specificate qui se necessario
+        # from: $ALERTMANAGER_EMAIL_FROM
+        # smarthost: $SMTP_SMARTHOST
+        # auth_username: $SMTP_AUTH_USERNAME
+        # auth_identity: $SMTP_AUTH_IDENTITY
+        # auth_password: $SMTP_AUTH_PASSWORD
+        send_resolved: true # Invia notifica quando l'alert è risolto
+        headers:
+          subject: 'HealthSolver Alert: {{ template "email.default.subject" . }}'
+        html: '{{ template "email.default.html" . }}'
+
+templates:
+  # Puoi definire template personalizzati qui o usare quelli di default
+  # - '/etc/alertmanager/templates/*.tmpl'
