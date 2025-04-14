@@ -98,7 +98,7 @@ GRAFANA_ADMIN_PASSWORD=mettiUnaPasswordForteQui!
 ▶️ Avvio Rapido: Accendiamo i Motori!
 
 Una volta configurato il file .env, avviare tutti i servizi è un gioco da ragazzi:
-Bash
+
 
 # Dalla directory principale del progetto (HealthSolver-main)
 
@@ -127,7 +127,7 @@ Redis Commander	http://localhost:8081 (Se aggiunto)	-	GUI per Redis (Aggiungere 
 Ecco alcuni comandi utili da eseguire dopo aver avviato i container con docker-compose up -d:
 
     🤖 Eseguire il Training del Modello ML:
-    Bash
+    
 ```
 docker-compose exec backend python backend/models/data_training.py
 ```
@@ -136,7 +136,7 @@ Questo comando esegue lo script di training all'interno del container backend. M
 🧪 Eseguire i Test (Pytest):
 
     Opzione 1: Dentro il container (consigliato)
-    Bash
+    
 
 # Installa dipendenze di sviluppo se non sono già nell'immagine Docker
 # docker-compose exec backend pip install -r requirements-dev.txt
@@ -145,7 +145,7 @@ Questo comando esegue lo script di training all'interno del container backend. M
 docker-compose exec backend pytest -v tests/backend/
 
 Opzione 2: Localmente (richiede ambiente Python configurato)
-Bash
+
 
     # Installa dipendenze di sviluppo
     pip install -r requirements-dev.txt
@@ -154,7 +154,7 @@ Bash
     pytest -v
 
 📄 Visualizzare i Log dei Servizi:
-Bash
+
 
 # Visualizza log di tutti i servizi (seguendo l'output con -f)
 docker-compose logs -f
@@ -166,7 +166,7 @@ docker-compose logs -f backend
 docker-compose logs -f frontend
 
 🔄 Ricaricare la Configurazione di Prometheus (senza riavvio):
-Bash
+
 
     # Assicurati che '--web.enable-lifecycle' sia nei command di Prometheus
     curl -X POST http://localhost:9090/-/reload
