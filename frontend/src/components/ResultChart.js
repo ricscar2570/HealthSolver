@@ -1,74 +1,129 @@
-// frontend/src/components/Results.js
-import React from 'react';
-import ResultChart from './ResultChart'; // Assicurati che l'import sia corretto
+// frontend/src/components/ResultChart.js
+// Modifica per accettare un dataTransformer opzionale
+import React, { useState, useEffect } from 'react';
+import { Bar, Line, Pie } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
 
-const Results = () => {
-  // Definisci l'endpoint API da cui caricare i dati per il grafico
-  // Esempio: usa l'endpoint di previsione temporale da analytics.py (se attivato)
-  const predictionApiEndpoint = 'http://localhost:8000/dashboard/predict'; // URL aggiornato
+// Registra i componenti necessari di Chart.js
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
-  // Esempio: usa un altro endpoint se vuoi visualizzare altro, ad esempio
-  // una distribuzione di rischio o dati paziente da /dashboard/data
-  // const patientDataApiEndpoint = 'http://localhost:8000/dashboard/data';
+/**
+ * ResultChart Component
+ * Visualizza grafici (Bar, Line, Pie) da un endpoint API,
+ * con trasformazione dati opzionale.
+ */
+const ResultChart = ({
+  apiEndpoint,
+  defaultChartType = 'bar',
+  title = 'Results Chart',
+  dataTransformer = (data) => data // Funzione identità di default
+}) => {
+  const [chartType, setChartType] = useState(defaultChartType);
+  const [chartData, setChartData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!apiEndpoint) {
+        setError("API endpoint is not defined.");
+        setLoading(false);
+        return;
+    }
+
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      setChartData(null);
+      try {
+        const response = await fetch(apiEndpoint);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch chart data (${response.status})`);
+        }
+        const rawData = await response.json();
+
+        // Applica la trasformazione ai dati ricevuti
+        const transformedData = dataTransformer(rawData);
+
+        if (!transformedData || !transformedData.labels || !transformedData.datasets) {
+             console.error("Transformed data is not in the expected Chart.js format:", transformedData);
+             throw new Error("Invalid data format received after transformation.");
+        }
+
+        setChartData(transformedData); // Usa i dati trasformati
+
+      } catch (err) {
+        console.error('Error fetching or processing chart data:', err);
+        setError(`Could not load chart data: ${err.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [apiEndpoint, dataTransformer]); // Aggiungi dataTransformer alle dipendenze
+
+  // Funzione per renderizzare il grafico selezionato
+  const renderChart = () => {
+     const options = {
+        responsive: true,
+        plugins: {
+            legend: { position: 'top' },
+            title: { display: true, text: title }
+        }
+    };
+    switch (chartType) {
+      case 'line':
+        return <Line data={chartData} options={options} />;
+      case 'pie':
+        // Pie chart options might differ
+        return <Pie data={chartData} options={{ ...options, plugins: { ...options.plugins, legend: { position: 'right' }}}} />;
+      default: // bar
+        return <Bar data={chartData} options={options} />;
+    }
+  };
 
   return (
-    <div style={{ border: '1px solid #ccc', padding: '20px', margin: '20px 0' }}>
-      <h2>Results and Analysis</h2>
+    <div style={{ margin: '20px 0', padding: '15px', border: '1px dashed #eee' }}>
+      {/* Titolo spostato nelle opzioni del grafico */}
+      {/* <h4>{title}</h4> */}
 
-      {/* Grafico per le previsioni temporali */}
-      <ResultChart
-        apiEndpoint={predictionApiEndpoint}
-        title="Condition Severity Prediction (Next 30 Days)"
-        defaultChartType="line" // La previsione temporale si adatta bene a un grafico a linea
-        dataTransformer={(apiData) => {
-           // Trasforma i dati da [{ds: 'YYYY-MM-DD', yhat: value}, ...]
-           // al formato richiesto da Chart.js ({ labels: [], datasets: [{ data: [] }] })
-           if (!apiData || !Array.isArray(apiData)) return null;
-           return {
-             labels: apiData.map(item => new Date(item.ds).toLocaleDateString()), // Formatta le date
-             datasets: [
-               {
-                 label: 'Predicted Severity (yhat)',
-                 data: apiData.map(item => item.yhat),
-                 borderColor: 'rgb(75, 192, 192)',
-                 tension: 0.1
-               }
-             ]
-           };
-        }}
-      />
+      {loading && <p>Loading chart data...</p>}
+      {error && <p style={{ color: 'red' }}>{error}</p>}
 
-      {/* Aggiungi altri grafici se necessario, ad esempio per i dati dei pazienti */}
-      {/*
-      <ResultChart
-        apiEndpoint={patientDataApiEndpoint}
-        title="Patient Condition Severity Distribution"
-        defaultChartType="bar"
-        dataTransformer={(apiData) => {
-          // Trasforma i dati da [{age: X, bmi: Y, condition_severity: Z}, ...]
-          // Esempio: conta le occorrenze per severity
-          if (!apiData || !Array.isArray(apiData)) return null;
-          const severityCounts = apiData.reduce((acc, patient) => {
-            const severity = patient.condition_severity;
-            acc[severity] = (acc[severity] || 0) + 1;
-            return acc;
-          }, {});
-          return {
-            labels: Object.keys(severityCounts).sort(),
-            datasets: [
-              {
-                label: 'Number of Patients',
-                data: Object.values(severityCounts),
-                backgroundColor: 'rgba(54, 162, 235, 0.6)',
-              }
-            ]
-          };
-        }}
-      />
-      */}
+      {!loading && !error && chartData && (
+        <>
+          {renderChart()}
+          <div style={{ marginTop: '20px', textAlign: 'center' }}>
+            <label htmlFor={`chartType-${title}`} style={{ marginRight: '10px' }}>
+              Chart Type:
+            </label>
+            <select
+              id={`chartType-${title}`} // Usa ID univoco se ci sono più grafici
+              value={chartType}
+              onChange={(e) => setChartType(e.target.value)}
+              style={{ padding: '5px' }}
+            >
+              <option value="bar">Bar</option>
+              <option value="line">Line</option>
+              <option value="pie">Pie</option>
+            </select>
+          </div>
+        </>
+      )}
 
+      {!loading && !error && !chartData && <p>No data available for the chart.</p>}
     </div>
   );
 };
 
-export default Results;
+export default ResultChart;
