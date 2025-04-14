@@ -138,41 +138,50 @@ Questo comando esegue lo script di training all'interno del container backend. M
 
 🧪 Eseguire i Test (Pytest):
 
-    Opzione 1: Dentro il container (consigliato)
-    
-
+Opzione 1: Dentro il container (consigliato)
 Installa dipendenze di sviluppo se non sono già nell'immagine Docker
+```
 docker-compose exec backend pip install -r requirements-dev.txt
-
+```
 Esegui i test
-docker-compose exec backend pytest -v tests/backend/
 
+```
+docker-compose exec backend pytest -v tests/backend/
+```
 Opzione 2: Localmente (richiede ambiente Python configurato)
 
 
     Installa dipendenze di sviluppo
+    ```
     pip install -r requirements-dev.txt
-
+    ```
     Esegui i test (dalla root del progetto)
+    
+    ```
     pytest -v
+    ```
 
 📄 Visualizzare i Log dei Servizi:
 
 
 Visualizza log di tutti i servizi (seguendo l'output con -f)
+```
 docker-compose logs -f
-
+```
 Visualizza log solo del backend
+```
 docker-compose logs -f backend
-
+```
 Visualizza log solo del frontend
+```
 docker-compose logs -f frontend
-
+```
 🔄 Ricaricare la Configurazione di Prometheus (senza riavvio):
 
 
     Assicurati che '--web.enable-lifecycle' sia nei command di Prometheus
-    curl -X POST http://localhost:9090/-/reload
+```    
+curl -X POST http://localhost:9090/-/reload
 
 ```
 
