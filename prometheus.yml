@@ -1,17 +1,23 @@
+# /prometheus.yml (Root del progetto)
 global:
-  scrape_interval: 5s
+  scrape_interval: 15s # Intervallo di default
+  evaluation_interval: 15s
 
 alerting:
   alertmanagers:
     - static_configs:
         - targets:
-          - "alertmanager:9093"
+          - "alertmanager:9093" # Nome del servizio nel docker-compose
 
 rule_files:
-  - "alert_rules.yml"
+  - "/etc/prometheus/alert_rules.yml" # Percorso dentro il container
 
 scrape_configs:
-  - job_name: "fastapi"
-    metrics_path: "/metrics"
+  - job_name: "prometheus" # Scrape di Prometheus stesso
     static_configs:
-      - targets: ["fastapi:8000"]
+      - targets: ["localhost:9090"]
+
+  - job_name: "healthsolver_backend"
+    metrics_path: "/metrics" # Path standard esposto da prometheus-fastapi-instrumentator
+    static_configs:
+      - targets: ["backend:8000"] # Nome del servizio backend nel docker-compose
