@@ -19,3 +19,12 @@ def cache_response(expiration_time=60):
             return result
         return wrapper
     return decorator
+
+r = redis.Redis(host="localhost", port=6379, db=0)
+
+def cache_json(key, obj):
+    r.set(key, json.dumps(obj))
+
+def get_cached_json(key):
+    data = r.get(key)
+    return json.loads(data) if data else None
