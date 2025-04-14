@@ -20,3 +20,6 @@ predictions = requests.get(predict_url).json()
 df_pred = pd.DataFrame(predictions)
 fig_pred = px.line(df_pred, x="ds", y="yhat", title="Previsione della Gravità della Condizione nei Prossimi 30 Giorni")
 st.plotly_chart(fig_pred, use_container_width=True)
+
+st.subheader("Age Distribution")
+st.bar_chart(df["Age"].value_counts().sort_index())
