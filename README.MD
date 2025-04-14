@@ -136,7 +136,7 @@ Questo comando esegue lo script di training all'interno del container backend. M
 🧪 Eseguire i Test (Pytest):
 
     Opzione 1: Dentro il container (consigliato)
-    ```Bash
+    Bash
 
 # Installa dipendenze di sviluppo se non sono già nell'immagine Docker
 # docker-compose exec backend pip install -r requirements-dev.txt
