@@ -164,12 +164,14 @@ docker-compose logs -f backend
 
 # Visualizza log solo del frontend
 docker-compose logs -f frontend
-```
+
 🔄 Ricaricare la Configurazione di Prometheus (senza riavvio):
 Bash
 
     # Assicurati che '--web.enable-lifecycle' sia nei command di Prometheus
     curl -X POST http://localhost:9090/-/reload
+
+```
 
 🗺️ Struttura del Progetto: Una Mappa per l'Esploratore
 
