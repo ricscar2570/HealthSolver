@@ -204,6 +204,8 @@ Bash
 ├── requirements.txt # Dipendenze Python del backend (per produzione)
 └── requirements-dev.txt # Dipendenze Python aggiuntive per sviluppo/test
 
+```
+
 🤔 Troubleshooting & Note
 
     Errori docker-compose up: Controlla i log (docker-compose logs [nome_servizio]) per capire quale servizio sta fallendo. Spesso sono problemi di build (Dockerfile mancante/errato), porte già in uso, o variabili d'ambiente mancanti.
