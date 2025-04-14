@@ -80,5 +80,5 @@ def root():
 #         raise HTTPException(status_code=403, detail="Invalid API Key")
 #     return api_key_header
 
-# Puoi aggiungere `Depends(get_api_key)` ai router che richiedono protezione
+# Si potrebbe aggiungere `Depends(get_api_key)` ai router che richiedono protezione ?
 # Esempio: app.include_router(admin_router, prefix="/admin", tags=["Admin"], dependencies=[Depends(get_api_key)])
