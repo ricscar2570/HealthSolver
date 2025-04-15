@@ -232,8 +232,6 @@ curl -X POST http://localhost:9090/-/reload
 
 Al momento questo è un progetto dimostrativo. Se vuoi contribuire, sentiti libero/a di aprire una Issue o una Pull Request!
 
-(Aggiungere qui dettagli sulla licenza se applicabile, es. MIT License)
-
 ✨ Buon divertimento con HealthSolver! ✨Pull request e segnalazioni sono benvenute.
 📬 Contattami su GitHub o email per collaborazioni professionali.
 🧪 Licenza
