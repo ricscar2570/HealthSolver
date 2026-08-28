@@ -1,4 +1,4 @@
-name: Repository sync v0.28.0
+name: Publish HealthSolver v0.28.0
 
 on:
   push:
@@ -9,34 +9,138 @@ permissions:
   contents: write
 
 jobs:
-  sync:
+  validate-and-publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Check readiness
-        id: ready
-        shell: bash
-        run: |
-          if [ -f .repo-sync/READY ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Restore repository bundle and publish
-        if: steps.ready.outputs.ready == 'true'
+      - name: Checkout staging
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Create candidate commit from verified source tree
+        id: candidate
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TREE_SHA: 0fdb1872f437d9c70b89b5c5676aca66657f55e1
+          PARENT_SHA: efbc208434a7a258fb16dbd42259f3ef2ceba404
         shell: bash
         run: |
           set -euo pipefail
-          cat .repo-sync/bundle.slice-* > /tmp/healthsolver.bundle.b64
-          base64 --decode /tmp/healthsolver.bundle.b64 > /tmp/healthsolver.bundle
-          git bundle verify /tmp/healthsolver.bundle
-          rm -rf /tmp/healthsolver-publish
-          git clone /tmp/healthsolver.bundle /tmp/healthsolver-publish
-          cd /tmp/healthsolver-publish
-          test "$(git rev-parse HEAD)" = "5a2ba47433026627165ca180ea3010d44984a630"
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git push --force origin main:main
-          git push --force origin refs/tags/v0.27.0-step1:refs/tags/v0.27.0-step1
-          git push --force origin refs/tags/v0.28.0-step2:refs/tags/v0.28.0-step2
+          jq -nc \
+            --arg message 'release: HealthSolver v0.28.0 — Data-Centric Rebase Step 2' \
+            --arg tree "$TREE_SHA" \
+            --arg parent "$PARENT_SHA" \
+            '{message:$message,tree:$tree,parents:[$parent]}' > /tmp/commit.json
+          response=$(curl -fsSL \
+            -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/git/commits" \
+            --data-binary @/tmp/commit.json)
+          candidate_sha=$(printf '%s' "$response" | jq -er '.sha')
+          test -n "$candidate_sha"
+          echo "candidate_sha=$candidate_sha" >> "$GITHUB_OUTPUT"
+
+          jq -nc --arg sha "$candidate_sha" '{sha:$sha,force:true}' > /tmp/ref.json
+          curl -fsSL \
+            -X PATCH \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/git/refs/heads/candidate-v0.28.0-ci" \
+            --data-binary @/tmp/ref.json > /dev/null
+
+      - name: Checkout candidate tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --force origin candidate-v0.28.0-ci:candidate-v0.28.0-ci
+          git reset --hard candidate-v0.28.0-ci
+          test "$(git rev-parse HEAD)" = "${{ steps.candidate.outputs.candidate_sha }}"
+
+      - name: Validate release identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f VERSION
+          test "$(tr -d '\r\n' < VERSION)" = '0.28.0'
+          test -f pyproject.toml
+          test -d src/healthsolver
+          test -d tests
+
+      - name: Install release
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[dev]'
+
+      - name: Run full test suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          pytest -q
+
+      - name: Run offline static sanity gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f scripts/static_sanity.py ]; then
+            python scripts/static_sanity.py
+          fi
+
+      - name: Publish candidate to main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CANDIDATE_SHA: ${{ steps.candidate.outputs.candidate_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -nc --arg sha "$CANDIDATE_SHA" '{sha:$sha,force:true}' > /tmp/main-ref.json
+          curl -fsSL \
+            -X PATCH \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/git/refs/heads/main" \
+            --data-binary @/tmp/main-ref.json > /dev/null
+
+          tag_status=$(curl -sS -o /tmp/tag-response.json -w '%{http_code}' \
+            -X PATCH \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/git/refs/tags/v0.28.0-step2" \
+            --data-binary @/tmp/main-ref.json)
+          if [ "$tag_status" = '404' ]; then
+            jq -nc --arg ref 'refs/tags/v0.28.0-step2' --arg sha "$CANDIDATE_SHA" '{ref:$ref,sha:$sha}' > /tmp/tag-create.json
+            curl -fsSL \
+              -X POST \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/git/refs" \
+              --data-binary @/tmp/tag-create.json > /dev/null
+          elif [ "$tag_status" -lt 200 ] || [ "$tag_status" -ge 300 ]; then
+            cat /tmp/tag-response.json
+            exit 1
+          fi
+
+      - name: Verify published ref
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CANDIDATE_SHA: ${{ steps.candidate.outputs.candidate_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          response=$(curl -fsSL \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/git/ref/heads/main")
+          published_sha=$(printf '%s' "$response" | jq -er '.object.sha')
+          test "$published_sha" = "$CANDIDATE_SHA"
