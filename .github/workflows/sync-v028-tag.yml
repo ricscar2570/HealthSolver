@@ -1,0 +1,56 @@
+name: Sync v0.28.0 release tag
+
+on:
+  push:
+    branches:
+      - tag-v0.28.0-step2-sync
+
+permissions:
+  contents: write
+
+jobs:
+  sync-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Point release tag at exact verified commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_SHA: 5a2ba47433026627165ca180ea3010d44984a630
+        shell: bash
+        run: |
+          set -euo pipefail
+          main_sha=$(curl -fsSL \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/git/ref/heads/main" | jq -er '.object.sha')
+          test "$main_sha" = "$TARGET_SHA"
+
+          jq -nc --arg sha "$TARGET_SHA" '{sha:$sha,force:true}' > /tmp/tag-ref.json
+          status=$(curl -sS -o /tmp/tag-response.json -w '%{http_code}' \
+            -X PATCH \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/git/refs/tags/v0.28.0-step2" \
+            --data-binary @/tmp/tag-ref.json)
+          if [ "$status" = '404' ]; then
+            jq -nc --arg ref 'refs/tags/v0.28.0-step2' --arg sha "$TARGET_SHA" '{ref:$ref,sha:$sha}' > /tmp/tag-create.json
+            curl -fsSL \
+              -X POST \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/git/refs" \
+              --data-binary @/tmp/tag-create.json > /dev/null
+          elif [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            cat /tmp/tag-response.json
+            exit 1
+          fi
+
+          tag_sha=$(curl -fsSL \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/git/ref/tags/v0.28.0-step2" | jq -er '.object.sha')
+          test "$tag_sha" = "$TARGET_SHA"
