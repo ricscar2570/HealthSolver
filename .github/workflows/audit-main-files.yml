@@ -1,0 +1,48 @@
+name: Audit main v0.28.0 file list
+
+on:
+  push:
+    branches:
+      - audit-main-v0.28.0-files
+    paths-ignore:
+      - '.repo-sync/main-files.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Produce tracked file list
+        shell: bash
+        run: |
+          set -euo pipefail
+          git ls-files | LC_ALL=C sort > /tmp/main-files.txt
+          cat /tmp/main-files.txt
+
+      - name: Publish audit result on audit branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          content=$(base64 -w0 /tmp/main-files.txt)
+          jq -nc --arg message 'audit: record current main tracked file list' --arg content "$content" --arg branch 'audit-main-v0.28.0-files' '{message:$message,content:$content,branch:$branch}' > /tmp/payload.json
+          status=$(curl -sS -o /tmp/response.json -w '%{http_code}' \
+            -X PUT \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/contents/.repo-sync/main-files.txt" \
+            --data-binary @/tmp/payload.json)
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            cat /tmp/response.json
+            exit 1
+          fi
