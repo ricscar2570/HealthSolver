@@ -1,0 +1,22 @@
+name: HS01 staged-source inspection
+on:
+  push:
+    branches: ["recovery/hs01-inspection-20261006"]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Package staged public files without executing them
+        run: git archive --format=zip --output=staged-sources.zip HEAD .repo-sync
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: hs01-staged-sources
+          path: staged-sources.zip
+          if-no-files-found: error
+          retention-days: 14
