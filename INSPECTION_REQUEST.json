@@ -1,0 +1,8 @@
+{
+  "requested_at": "2026-10-06",
+  "scope": "inspect previously staged public recovery chunks",
+  "canonical_application": false,
+  "main_changed": false,
+  "execute_staged_code": false,
+  "expected_original_bundle_sha256": "4ed0b95909a3ff46f3585a5db277572328824ca7416e9b609f4c11fbab75af94"
+}
