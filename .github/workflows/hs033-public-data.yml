@@ -1,0 +1,52 @@
+name: HealthSolver public NHAMCS acquisition
+on:
+  push:
+    branches: ['macrostep/v0.33.0-differential-data']
+    paths: ['.github/workflows/hs033-public-data.yml']
+permissions:
+  contents: read
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Download public CDC files only
+        shell: bash
+        run: |
+          mkdir -p nhamcs-public
+          python - <<'PY'
+          import urllib.request, pathlib, hashlib, json, zipfile, time
+          out=pathlib.Path('nhamcs-public'); results=[]
+          base='https://ftp.cdc.gov/pub/Health_Statistics/NCHS/'
+          for year in range(2016,2023):
+              yy=str(year)[2:]
+              entries=[(f'ed{year}.zip',[base+f'Datasets/NHAMCS/ed{year}.zip',base+f'Datasets/NHAMCS/ED{year}.zip']), (f'ed{yy}inp.txt',[base+f'Dataset_Documentation/NHAMCS/sas/ed{yy}inp.txt']), (f'ed{yy}for.txt',[base+f'Dataset_Documentation/NHAMCS/sas/ed{yy}for.txt'])]
+              for filename,urls in entries:
+                  item={'file':filename,'attempts':[]}
+                  for url in urls:
+                      try:
+                          req=urllib.request.Request(url,headers={'User-Agent':'HealthSolver research public-data acquisition'})
+                          with urllib.request.urlopen(req,timeout=35) as response: data=response.read(16000000)
+                          if filename.endswith('.zip'):
+                              import io
+                              with zipfile.ZipFile(io.BytesIO(data)) as z:
+                                  item['members']=[{'name':x.filename,'bytes':x.file_size,'crc':x.CRC} for x in z.infolist()]
+                                  if sum(x.file_size for x in z.infolist())>200000000: raise ValueError('oversized archive')
+                          else:
+                              data.decode('utf-8-sig')
+                              if b'<html' in data[:300].lower(): raise ValueError('HTML instead of SAS text')
+                          (out/filename).write_bytes(data)
+                          item.update(url=url,bytes=len(data),sha256=hashlib.sha256(data).hexdigest(),status='downloaded');break
+                      except Exception as e: item['attempts'].append({'url':url,'error':str(e)})
+                  else: item['status']='failed'
+                  results.append(item);print(filename,item['status'],item.get('bytes'))
+          manifest={'purpose':'Public deidentified survey visits, research only; no restricted data or secrets','retrieved_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'files':results}
+          (out/'acquisition.json').write_text(json.dumps(manifest,indent=2))
+          PY
+      - name: Save public source files and receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: nhamcs-official-public-2016-2022
+          path: nhamcs-public/
+          retention-days: 14
+          if-no-files-found: error
