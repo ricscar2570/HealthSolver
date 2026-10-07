@@ -1,0 +1,33 @@
+name: HealthSolver UCI clinical source
+on:
+  push:
+    branches: ['macrostep/v0.33.0-differential-data']
+    paths: ['.github/workflows/hs033-uci-source.yml']
+permissions:
+  contents: read
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Acquire public CC-BY dataset
+        run: |
+          mkdir -p uci-source
+          python - <<'PY'
+          import urllib.request,pathlib,hashlib,json,zipfile,io
+          url='https://archive.ics.uci.edu/static/public/102/thyroid+disease.zip'
+          out=pathlib.Path('uci-source')
+          try:
+              with urllib.request.urlopen(url,timeout=60) as r: data=r.read(2000000)
+              with zipfile.ZipFile(io.BytesIO(data)) as z: members=z.namelist()
+              (out/'thyroid-disease.zip').write_bytes(data)
+              result={'status':'downloaded','url':url,'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data),'members':members,'license':'CC BY 4.0, UCI dataset DOI 10.24432/C5D010','purpose':'Feasibility review only; labels and units require verification before model release'}
+          except Exception as e: result={'status':'failed','url':url,'error':str(e)}
+          (out/'acquisition.json').write_text(json.dumps(result,indent=2))
+          print(json.dumps(result))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uci-thyroid-public-source
+          path: uci-source/
+          retention-days: 14
