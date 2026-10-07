@@ -1,0 +1,54 @@
+name: NHAMCS public data acquisition
+on:
+  push:
+    branches: ['development/real-data-macro1-20261007']
+    paths: ['.github/workflows/nhamcs-public-data.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Download official public use files only
+        shell: python
+        run: |
+          import hashlib, json, pathlib, urllib.request, datetime, zipfile, time
+          out = pathlib.Path('nhamcs-public'); out.mkdir()
+          root = 'https://ftp.cdc.gov/pub/Health_Statistics/NCHS/'
+          files = {
+            'ed2021_sas.zip': root + 'Dataset_Documentation/NHAMCS/sas/ed2021_sas.zip',
+            'ed2022_sas.zip': root + 'Dataset_Documentation/NHAMCS/sas/ed2022_sas.zip',
+            'ed21inp.txt': root + 'Dataset_Documentation/NHAMCS/sas/ed21inp.txt',
+            'ed22inp.txt': root + 'Dataset_Documentation/NHAMCS/sas/ed22inp.txt',
+            'ed22lab.txt': root + 'Dataset_Documentation/NHAMCS/sas/ed22lab.txt',
+            'ed22for.txt': root + 'Dataset_Documentation/NHAMCS/sas/ed22for.txt',
+            'readme2022.txt': root + 'Datasets/NHAMCS/readme2022.txt',
+          }
+          records = []
+          for name, url in files.items():
+            for attempt in range(3):
+              try:
+                request = urllib.request.Request(url, headers={'User-Agent': 'HealthSolver-Research/0.30 (public-use reproducibility)'})
+                with urllib.request.urlopen(request, timeout=50) as response:
+                  data = response.read(20000000)
+                  status = response.status
+                if name.endswith('.zip'):
+                  import io
+                  with zipfile.ZipFile(io.BytesIO(data)) as z:
+                    assert z.testzip() is None
+                (out/name).write_bytes(data)
+                records.append({'file':name,'url':url,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'http_status':status})
+                print(name, len(data), hashlib.sha256(data).hexdigest())
+                break
+              except Exception:
+                if attempt == 2: raise
+                time.sleep(3)
+          (out/'SOURCE_MANIFEST.json').write_text(json.dumps({'source':'CDC/NCHS NHAMCS public use, official files','retrieved_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'files':records,'purpose':'Research only. No identification attempts. No clinical performance claim.'},indent=2))
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nhamcs-official-public-2021-2022
+          path: nhamcs-public/
+          retention-days: 30
+          if-no-files-found: error
