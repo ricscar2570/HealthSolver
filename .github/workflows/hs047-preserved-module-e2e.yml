@@ -1,0 +1,119 @@
+name: HealthSolver 0.47 Preserved Visit Full E2E
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs047-preserved-module-e2e.yml']
+permissions:
+  contents: read
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Exercise preserved visit, report, archive and vault
+        shell: bash
+        run: |
+          cat > audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1700},acceptDownloads:true});
+          const errors=[];page.on('pageerror',e=>errors.push('PAGE '+e.message));page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
+          const must=(v,m)=>{if(!v)throw new Error(m)};
+          const save=async(loc,path)=>{
+            const [d]=await Promise.all([page.waitForEvent('download',{timeout:15000}),loc.click()]);
+            await d.saveAs(path);must(fs.existsSync(path)&&fs.statSync(path).size>20,'empty download '+path);
+          };
+          await page.goto('https://ricscar2570.github.io/HealthSolver/?audit=previous-full-e2e',{waitUntil:'networkidle',timeout:120000});
+          await page.waitForFunction(()=>document.body.innerText.includes('Visita e laboratori precedenti'),{timeout:30000});
+          await page.locator('aside .nav[data-page="previous"]').click();
+          const frame=page.frameLocator('#previous');
+          await frame.locator('body').waitFor({state:'attached',timeout:30000});
+          await frame.getByText('Visita respiratoria',{exact:false}).first().waitFor({state:'visible',timeout:30000});
+
+          await frame.locator('#loadDemo').click();
+          await page.waitForTimeout(150);
+          must((await frame.locator('#caseId').inputValue()).length>0,'demo case id missing');
+          const consent=frame.locator('#researchConsent');must(await consent.count()===1,'research consent missing');
+          if(!(await consent.isChecked())) await consent.check();
+          await frame.locator('#evaluateVisit').click();await page.waitForTimeout(300);
+          let body=await frame.locator('body').innerText();
+          must(/stima|probabil|risultat|crb65/i.test(body),'visit result missing after evaluation');
+
+          const fa=frame.locator('#finalAssessment');
+          if(await fa.count()===1) await fa.fill('Audit: valutazione finale di ricerca.');
+          const plan=frame.locator('#plan');if(await plan.count()===1) await plan.fill('Audit: nessuna decisione clinica; test software.');
+          const follow=frame.locator('#followup');if(await follow.count()===1) await follow.fill('Audit: follow-up simulato.');
+          const agreement=frame.locator('#agreement');
+          if(await agreement.count()===1){
+            const opts=await agreement.locator('option').evaluateAll(os=>os.map(o=>({v:o.value,t:o.textContent.trim()})));
+            const pick=opts.find(o=>/concordo/i.test(o.t))||opts.find(o=>o.v);
+            if(pick) await agreement.selectOption(pick.v);
+          }
+
+          await frame.locator('#saveRevision').click();await page.waitForTimeout(180);
+          body=await frame.locator('body').innerText();
+          must(/revisione/i.test(body),'revision feedback missing');
+          await save(frame.locator('#exportResult'),'/tmp/previous-result.json');
+          await save(frame.locator('#exportPlain'),'/tmp/previous-archive.json');
+
+          await frame.locator('#report').click();await page.waitForTimeout(150);
+          const report=frame.locator('#reportDialog');
+          if(await report.count()===1) must(await report.isVisible(),'preserved report dialog did not open');
+          await save(frame.locator('#downloadReport'),'/tmp/previous-report.html');
+          must(/HealthSolver|visita|relazione/i.test(fs.readFileSync('/tmp/previous-report.html','utf8')),'report HTML content invalid');
+          const close=frame.locator('#closeReport');if(await close.count()===1) await close.click();
+
+          const password='HealthSolver-Preserved-047!';
+          await frame.locator('#password').fill(password);
+          await frame.locator('#passwordRepeat').fill(password);
+          await frame.locator('#saveVault').click();await page.waitForTimeout(250);
+          must(await frame.locator('#unlockVault').count()===1,'vault unlock missing');
+          await save(frame.locator('#exportEncrypted'),'/tmp/previous-encrypted.json');
+
+          // Verify browser vault survives an in-workspace lock and can be reopened.
+          await frame.locator('#lock').click();await page.waitForTimeout(150);
+          const confirm=frame.locator('#confirmYes');
+          if(await confirm.count()===1 && await confirm.isVisible()) await confirm.click();
+          await page.waitForTimeout(180);
+          const restorePwd=frame.locator('#restorePassword');
+          if(await restorePwd.count()===1){
+            await restorePwd.fill(password);
+            await frame.locator('#unlockVault').click();await page.waitForTimeout(300);
+            body=await frame.locator('body').innerText();
+            must(/visita|revisione/i.test(body),'browser vault reopen produced no workspace');
+          }
+
+          // Verify encrypted downloaded file is accepted by restore control when available.
+          if(await frame.locator('#restoreFile').count()===1){
+            if(await restorePwd.count()===1) await restorePwd.fill(password);
+            await frame.locator('#restoreFile').setInputFiles('/tmp/previous-encrypted.json');
+            await page.waitForTimeout(350);
+            body=await frame.locator('body').innerText();
+            must(/visita|revisione/i.test(body),'encrypted file restore produced no workspace');
+          }
+
+          must(errors.length===0,'preserved module browser errors '+errors.join(' | '));
+          await page.screenshot({path:'HealthSolver-0.47-Preserved-Visit-E2E.png',fullPage:true});
+          console.log('PRESERVED VISIT FULL E2E PASS');
+          await browser.close();
+          JS
+          node audit.mjs | tee preserved-e2e.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: healthsolver-047-preserved-visit-e2e
+          path: |
+            preserved-e2e.txt
+            HealthSolver-0.47-Preserved-Visit-E2E.png
+          if-no-files-found: ignore
+          retention-days: 14
