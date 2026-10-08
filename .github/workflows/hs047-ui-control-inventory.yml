@@ -1,0 +1,61 @@
+name: HealthSolver 0.47 UI Control Inventory
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs047-ui-control-inventory.yml']
+permissions:
+  contents: read
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Inventory live controls
+        shell: bash
+        run: |
+          cat > inventory.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1600}});
+          const errors=[];
+          page.on('pageerror',e=>errors.push('PAGEERROR '+e.message));
+          page.on('console',m=>{if(m.type()==='error') errors.push('CONSOLE '+m.text())});
+          await page.goto('https://ricscar2570.github.io/HealthSolver/?audit=control-inventory',{waitUntil:'networkidle',timeout:120000});
+          await page.waitForFunction(()=>document.body.innerText.includes('Clinical Coach')&&document.body.innerText.includes('Expert Mode'),{timeout:30000});
+          const navs=page.locator('aside .nav[data-page]');
+          const n=await navs.count();
+          console.log('NAV_COUNT',n);
+          for(let i=0;i<n;i++){
+            const nav=navs.nth(i);
+            const dp=await nav.getAttribute('data-page');
+            await nav.click();
+            await page.waitForTimeout(150);
+            const sec=page.locator('#page-'+dp);
+            const visible=await sec.isVisible();
+            const text=(await sec.innerText()).slice(0,1800);
+            const controls=await sec.locator('button,input,select,textarea,a,summary').evaluateAll(els=>els.map((e,i)=>({
+              i,tag:e.tagName,type:e.type||'',id:e.id||'',name:e.name||'',text:(e.innerText||e.value||e.placeholder||e.getAttribute('aria-label')||'').trim().slice(0,140),
+              cls:e.className||'',hidden:!(e.offsetWidth||e.offsetHeight||e.getClientRects().length)
+            })));
+            console.log('\nPAGE',dp,'VISIBLE',visible,'TEXT\n'+text+'\nCONTROLS\n'+JSON.stringify(controls,null,2));
+          }
+          console.log('\nLOCALSTORAGE',await page.evaluate(()=>Object.keys(localStorage)));
+          console.log('\nSESSIONSTORAGE',await page.evaluate(()=>Object.keys(sessionStorage)));
+          console.log('\nERRORS',JSON.stringify(errors,null,2));
+          await browser.close();
+          JS
+          node inventory.mjs | tee ui-control-inventory.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: healthsolver-047-ui-control-inventory
+          path: ui-control-inventory.txt
+          retention-days: 14
