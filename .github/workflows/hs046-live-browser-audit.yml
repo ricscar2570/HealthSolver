@@ -1,0 +1,114 @@
+name: HealthSolver 0.46 NHIS Live Browser Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs046-live-browser-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Verify live NHIS model integration
+        shell: bash
+        run: |
+          cat > audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const meta=await fetch('https://ricscar2570.github.io/HealthSolver/version.json?audit=046-final').then(r=>r.json());
+          if(meta.version!=='0.46.0') throw new Error('wrong published version '+meta.version);
+          if(meta.predictive_model_count!==6) throw new Error('wrong model count '+meta.predictive_model_count);
+          if(!meta.predictive_models.includes('HS-NHIS-HYP-001')) throw new Error('NHIS model missing from metadata');
+
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1700}});
+          await page.goto('https://ricscar2570.github.io/HealthSolver/?audit=046-nhis',{waitUntil:'networkidle',timeout:120000});
+          await page.waitForFunction(()=>document.body.innerText.includes('Clinical Coach') && document.body.innerText.includes('Expert Mode'),{timeout:30000});
+
+          const expert=page.locator('aside .nav[data-page="intelligence"]');
+          if(await expert.count()!==1) throw new Error('Expert Mode nav missing');
+          await expert.click();
+          await page.waitForTimeout(600);
+
+          const block=page.locator('#hs-predictive-integrated');
+          if(await block.count()!==1 || !(await block.isVisible())) throw new Error('predictive block missing');
+          const initialText=await block.innerText();
+          if(!initialText.includes('6 MODELLI SUPERVISIONATI')) throw new Error('six-model badge missing');
+          if(!initialText.includes('Ipertensione') && !initialText.includes('ipertensione')) throw new Error('NHIS hypertension coverage card missing');
+
+          // Fill reusable dossier fields or NHIS supplement inputs depending on implementation.
+          await page.evaluate(()=>{
+            const set=(id,v)=>{const e=document.getElementById(id);if(e){e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));}};
+            set('ciAge','67'); set('coachAge','67');
+            const sex=document.getElementById('ciSex')||document.getElementById('coachSex');
+            if(sex){
+              if(sex.tagName==='SELECT'){
+                const opts=[...sex.options].map(o=>o.value);
+                sex.value=opts.find(x=>/^(m|male|maschio|1)$/i.test(x))||opts.find(Boolean)||sex.value;
+              } else sex.value='M';
+              sex.dispatchEvent(new Event('input',{bubbles:true}));sex.dispatchEvent(new Event('change',{bubbles:true}));
+            }
+            ['hs46_obese','hs46_current_smoker','hs46_fair_poor_general_health'].forEach((id,i)=>set(id,i===1?'0':'1'));
+          });
+
+          // Fall back to explicit visible controls if they exist under alternate IDs.
+          const candidates={
+            obese:['#hs46_obese','#nhis_obese'],
+            smoker:['#hs46_current_smoker','#nhis_current_smoker'],
+            health:['#hs46_fair_poor_general_health','#nhis_fair_poor_general_health']
+          };
+          for(const sels of Object.values(candidates)){
+            for(const sel of sels){
+              const loc=page.locator(sel);
+              if(await loc.count()===1){
+                const tag=await loc.evaluate(e=>e.tagName);
+                if(tag==='SELECT'){
+                  const opts=await loc.locator('option').evaluateAll(os=>os.map(o=>o.value));
+                  const v=opts.find(x=>x==='1')||opts.find(Boolean);
+                  if(v) await loc.selectOption(v);
+                }else if(await loc.getAttribute('type')==='checkbox'){
+                  if(!(await loc.isChecked())) await loc.check();
+                }else{
+                  await loc.fill('1');
+                }
+                break;
+              }
+            }
+          }
+
+          const run=page.locator('#hs42Run');
+          if(await run.count()!==1) throw new Error('predict button missing');
+          await run.click();
+          await page.waitForTimeout(500);
+
+          const results=page.locator('#hs42Results');
+          const card=results.locator('.card').filter({hasText:'HS-NHIS-HYP-001'});
+          if(await card.count()!==1) throw new Error('NHIS result card missing');
+          const text=await card.innerText();
+          if(!/%/.test(text)) throw new Error('NHIS numeric probability missing');
+          if(/Astensione/i.test(text)) throw new Error('NHIS unexpectedly abstained');
+
+          await block.scrollIntoViewIfNeeded();
+          await block.screenshot({path:'HealthSolver-0.46-NHIS-Predictive.png'});
+          await page.screenshot({path:'HealthSolver-0.46-Expert-Mode.png',fullPage:true});
+          console.log('NHIS_RESULT\n'+text);
+          await browser.close();
+          JS
+          node audit.mjs | tee audit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: healthsolver-046-nhis-live
+          path: |
+            HealthSolver-0.46-NHIS-Predictive.png
+            HealthSolver-0.46-Expert-Mode.png
+            audit.txt
+          retention-days: 14
