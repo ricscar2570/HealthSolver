@@ -35,6 +35,8 @@ jobs:
           if(await page.locator('#hs-router041').count()) throw new Error('Legacy unified router still visible');
           const integrated=page.locator('#hs-predictive-integrated');
           if(await integrated.count()!==1) throw new Error('Integrated predictive UI missing');
+          await page.locator('aside .nav[data-page="intelligence"]').click();
+          await page.waitForTimeout(300);
           const expert=page.locator('#page-intelligence');
           if(await expert.locator('#hs-predictive-integrated').count()!==1) throw new Error('Predictive UI is not inside Expert Mode');
           await page.evaluate(()=>{
