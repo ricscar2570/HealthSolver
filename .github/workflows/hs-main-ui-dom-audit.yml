@@ -45,6 +45,8 @@ jobs:
           }
           console.log('\nMAINCHILDREN',await page.locator('.main > *').evaluateAll(els=>els.map((el,i)=>({i,tag:el.tagName,id:el.id,cls:el.className,dataPage:el.getAttribute('data-page'),text:(el.innerText||'').slice(0,300)}))));
           console.log('\nNAVBUTTONS',await page.locator('aside .nav').evaluateAll(els=>els.map((el,i)=>({i,text:el.innerText,dataPage:el.getAttribute('data-page'),cls:el.className}))));
+          console.log('\nINTELLIGENCE_CURRENT',await page.evaluate(()=>{try{return window.HSIntelligence?.current?.()||null}catch(e){return {error:String(e)}}}));
+          console.log('\nCOACH_GLOBALS',await page.evaluate(()=>({coachKeys:Object.keys(window.HSClinicalCoach||{}), intelligenceKeys:Object.keys(window.HSIntelligence||{})})));
           await browser.close();
           JS
           node audit.mjs > dom-audit.txt
