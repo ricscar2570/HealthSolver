@@ -1,4 +1,5 @@
 name: HealthSolver 0.41 Repack Pages Payload
+# rerun after predictive module path/placement fix
 on:
   push:
     branches: ['main']
