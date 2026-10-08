@@ -41,6 +41,9 @@ jobs:
           await frame.getByText('Visita respiratoria',{exact:false}).first().waitFor({state:'visible',timeout:30000});
 
           await frame.locator('#loadDemo').click();
+          await page.waitForTimeout(100);
+          const demoConfirm=frame.locator('#confirmYes');
+          if(await demoConfirm.count()===1 && await demoConfirm.isVisible()) await demoConfirm.click();
           await page.waitForTimeout(150);
           must((await frame.locator('#caseId').inputValue()).length>0,'demo case id missing');
           const consent=frame.locator('#researchConsent');must(await consent.count()===1,'research consent missing');
