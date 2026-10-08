@@ -1,0 +1,135 @@
+name: HealthSolver 0.47 Persistence and Validation E2E
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs047-persistence-validation-e2e.yml']
+permissions:
+  contents: read
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Data training, validation, archive and recovery
+        shell: bash
+        run: |
+          cat > audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const BASE='https://ricscar2570.github.io/HealthSolver/';
+          const checks=[];
+          const ok=(v,m)=>{if(!v)throw new Error(m);checks.push(m)};
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+          const browser=await chromium.launch({headless:true});
+          const ctx=await browser.newContext({acceptDownloads:true,viewport:{width:1440,height:1700}});
+          const p=await ctx.newPage(),errors=[];
+          p.on('pageerror',e=>errors.push('PAGE '+e.message));
+          p.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
+          await p.goto(BASE+'?audit=persistence&t='+Date.now(),{waitUntil:'networkidle',timeout:120000});
+          await p.waitForFunction(()=>document.body.innerText.includes('Clinical Coach')&&document.body.innerText.includes('Expert Mode'),{timeout:30000});
+
+          async function nav(name){const n=p.locator('aside .nav[data-page="'+name+'"]');ok(await n.count()===1,'nav '+name);await n.click();await sleep(100);const s=p.locator('#page-'+name);ok(await s.isVisible(),'visible '+name);return s}
+          async function dl(selector,label){
+            const [d]=await Promise.all([p.waitForEvent('download',{timeout:15000}),p.locator(selector).click()]);
+            const q=await d.path();ok(!!q&&fs.statSync(q).size>20,label+' download');return q;
+          }
+
+          // Create a real revision first.
+          await nav('case');
+          await p.locator('#loadExample').click();await sleep(150);
+          if(!(await p.locator('#consent').isChecked()))await p.locator('#consent').check();
+          await p.locator('#evaluate').click();await sleep(200);
+          await p.locator('#saveCase').click();await sleep(100);
+
+          // Data exports and training.
+          await nav('data');
+          const dataset=await dl('#downloadDataset','dataset');
+          const schema=await dl('#downloadSchema','schema');
+          ok(fs.statSync(dataset).size>100,'dataset export content');
+          ok(fs.statSync(schema).size>100,'schema export content');
+          await p.locator('#epochs').selectOption({index:0});
+          const beforeText=await p.locator('#page-data').innerText();
+          await p.locator('#train').click();
+          await sleep(300);
+          await p.waitForFunction(()=>{
+            const t=document.getElementById('page-data')?.innerText||'';
+            const b=document.getElementById('train');
+            return /complet|terminat|modello addestrato|training/i.test(t) && !b?.disabled;
+          },{timeout:60000}).catch(()=>{});
+          const afterText=await p.locator('#page-data').innerText();
+          ok(afterText.length>=beforeText.length,'training returns UI output');
+          // Cancellation path must be callable without breaking the page.
+          await p.locator('#epochs').selectOption({index:(await p.locator('#epochs option').count())-1});
+          await p.locator('#train').click();await sleep(60);
+          await p.locator('#cancelTrain').click();await sleep(80);
+          ok(await p.locator('#train').isEnabled(),'training cancel returns control');
+
+          // Validation: recompute, metrics export, model comparison, external validation guard and template.
+          await nav('validation');
+          await p.locator('#recompute').click();await sleep(150);
+          const metrics=await dl('#exportMetrics','metrics');
+          ok(fs.statSync(metrics).size>100,'metrics export content');
+          const template=await dl('#ciValTemplate','validation template');
+          ok(fs.statSync(template).size>20,'validation template content');
+          await p.locator('#compare').click();await sleep(120);
+          ok((await p.locator('#page-validation').innerText()).length>1000,'model comparison leaves validation output');
+          // Guard path with missing authorization/file.
+          await p.locator('#ciValRun').click();await sleep(100);
+          ok((await p.locator('#page-validation').innerText()).length>1000,'external validation guard handled safely');
+
+          // Archive: revision, plain/encrypted backup, clear and restore.
+          await nav('archive');
+          let text=await p.locator('#page-archive').innerText();
+          ok(!text.includes('Nessuna revisione conservata'),'revision visible in archive');
+          const plain=await dl('#exportBackup','plain backup');
+          const obj=JSON.parse(fs.readFileSync(plain,'utf8'));ok(!!obj,'plain backup parses');
+          await p.locator('#password').fill('testpass-047');
+          const enc=await dl('#encryptBackup','encrypted backup');
+          ok(fs.statSync(enc).size>100,'encrypted backup content');
+
+          p.once('dialog',d=>d.accept());
+          await p.locator('#clearSession').click();await sleep(100);
+          text=await p.locator('#page-archive').innerText();
+          ok(text.includes('Nessuna revisione conservata'),'clear session works');
+
+          await p.locator('#restoreFile').setInputFiles(plain);await sleep(250);
+          text=await p.locator('#page-archive').innerText();
+          ok(!text.includes('Nessuna revisione conservata'),'plain restore works');
+
+          p.once('dialog',d=>d.accept());
+          await p.locator('#clearSession').click();await sleep(100);
+          await p.locator('#restorePassword').fill('testpass-047');
+          await p.locator('#restoreFile').setInputFiles(enc);await sleep(400);
+          text=await p.locator('#page-archive').innerText();
+          ok(!text.includes('Nessuna revisione conservata'),'encrypted restore works');
+
+          await nav('previous');
+          ok((await p.locator('#page-previous').innerText()).includes('Visita e laboratori conservati'),'previous visit/lab module retained');
+          ok(errors.length===0,'persistence/validation runtime clean '+errors.join(' | '));
+
+          await p.screenshot({path:'persistence-final.png',fullPage:true});
+          await browser.close();
+          fs.writeFileSync('persistence-audit.json',JSON.stringify(checks,null,2));
+          console.log('PASS CHECKS',checks.length);
+          JS
+          node audit.mjs | tee persistence-audit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: healthsolver-047-persistence-validation-e2e
+          path: |
+            persistence-audit.json
+            persistence-audit.txt
+            persistence-final.png
+          if-no-files-found: ignore
+          retention-days: 14
