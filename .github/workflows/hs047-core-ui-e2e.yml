@@ -1,0 +1,156 @@
+name: HealthSolver 0.47 Core UI E2E
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs047-core-ui-e2e.yml']
+permissions:
+  contents: read
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Core UI, Coach and Expert Mode
+        shell: bash
+        run: |
+          cat > audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const BASE='https://ricscar2570.github.io/HealthSolver/';
+          const checks=[];
+          const ok=(v,m)=>{if(!v)throw new Error(m);checks.push(m)};
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          const meta=await fetch(BASE+'version.json?audit=core').then(r=>r.json());
+          const pub=await fetch(BASE+'predictive/model-registry-v2.json?audit=core').then(r=>r.json());
+          const local=JSON.parse(fs.readFileSync('predictive/model-registry-v2.json','utf8'));
+          ok(meta.version==='0.47.0','published version 0.47.0');
+          ok(meta.predictive_model_count===7,'published model count 7');
+          ok(JSON.stringify(pub)===JSON.stringify(local),'public registry equals main');
+          for(const e of local.models){
+            const remote=await fetch(BASE+'predictive/'+e.file+'?audit=core').then(r=>r.json());
+            const lm=JSON.parse(fs.readFileSync('predictive/'+e.file,'utf8'));
+            ok(JSON.stringify(remote)===JSON.stringify(lm),'public model synced '+e.model_id);
+          }
+
+          const browser=await chromium.launch({headless:true});
+          const ctx=await browser.newContext({acceptDownloads:true,viewport:{width:1440,height:1700}});
+          async function open(label){
+            const p=await ctx.newPage(),errors=[];
+            p.on('pageerror',e=>errors.push('PAGE '+e.message));
+            p.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
+            await p.goto(BASE+'?audit='+label+'&t='+Date.now(),{waitUntil:'networkidle',timeout:120000});
+            await p.waitForFunction(()=>document.body.innerText.includes('Clinical Coach')&&document.body.innerText.includes('Expert Mode'),{timeout:30000});
+            return {p,errors};
+          }
+          async function nav(p,name){
+            const n=p.locator('aside .nav[data-page="'+name+'"]');ok(await n.count()===1,'nav '+name);
+            await n.click();await sleep(100);
+            const s=p.locator('#page-'+name);ok(await s.isVisible(),'visible '+name);return s;
+          }
+          async function set(p,id,v){
+            const l=p.locator('#'+id);ok(await l.count()===1,'field '+id);
+            await l.evaluate((e,v)=>{e.value=String(v);e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}))},v);
+          }
+          async function sel(p,id,v){
+            const l=p.locator('#'+id);ok(await l.count()===1,'select '+id);
+            await l.evaluate((e,v)=>{const o=[...e.options].find(x=>x.value===String(v))||[...e.options].find(x=>x.textContent.trim()===String(v));if(!o)throw new Error('option missing '+e.id+' '+v);e.value=o.value;e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}))},v);
+          }
+          async function dl(p,id,label){
+            const [d]=await Promise.all([p.waitForEvent('download',{timeout:15000}),p.locator(id).click()]);
+            const q=await d.path();ok(!!q&&fs.statSync(q).size>20,label);return q;
+          }
+
+          // Navigation.
+          {
+            const {p,errors}=await open('nav');
+            const pages=['coach','intelligence','hub','massive','case','data','validation','archive','previous'];
+            ok(await p.locator('aside .nav[data-page]').count()===9,'nine main sections');
+            for(const x of pages){const s=await nav(p,x);ok((await s.innerText()).trim().length>40,'content '+x)}
+            ok(errors.length===0,'navigation runtime clean '+errors.join(' | '));
+            await p.close();
+          }
+
+          // Coach: example, progress, export and restore.
+          {
+            const {p,errors}=await open('coach');
+            await nav(p,'coach');
+            await p.locator('#coachStartExample').click();await sleep(200);
+            ok(Number(await p.locator('#coachAge').inputValue())>0,'Coach example loads');
+            if(!(await p.locator('#coachAutoResume').isChecked()))await p.locator('#coachAutoResume').check();
+            await set(p,'coachAge',63);
+            await p.locator('#coachContinue').click();await sleep(120);
+            ok((await p.locator('.coach-phase.current').innerText()).includes('Sintomi'),'Coach advances');
+            const backup=await dl(p,'#coachExportBackup','Coach backup download');
+            await p.locator('#coachNewBlank').click();await sleep(100);
+            ok((await p.locator('#coachAge').inputValue())==='','Coach blank reset');
+            await p.locator('#coachRestoreFile').setInputFiles(backup);await sleep(250);
+            ok(Number(await p.locator('#coachAge').inputValue())===63,'Coach backup restore');
+            ok(errors.length===0,'Coach runtime clean '+errors.join(' | '));
+            await p.close();
+          }
+
+          // Expert parser, observation, full analysis, all seven predictors.
+          {
+            const {p,errors}=await open('expert');
+            await nav(p,'intelligence');
+            await p.locator('#ciText').fill('Età 64, sesso F, PA 132/78, FC 104, SpO2 93%. Tosse e dispnea. HbA1c 7.2%, creatinina 1.4 mg/dL.');
+            await p.locator('#ciExtract').click();await sleep(80);await p.locator('#ciApply').click();await sleep(120);
+            ok(Number(await p.locator('#ciAge').inputValue())===64,'parser age');
+            ok(Number(await p.locator('#ci_systolic').inputValue())===132,'parser blood pressure');
+            ok(Number(await p.locator('#ci_pulse').inputValue())===104,'parser pulse');
+            await p.locator('#ciObsName').fill('D-dimero audit');await p.locator('#ciObsValue').fill('500');
+            await p.locator('#ciObsUnit').fill('ng/mL');await p.locator('#ciObsLow').fill('0');await p.locator('#ciObsHigh').fill('250');
+            await p.locator('#ciAddObs').click();await sleep(80);
+            ok((await p.locator('#page-intelligence').innerText()).includes('D-dimero audit'),'custom observation');
+
+            await set(p,'ciAge',60);await p.locator('#ciSex').selectOption({label:'Maschile'});
+            await sel(p,'hs42_cp','2');await set(p,'ci_systolic',130);await set(p,'ci_total_chol',200);await set(p,'ci_fasting_glucose',130);
+            await sel(p,'hs42_restecg','0');await set(p,'ci_max_heart_rate',150);await sel(p,'ci_exercise_angina','0');
+            await set(p,'ci_oldpeak',1);await sel(p,'hs42_slope','2');await set(p,'ci_major_vessels',0);await sel(p,'hs42_thal','3');
+            for(const [id,v] of Object.entries({ci_bp:80,ci_specific_gravity:1.02,ci_urine_albumin:0,ci_urine_sugar:0,ci_random_glucose:120,ci_blood_urea:30,ci_creatinine:1,ci_sodium:140,ci_potassium:4.2,ci_hemoglobin:14,ci_pcv:42,ci_wbc_count:7000,ci_rbc_count:5}))await set(p,id,v);
+            for(const [id,v] of Object.entries({hs42_radius1:14,hs42_texture1:19,hs42_perimeter1:90,hs42_area1:600,hs42_smoothness1:.1,hs42_compactness1:.12,hs42_concavity1:.1,hs42_concave_points1:.05,hs42_symmetry1:.18,hs42_fractal_dimension1:.06}))await set(p,id,v);
+            for(const [id,v] of Object.entries({hs44_alb:42,hs44_alp:66,hs44_alt:24,hs44_ast:26,hs44_bil:7,hs44_che:8.4,hs44_chol:5.4,hs44_crea:77,hs44_ggt:23,hs44_prot:72}))await set(p,id,v);
+            for(const [id,v] of Object.entries({hs45_bmi:29,hs45_waist:100,hs45_sbp:130,hs45_tc:190,hs45_hdl:50}))await set(p,id,v);
+            await sel(p,'hs46_obese','0');await sel(p,'hs46_current_smoker','0');await sel(p,'hs46_fair_poor_health','0');
+            for(const [id,v] of Object.entries({hs47_time_in_hospital:7,hs47_num_lab_procedures:55,hs47_num_procedures:2,hs47_num_medications:18,hs47_number_outpatient:1,hs47_number_emergency:1,hs47_number_inpatient:2,hs47_number_diagnoses:9}))await set(p,id,v);
+            await sel(p,'hs47_a1c_abnormal','1');await sel(p,'hs47_glucose_abnormal','1');await sel(p,'hs47_diabetes_med','1');await sel(p,'hs47_medication_change','1');
+
+            await p.locator('#hs42Run').click();await sleep(250);
+            const cards=p.locator('#hs42Results > .card');ok(await cards.count()===7,'seven result cards');
+            for(const id of meta.predictive_models){
+              const card=cards.filter({hasText:id});ok(await card.count()===1,'card '+id);
+              const t=await card.innerText();ok(/\d+(?:\.\d+)?%/.test(t),'probability '+id);ok(!/Astensione/i.test(t),'no abstention '+id);
+            }
+            if(!(await p.locator('#ciConsent').isChecked()))await p.locator('#ciConsent').check();
+            await p.locator('#ciRun').click();await sleep(250);
+            ok((await p.locator('#page-intelligence').innerText()).length>3000,'full Clinical Intelligence output');
+            const b=await dl(p,'#ciExportBackup','Expert backup download');ok(fs.statSync(b).size>100,'Expert backup content');
+            ok(errors.length===0,'Expert runtime clean '+errors.join(' | '));
+            await p.screenshot({path:'core-expert-7-models.png',fullPage:true});
+            await p.close();
+          }
+
+          await browser.close();
+          fs.writeFileSync('core-audit.json',JSON.stringify(checks,null,2));
+          console.log('PASS CHECKS',checks.length);
+          JS
+          node audit.mjs | tee core-audit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: healthsolver-047-core-ui-e2e
+          path: |
+            core-audit.json
+            core-audit.txt
+            core-expert-7-models.png
+          if-no-files-found: ignore
+          retention-days: 14
