@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.__HS_INTEGRATED_PREDICTIVE_046__) return;
-window.__HS_INTEGRATED_PREDICTIVE_046__=true;
+if(window.__HS_INTEGRATED_PREDICTIVE_047__) return;
+window.__HS_INTEGRATED_PREDICTIVE_047__=true;
 
 const BUNDLE=window.__HS_PREDICTIVE_BUNDLE__||null;
 if(!BUNDLE?.registry||!BUNDLE?.models) return;
@@ -15,9 +15,9 @@ document.getElementById('hs-router041')?.remove();
 // while updating only visible application-release branding.
 (function reconcileReleaseBranding(){
   const replacements=[
-    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.46'],
+    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.47'],
     [/^HealthSolver\s+0\.38\.0\s*·\s*Massive Public Data \+ Clinical Coach Research Edition\s*·\s*Riccardo Scaringi\s*·\s*Non uso clinico\.?$/i,
-     'HealthSolver 0.46.0 · NHIS Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
+     'HealthSolver 0.47.0 · UCI Diabetes Readmission Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
   ];
   const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
   const nodes=[];
@@ -103,11 +103,11 @@ wrap.className='card';
 wrap.innerHTML=`
   <div class="hs43-hero">
     <div>
-      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.46</div>
+      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.47</div>
       <h2 class="hs43-title">Predizioni cliniche di ricerca</h2>
       <p class="hs43-sub">HealthSolver usa lo stesso dossier che hai già compilato per verificare quali modelli sono applicabili e calcolare le stime disponibili. Le funzioni predittive sono qui, in primo piano. Ogni nuovo database entra nello stesso registry e nello stesso dossier.</p>
     </div>
-    <div class="hs43-badge">6 MODELLI SUPERVISIONATI</div>
+    <div class="hs43-badge">7 MODELLI SUPERVISIONATI</div>
   </div>
   <div id="hs42Coverage" class="metrics"></div>
   <div class="actions" style="margin-top:8px">
@@ -163,6 +163,33 @@ wrap.innerHTML=`
       </label>
     </div>
     <div class="notice" style="margin-top:10px"><b>Target del modello:</b> probabilità di appartenere al gruppo NHIS che riferisce di essere stato informato di avere ipertensione. Non è una misurazione della pressione né una diagnosi clinica.</div>
+  </details>
+  <details id="hs47ReadmDetails">
+    <summary><b>Dati ricovero diabetologico · riammissione &lt;30 giorni</b> · apri per il modello di riammissione</summary>
+    <p class="hint">Il modello usa caratteristiche dell'episodio ospedaliero UCI. L'età viene convertita nella fascia decennale corrispondente; gli altri valori vanno inseriti come conteggi o categorie dell'episodio.</p>
+    <div class="grid">
+      <label>Durata ricovero (giorni)<input id="hs47_time_in_hospital" type="number" step="1" min="1"></label>
+      <label>Procedure di laboratorio<input id="hs47_num_lab_procedures" type="number" step="1" min="0"></label>
+      <label>Procedure<input id="hs47_num_procedures" type="number" step="1" min="0"></label>
+      <label>Numero farmaci<input id="hs47_num_medications" type="number" step="1" min="0"></label>
+      <label>Visite outpatient pregresse<input id="hs47_number_outpatient" type="number" step="1" min="0"></label>
+      <label>Accessi emergenza pregressi<input id="hs47_number_emergency" type="number" step="1" min="0"></label>
+      <label>Ricoveri inpatient pregressi<input id="hs47_number_inpatient" type="number" step="1" min="0"></label>
+      <label>Numero diagnosi<input id="hs47_number_diagnoses" type="number" step="1" min="0"></label>
+      <label>HbA1c
+        <select id="hs47_a1c_abnormal"><option value="">Non misurata / —</option><option value="0">Normale</option><option value="1">&gt;7 / &gt;8</option></select>
+      </label>
+      <label>Glicemia massima
+        <select id="hs47_glucose_abnormal"><option value="">Non misurata / —</option><option value="0">Normale</option><option value="1">&gt;200 / &gt;300</option></select>
+      </label>
+      <label>Farmaci per diabete
+        <select id="hs47_diabetes_med"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select>
+      </label>
+      <label>Cambio terapia
+        <select id="hs47_medication_change"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select>
+      </label>
+    </div>
+    <div class="notice" style="margin-top:10px"><b>Target del modello:</b> probabilità sperimentale di riammissione ospedaliera entro 30 giorni nel dominio del dataset UCI Diabetes 130-US Hospitals. Non è una diagnosi di diabete.</div>
   </details>
   <h3 style="margin:24px 0 10px;font-size:1.25rem">Risultati predittivi</h3>
   <div id="hs42Results" class="grid"></div>
@@ -245,13 +272,30 @@ function dossierCase(){
     current_smoker:num('hs46_current_smoker'),
     fair_poor_general_health:num('hs46_fair_poor_health')
   };
+  const ageMidForReadm=age===null?null:(Math.min(9,Math.max(0,Math.floor(age/10)))*10+5);
+  const readm={
+    age_mid:ageMidForReadm,
+    time_in_hospital:num('hs47_time_in_hospital'),
+    num_lab_procedures:num('hs47_num_lab_procedures'),
+    num_procedures:num('hs47_num_procedures'),
+    num_medications:num('hs47_num_medications'),
+    number_outpatient:num('hs47_number_outpatient'),
+    number_emergency:num('hs47_number_emergency'),
+    number_inpatient:num('hs47_number_inpatient'),
+    number_diagnoses:num('hs47_number_diagnoses'),
+    a1c_abnormal:num('hs47_a1c_abnormal'),
+    glucose_abnormal:num('hs47_glucose_abnormal'),
+    diabetes_med:num('hs47_diabetes_med'),
+    medication_change:num('hs47_medication_change')
+  };
   return {
     'HS-UCI-HD-001':heart,
     'HS-UCI-CKD-001':ckd,
     'HS-UCI-BC-001':fna,
     'HS-UCI-HCV-001':hcv,
     'HS-NHANES-DM-001':nhanes,
-    'HS-NHIS-HYP-001':nhis
+    'HS-NHIS-HYP-001':nhis,
+    'HS-UCI-DMREADM-001':readm
   };
 }
 function readiness(model,values){
