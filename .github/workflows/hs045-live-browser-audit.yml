@@ -1,0 +1,103 @@
+name: HealthSolver 0.45 NHANES Live Browser Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs045-live-browser-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Verify live NHANES integration
+        shell: bash
+        run: |
+          cat > audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const meta=await fetch('https://ricscar2570.github.io/HealthSolver/version.json?audit=045').then(r=>r.json());
+          if(meta.version!=='0.45.0') throw new Error('wrong published version '+meta.version);
+          if(meta.predictive_model_count!==5) throw new Error('wrong model count '+meta.predictive_model_count);
+          if(!meta.predictive_models.includes('HS-NHANES-DM-001')) throw new Error('NHANES model absent from metadata');
+
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1700}});
+          await page.goto('https://ricscar2570.github.io/HealthSolver/?audit=045-nhanes',{waitUntil:'networkidle',timeout:120000});
+          await page.waitForFunction(()=>document.body.innerText.includes('Clinical Coach') && document.body.innerText.includes('Expert Mode'),{timeout:30000});
+
+          const expert=page.locator('aside .nav[data-page="intelligence"]');
+          if(await expert.count()!==1) throw new Error('Expert Mode missing');
+          await expert.click();
+          await page.waitForTimeout(600);
+
+          const block=page.locator('#hs-predictive-integrated');
+          if(await block.count()!==1 || !(await block.isVisible())) throw new Error('predictive block missing');
+          const initial=await block.innerText();
+          if(!initial.includes('5 MODELLI SUPERVISIONATI')) throw new Error('five-model badge missing');
+          if(!initial.includes('Diabete riferito diagnosticato (NHANES)')) throw new Error('NHANES coverage card missing');
+
+          await page.evaluate(()=>{
+            const age=document.getElementById('ciAge')||document.getElementById('coachAge');
+            if(!age) throw new Error('age field missing');
+            age.value='60';age.dispatchEvent(new Event('input',{bubbles:true}));age.dispatchEvent(new Event('change',{bubbles:true}));
+            const sex=document.getElementById('ciSex')||document.getElementById('coachSex');
+            if(!sex) throw new Error('sex field missing');
+            if(sex.tagName==='SELECT'){
+              const options=[...sex.options].map(o=>o.value);
+              const v=options.find(x=>/^(m|male|maschio|1)$/i.test(x)) || options.find(x=>x);
+              if(!v) throw new Error('no usable sex option');
+              sex.value=v;
+            } else sex.value='M';
+            sex.dispatchEvent(new Event('input',{bubbles:true}));sex.dispatchEvent(new Event('change',{bubbles:true}));
+          });
+
+          const details=page.locator('#hs45NhanesDetails');
+          if(await details.count()!==1) throw new Error('NHANES supplement missing');
+          await details.evaluate(el=>{el.open=true});
+          const vals={
+            hs45_bmi:'35',
+            hs45_waist:'115',
+            hs45_sbp:'145',
+            hs45_tc:'210',
+            hs45_hdl:'38'
+          };
+          for(const [id,v] of Object.entries(vals)){
+            const loc=page.locator('#'+id);
+            if(await loc.count()!==1) throw new Error('missing field '+id);
+            await loc.fill(v);
+          }
+
+          await page.locator('#hs42Run').click();
+          await page.waitForTimeout(500);
+          const results=page.locator('#hs42Results');
+          const card=results.locator('.card').filter({hasText:'HS-NHANES-DM-001'});
+          if(await card.count()!==1) throw new Error('NHANES result card missing');
+          const txt=await card.innerText();
+          if(/Astensione/i.test(txt)) throw new Error('NHANES unexpectedly abstained with complete input');
+          if(!/%/.test(txt)) throw new Error('NHANES numeric probability missing');
+          if(!/AUROC/i.test(txt)) throw new Error('NHANES weighted metric summary missing');
+
+          await block.scrollIntoViewIfNeeded();
+          await block.screenshot({path:'HealthSolver-0.45-NHANES-Predictive.png'});
+          await page.screenshot({path:'HealthSolver-0.45-Expert-Mode.png',fullPage:true});
+          console.log('NHANES_RESULT\n'+txt);
+          await browser.close();
+          JS
+          node audit.mjs | tee audit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: healthsolver-045-nhanes-live
+          path: |
+            HealthSolver-0.45-NHANES-Predictive.png
+            HealthSolver-0.45-Expert-Mode.png
+            audit.txt
+          retention-days: 14
