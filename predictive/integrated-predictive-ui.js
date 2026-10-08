@@ -46,6 +46,16 @@ wrap.innerHTML=`
   <h2>Predizione dai dati già inseriti.</h2>
   <p class="lead">HealthSolver riusa automaticamente i dati dell'Expert Mode. Non devi ricompilare un secondo caso.</p>
   <div id="hs42Coverage" class="metrics"></div>
+  <details id="hs42HeartDetails" style="margin-top:16px">
+    <summary><b>Dati specialistici cardiologici mancanti</b> · apri solo se non sono già disponibili nel dossier</summary>
+    <p class="hint">Questi quattro campi completano il modello cardiaco quando il relativo pannello specialistico dell’Expert Mode non è attivo.</p>
+    <div class="grid">
+      <label>Tipo di dolore toracico<select id="hs42_cp"><option value="">—</option><option value="1">Angina tipica</option><option value="2">Angina atipica</option><option value="3">Dolore non anginoso</option><option value="4">Asintomatico</option></select></label>
+      <label>ECG a riposo<select id="hs42_restecg"><option value="">—</option><option value="0">Normale</option><option value="1">Alterazioni ST-T</option><option value="2">Ipertrofia ventricolare sinistra</option></select></label>
+      <label>Pendenza segmento ST<select id="hs42_slope"><option value="">—</option><option value="1">Ascendente</option><option value="2">Piatta</option><option value="3">Discendente</option></select></label>
+      <label>Thal<select id="hs42_thal"><option value="">—</option><option value="3">Normale</option><option value="6">Difetto fisso</option><option value="7">Difetto reversibile</option></select></label>
+    </div>
+  </details>
   <details id="hs42FnaDetails" style="margin-top:16px">
     <summary><b>Dati specialistici FNA mammella</b> · apri solo se vuoi usare anche il modello FNA</summary>
     <p class="hint">Queste 10 misure non fanno parte del dossier clinico generale e restano quindi un'integrazione specialistica.</p>
@@ -76,17 +86,17 @@ function dossierCase(){
   const fasting=num('ci_fasting_glucose');
   const heart={
     age, sex:sexVal(),
-    cp:oneHot('ci_cp_',[1,2,3,4]),
+    cp:first(oneHot('ci_cp_',[1,2,3,4]),num('hs42_cp')),
     trestbps:first(num('ci_systolic'),num('ci_bp')),
     chol:num('ci_total_chol'),
     fbs:fasting===null?null:(fasting>120?1:0),
-    restecg:oneHot('ci_ecg_',[0,1,2]),
+    restecg:first(oneHot('ci_ecg_',[0,1,2]),num('hs42_restecg')),
     thalach:num('ci_max_heart_rate'),
     exang:(()=>{const v=raw('ci_exercise_angina');return v===''?null:(yes(v)?1:0)})(),
     oldpeak:num('ci_oldpeak'),
-    slope:oneHot('ci_slope_',[1,2,3]),
+    slope:first(oneHot('ci_slope_',[1,2,3]),num('hs42_slope')),
     ca:num('ci_major_vessels'),
-    thal:oneHot('ci_thal_',[3,6,7])
+    thal:first(oneHot('ci_thal_',[3,6,7]),num('hs42_thal'))
   };
   const ckd={
     age,
