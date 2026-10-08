@@ -100,6 +100,7 @@ jobs:
             ok(await p.locator('#coachAge').count()===1,'Coach blank exposes age field');
             ok((await p.locator('#coachAge').inputValue())==='','Coach blank reset clears age');
             await set(p,'coachAge',45);
+            await p.locator('#coachSex').selectOption({label:'Femminile'});
             await p.locator('#coachContinue').click();await sleep(120);
             ok((await p.locator('.coach-phase.current').innerText()).includes('Sintomi'),'Coach blank case advances to symptoms');
 
