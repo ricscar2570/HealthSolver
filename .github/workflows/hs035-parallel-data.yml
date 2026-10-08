@@ -1,0 +1,63 @@
+name: HealthSolver 0.35 parallel source acquisition
+on:
+  push:
+    branches: ['macrostep/v0.33.0-differential-data']
+    paths: ['.github/workflows/hs035-parallel-data.yml']
+permissions:
+  contents: read
+jobs:
+  uci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download UCI CKD and HCV
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p out
+          curl -L --fail --retry 3 --connect-timeout 20 --max-time 120 -o out/ckd.zip 'https://archive.ics.uci.edu/static/public/336/chronic%2Bkidney%2Bdisease.zip'
+          curl -L --fail --retry 3 --connect-timeout 20 --max-time 120 -o out/hcv.zip 'https://archive.ics.uci.edu/static/public/571/hcv%2Bdata.zip'
+          sha256sum out/* > out/SHA256SUMS.txt
+          python - <<'PY'
+          import zipfile,pathlib,json
+          out=pathlib.Path('out'); receipt={}
+          for p in out.glob('*.zip'):
+            with zipfile.ZipFile(p) as z:
+              receipt[p.name]=[{'name':x.filename,'bytes':x.file_size,'crc':x.CRC} for x in z.infolist()]
+          (out/'receipt.json').write_text(json.dumps(receipt,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hs035-uci-ckd-hcv
+          path: out/
+          retention-days: 14
+  eicu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Download selected eICU demo tables
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p out
+          base='https://physionet.org/files/eicu-crd-demo/2.0.1'
+          for f in patient.csv.gz lab.csv.gz vitalPeriodic.csv.gz apachePatientResult.csv.gz admissionDx.csv.gz; do
+            curl -L --fail --retry 3 --connect-timeout 20 --max-time 240 -o "out/$f" "$base/$f"
+          done
+          curl -L --fail --retry 3 --connect-timeout 20 --max-time 120 -o out/LICENSE.txt "$base/LICENSE.txt"
+          curl -L --fail --retry 3 --connect-timeout 20 --max-time 120 -o out/OFFICIAL_SHA256SUMS.txt "$base/SHA256SUMS.txt"
+          sha256sum out/*.gz > out/DOWNLOAD_SHA256SUMS.txt
+          python - <<'PY'
+          import gzip,csv,pathlib,json
+          out=pathlib.Path('out'); receipt={}
+          for p in out.glob('*.csv.gz'):
+            with gzip.open(p,'rt',newline='') as f:
+              r=csv.reader(f); header=next(r); n=sum(1 for _ in r)
+            receipt[p.name]={'rows':n,'columns':header}
+          (out/'receipt.json').write_text(json.dumps(receipt,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hs035-eicu-selected
+          path: out/
+          retention-days: 14
