@@ -1,60 +1,47 @@
-from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
-from fastapi.responses import StreamingResponse
-from app.models import (
-    predict_therapy, predict_risk, preprocess_and_add_features,
-    reload_models, explain_therapy_prediction
-)
-from app.database import SessionLocal, Patient
-from app.utils import log_audit, anonymize_data, generate_report
-import requests
+"""Legacy compatibility router.
+
+This module belongs to the pre-browser HealthSolver prototype and is not used by
+the current GitHub Pages Research Edition. It is kept syntactically valid for
+historical/local development without claiming unavailable integrations.
+"""
+
 import random
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
+from backend.models import predict_therapy
 
 router = APIRouter()
 
+
+class LegacyPatientFeatures(BaseModel):
+    age: int
+    bmi: float
+    condition_severity: int
+    comorbidities_count: int
+
+
 @router.post("/recommendation/")
-async def recommendation(patient_data: dict):
-    processed_data = preprocess_and_add_features(patient_data)
-    return {"recommendation": predict_therapy(processed_data)}
-
-@router.post("/risk_analysis/")
-async def risk_analysis(therapy_data: dict):
-    processed_data = preprocess_and_add_features(therapy_data)
-    return {"risk_score": predict_risk(processed_data)}
-
-@router.post("/his/sync/")
-async def sync_his(api_key: str, facility_id: int):
-    his_url = f"http://external-his-api.com/facilities/{facility_id}/patients"
-    db = SessionLocal()
+def recommendation(data: LegacyPatientFeatures):
+    """Return the legacy therapy-model class when a local model is available."""
     try:
-        response = requests.get(his_url, headers={"Authorization": f"Bearer {api_key}"})
-        response.raise_for_status()
-        patients = response.json()
+        prediction = predict_therapy(
+            [data.age, data.bmi, data.condition_severity, data.comorbidities_count]
+        )
+        return {"recommended_therapy": int(prediction)}
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Legacy model unavailable: {exc}") from exc
 
-        for patient_data in patients:
-            patient = Patient(
-                id=patient_data["id"],
-                name=patient_data["name"],
-                age=patient_data["age"],
-                medical_history=patient_data["medical_history"]
-            )
-            db.merge(patient)
-        db.commit()
-        return {"status": "Success", "patients_synced": len(patients)}
-    except requests.exceptions.RequestException as e:
-        db.rollback()
-        return {"status": "Error", "details": str(e)}
-    finally:
-        db.close()
 
- """
-    Returns dynamic data for the ResultChart component.
-    The data format is compatible with Chart.js.
-    """
-    data = {
+@router.get("/chart_data/")
+def chart_data():
+    """Return synthetic demo chart data for the legacy React ResultChart."""
+    return {
         "labels": ["Therapy A", "Therapy B", "Therapy C"],
         "datasets": [
             {
-                "label": "Risk Scores",
+                "label": "Synthetic demo risk scores",
                 "data": [round(random.uniform(0.1, 0.9), 2) for _ in range(3)],
                 "backgroundColor": [
                     "rgba(75, 192, 192, 0.2)",
@@ -69,5 +56,6 @@ async def sync_his(api_key: str, facility_id: int):
                 "borderWidth": 1,
             }
         ],
+        "research_only": True,
+        "note": "Synthetic legacy demonstration data; not a clinical risk estimate.",
     }
-    return data
