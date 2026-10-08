@@ -1,0 +1,53 @@
+name: Deploy HealthSolver 0.37 to GitHub Pages
+on:
+  push:
+    branches: ['pages/healthsolver-0.37']
+    paths:
+      - 'site/**'
+      - '.github/workflows/deploy-healthsolver-pages.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify static payload
+        shell: bash
+        run: |
+          test -f site/index.html
+          test -f site/payload/part-00.b64
+          test -f site/payload/part-04.b64
+          python - <<'PY'
+          import base64,gzip,hashlib,pathlib
+          root=pathlib.Path('site/payload')
+          b64=b''.join((root/f'part-{i:02d}.b64').read_bytes().strip() for i in range(5))
+          raw=gzip.decompress(base64.b64decode(b64))
+          sha=hashlib.sha256(raw).hexdigest()
+          expected='b2d83af82efe7998f1ef98bd0ba903fba29d7026ce216dd3ac7e393fda87feb8'
+          print('decoded bytes',len(raw),'sha256',sha)
+          if sha!=expected: raise SystemExit('HealthSolver payload checksum mismatch')
+          if b'Clinical Coach' not in raw or b'HealthSolver' not in raw: raise SystemExit('application markers missing')
+          PY
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
