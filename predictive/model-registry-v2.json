@@ -151,8 +151,34 @@
       "model_id": "HS-NHIS-HYP-001",
       "task": "Binary research prediction of self-reported ever being told of hypertension versus no such report among NHIS 2023 sample adults.",
       "title": "Ipertensione riferita (NHIS)"
+    },
+    {
+      "file": "model-diabetes-readmission-v1.json",
+      "metrics_test": {
+        "accuracy": 0.5908420949199175,
+        "auprc": 0.19872356944255892,
+        "auroc": 0.6399775801279305,
+        "brier": 0.09612061856261342,
+        "confusion_matrix": {
+          "fn": 868,
+          "fp": 7460,
+          "tn": 10622,
+          "tp": 1404
+        },
+        "decision_threshold_from_calibration": 0.10191519419725201,
+        "n_calibration": 20353,
+        "n_test": 20354,
+        "n_total": 101766,
+        "n_train": 61059,
+        "positive_prevalence": 0.11159915885462728,
+        "sensitivity": 0.6179577464788732,
+        "specificity": 0.5874350182501935
+      },
+      "model_id": "HS-UCI-DMREADM-001",
+      "task": "Binary research prediction of hospital readmission within 30 days versus later/no readmission among encounters in the UCI Diabetes 130-US Hospitals dataset.",
+      "title": "Riammissione <30 giorni nel diabete"
     }
   ],
   "schema": "healthsolver.predictive_registry.v2",
-  "version": "0.46.0"
+  "version": "0.47.0"
 }
