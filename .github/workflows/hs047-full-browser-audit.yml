@@ -75,7 +75,7 @@ jobs:
           await page.goto(base+'?audit=047-full-e2e',{waitUntil:'networkidle',timeout:120000});
           await page.waitForFunction(()=>document.body.innerText.includes('Clinical Coach')&&document.body.innerText.includes('Expert Mode'),{timeout:30000});
           const meta=await fetch(base+'version.json?audit=047-full-e2e').then(r=>r.json());
-          must(meta.version==='0.47.0','wrong version');
+          must(meta.version==='0.47.1','wrong version');
           must(meta.predictive_model_count===7,'wrong model count');
           const pages=['coach','intelligence','hub','massive','case','data','validation','archive','previous'];
           for(const p of pages) await nav(p);
