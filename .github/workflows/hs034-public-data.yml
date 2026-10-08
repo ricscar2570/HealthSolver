@@ -1,0 +1,61 @@
+name: HealthSolver 0.34 public clinical sources
+on:
+  push:
+    branches: ['macrostep/v0.33.0-differential-data']
+    paths: ['.github/workflows/hs034-public-data.yml']
+permissions:
+  contents: read
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Download public datasets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p hs034-sources
+          python - <<'PY'
+          import urllib.request, pathlib, hashlib, json, zipfile, io, time
+          out=pathlib.Path('hs034-sources')
+          sources=[
+            ('heart-disease.zip','https://archive.ics.uci.edu/static/public/45/heart+disease.zip','UCI Heart Disease','CC BY 4.0'),
+            ('dermatology.zip','https://archive.ics.uci.edu/static/public/33/dermatology.zip','UCI Dermatology','CC BY 4.0'),
+            ('gallstone.zip','https://archive.ics.uci.edu/static/public/1150/gallstone.zip','UCI Gallstone','CC BY 4.0'),
+            ('DEMO_L.xpt','https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2021/DataFiles/DEMO_L.xpt','NHANES Demographics','public use'),
+            ('DIQ_L.xpt','https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2021/DataFiles/DIQ_L.xpt','NHANES Diabetes Questionnaire','public use'),
+            ('BPQ_L.xpt','https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2021/DataFiles/BPQ_L.xpt','NHANES Blood Pressure/Cholesterol Questionnaire','public use'),
+            ('GHB_L.xpt','https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2021/DataFiles/GHB_L.xpt','NHANES Glycohemoglobin','public use'),
+            ('GLU_L.xpt','https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2021/DataFiles/GLU_L.xpt','NHANES Fasting Glucose','public use'),
+            ('HDL_L.xpt','https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2021/DataFiles/HDL_L.xpt','NHANES HDL','public use'),
+            ('TCHOL_L.xpt','https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2021/DataFiles/TCHOL_L.xpt','NHANES Total Cholesterol','public use'),
+            ('TRIGLY_L.xpt','https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2021/DataFiles/TRIGLY_L.xpt','NHANES LDL/Triglycerides','public use'),
+            ('BIOPRO_L.xpt','https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2021/DataFiles/BIOPRO_L.xpt','NHANES Standard Biochemistry Profile','public use'),
+            ('CBC_L.xpt','https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2021/DataFiles/CBC_L.xpt','NHANES CBC','public use'),
+            ('HSCRP_L.xpt','https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2021/DataFiles/HSCRP_L.xpt','NHANES hs-CRP','public use'),
+            ('MCQ_L.xpt','https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2021/DataFiles/MCQ_L.xpt','NHANES Medical Conditions','public use'),
+          ]
+          rows=[]
+          for fn,url,title,lic in sources:
+            item={'file':fn,'url':url,'title':title,'license':lic}
+            try:
+              req=urllib.request.Request(url,headers={'User-Agent':'HealthSolver research public-data acquisition'})
+              with urllib.request.urlopen(req,timeout=60) as r:
+                data=r.read(60_000_000)
+              if fn.endswith('.zip'):
+                with zipfile.ZipFile(io.BytesIO(data)) as z:
+                  item['members']=[{'name':x.filename,'bytes':x.file_size,'crc':x.CRC} for x in z.infolist()]
+              (out/fn).write_bytes(data)
+              item.update(status='downloaded',bytes=len(data),sha256=hashlib.sha256(data).hexdigest())
+            except Exception as e:
+              item.update(status='failed',error=str(e))
+            rows.append(item); print(fn,item['status'],item.get('bytes'))
+          (out/'acquisition.json').write_text(json.dumps({'retrieved_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'purpose':'HealthSolver 0.34 research-only multi-domain expansion','sources':rows},indent=2))
+          PY
+      - name: Upload source bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: hs034-public-clinical-sources
+          path: hs034-sources/
+          retention-days: 14
+          if-no-files-found: error
