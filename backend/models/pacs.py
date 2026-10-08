@@ -1,5 +1,6 @@
 import requests
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
 
 router = APIRouter()
 PACS_URL = "http://localhost:8042/dicom-web"
@@ -28,4 +29,4 @@ async def get_image(instance_id: str):
     if response.status_code != 200:
         raise HTTPException(status_code=500, detail="Errore nel recupero dell'immagine DICOM")
     
-    return response.content
+    return Response(content=response.content, media_type="image/png")
