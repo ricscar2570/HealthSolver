@@ -10,3 +10,5 @@ mlflow
 pandas
 numpy
 prometheus-fastapi-instrumentator
+prometheus-client
+redis
