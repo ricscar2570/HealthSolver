@@ -1,6 +1,7 @@
 {
   "app": "HealthSolver",
-  "version": "0.37.0",
-  "release": "Clinical Coach Research Edition",
-  "source_sha256": "b2d83af82efe7998f1ef98bd0ba903fba29d7026ce216dd3ac7e393fda87feb8"
+  "version": "0.38.0",
+  "release": "Massive Public Data + Clinical Coach Research Edition",
+  "source_sha256": "c1bef787551183db369643036e9fc9a7f64ddec515ad804066b9a37279df6b68",
+  "payload_parts": 6
 }
