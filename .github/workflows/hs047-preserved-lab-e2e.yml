@@ -1,5 +1,6 @@
 name: HealthSolver 0.47 Preserved Laboratory Full E2E
 # navigate each laboratory workspace page explicitly\n# force a changed WDBC input before prediction\n# verify historical-label reveal before modification\n# keep model export on training page and CSV export on data page
+# confirm plain and encrypted laboratory restores
 on:
   push:
     branches: ['main']
@@ -61,6 +62,14 @@ jobs:
             await b.first().click(); await page.waitForTimeout(150);
             if(waitSelector) await lab.locator(waitSelector).waitFor({state:'visible',timeout:15000});
             console.log('LAB PAGE',String(name),waitSelector||'');
+          };
+          const confirmLab=async(timeout=20000)=>{
+            const dlg=lab.locator('#confirmDialog');
+            await dlg.waitFor({state:'visible',timeout});
+            const yes=lab.locator('#confirmYes');
+            must(await yes.count()===1,'laboratory confirm button missing');
+            await yes.click();
+            await dlg.waitFor({state:'hidden',timeout:10000});
           };
 
           // 02 · Esplora un caso
@@ -140,7 +149,8 @@ jobs:
           must((await v0.inputValue())!==workspaceValue,'laboratory mutation failed');
           await go(/Archivio e backup/i,'#backupFile');
           await lab.locator('#backupFile').setInputFiles('/tmp/lab-backup.json');
-          await page.waitForTimeout(500);
+          await confirmLab();
+          await page.waitForTimeout(300);
           await go(/Esplora un caso/i,'#v0');
           must((await v0.inputValue())===workspaceValue,'laboratory backup restore failed');
 
@@ -155,7 +165,8 @@ jobs:
           await go(/Spazi e backup cifrato/i,'#allRestore');
           await lab.locator('#decryptPassword').fill(encPwd);
           await lab.locator('#allRestore').setInputFiles('/tmp/lab-encrypted.json');
-          await page.waitForTimeout(3500);
+          await confirmLab(30000);
+          await page.waitForTimeout(400);
           await go(/Esplora un caso/i,'#v0');
           must((await v0.inputValue())===workspaceValue,'laboratory encrypted restore failed');
 
