@@ -1,4 +1,4 @@
-name: HealthSolver 0.47 Full Browser E2E Audit
+name: HealthSolver 0.48 Full Browser E2E Audit
 on:
   push:
     branches: ['main']
@@ -72,11 +72,11 @@ jobs:
           };
 
           stage('LOAD + NAVIGATION');
-          await page.goto(base+'?audit=047-full-e2e',{waitUntil:'networkidle',timeout:120000});
+          await page.goto(base+'?audit=048-full-e2e',{waitUntil:'networkidle',timeout:120000});
           await page.waitForFunction(()=>document.body.innerText.includes('Clinical Coach')&&document.body.innerText.includes('Expert Mode'),{timeout:30000});
-          const meta=await fetch(base+'version.json?audit=047-full-e2e').then(r=>r.json());
-          must(meta.version==='0.47.1','wrong version');
-          must(meta.predictive_model_count===7,'wrong model count');
+          const meta=await fetch(base+'version.json?audit=048-full-e2e').then(r=>r.json());
+          must(meta.version==='0.48.0','wrong version');
+          must(meta.predictive_model_count===8,'wrong model count');
           const pages=['coach','intelligence','hub','massive','case','data','validation','archive','previous'];
           for(const p of pages) await nav(p);
           console.log('navigation PASS');
@@ -135,7 +135,7 @@ jobs:
           must(afterAnalysis>=beforeAnalysis,'Expert analysis did not render/update');
           console.log('Expert extraction/analysis PASS');
 
-          stage('ALL SEVEN PREDICTIVE MODELS IN ONE DOSSIER');
+          stage('ALL EIGHT PREDICTIVE MODELS IN ONE DOSSIER');
           // common
           await setValue('ciAge',55); await selectLabel('ciSex','Maschile');
           // Heart
@@ -152,15 +152,22 @@ jobs:
           for(const [id,v] of Object.entries({hs45_bmi:28,hs45_waist:99,hs45_sbp:124,hs45_tc:185,hs45_hdl:51,hs46_current_smoker:0,hs46_fair_poor_health:0})) await setValue(id,v);
           // readmission
           for(const [id,v] of Object.entries({hs47_time_in_hospital:7,hs47_num_lab_procedures:55,hs47_num_procedures:2,hs47_num_medications:18,hs47_number_outpatient:1,hs47_number_emergency:1,hs47_number_inpatient:2,hs47_number_diagnoses:9,hs47_a1c_abnormal:1,hs47_glucose_abnormal:1,hs47_diabetes_med:1,hs47_medication_change:1})) await setValue(id,v);
+          // differentiated thyroid cancer recurrence
+          for(const [id,v] of Object.entries({
+            hs48_smoking:'No',hs48_hx_smoking:'No',hs48_hx_radiothreapy:'No',
+            hs48_thyroid_function:'Euthyroid',hs48_physical_examination:'Normal',
+            hs48_adenopathy:'No',hs48_pathology:'Papillary',hs48_focality:'Uni-Focal',
+            hs48_risk:'Low',hs48_t:'T1a',hs48_n:'N0',hs48_m:'M0',hs48_stage:'I'
+          })) await setValue(id,v);
           await page.locator('#hs42Run').click(); await page.waitForTimeout(300);
           const cards=page.locator('#hs42Results>.card');
-          must(await cards.count()===7,'expected 7 prediction cards, got '+await cards.count());
-          for(let i=0;i<7;i++){
+          must(await cards.count()===8,'expected 8 prediction cards, got '+await cards.count());
+          for(let i=0;i<8;i++){
             const t=await cards.nth(i).innerText();
             must(/%/.test(t),'prediction card lacks probability: '+t);
             must(!/Astensione/i.test(t),'unexpected model abstention: '+t);
           }
-          console.log('7-model integrated prediction PASS');
+          console.log('8-model integrated prediction PASS');
 
           stage('EXPERT BACKUP / ENCRYPTED BACKUP / RESTORE');
           await download('#ciExportBackup','/tmp/ci-backup.json');
@@ -168,10 +175,10 @@ jobs:
           must((await page.locator('#ciAge').inputValue())==='','Expert clear failed');
           await page.locator('#ciRestore').setInputFiles('/tmp/ci-backup.json'); await page.waitForTimeout(300);
           must((await page.locator('#ciAge').inputValue())==='55','Expert JSON restore failed');
-          await page.locator('#ciPassword').fill('HealthSolver-Audit-047!');
+          await page.locator('#ciPassword').fill('HealthSolver-Audit-048!');
           await download('#ciEncryptBackup','/tmp/ci-backup-encrypted.json');
           await page.locator('#ciClear').click();
-          await page.locator('#ciRestorePassword').fill('HealthSolver-Audit-047!');
+          await page.locator('#ciRestorePassword').fill('HealthSolver-Audit-048!');
           await page.locator('#ciRestore').setInputFiles('/tmp/ci-backup-encrypted.json'); await page.waitForTimeout(500);
           must((await page.locator('#ciAge').inputValue())==='55','Expert encrypted restore failed');
           console.log('Expert backup PASS');
@@ -258,7 +265,7 @@ jobs:
           let arch=await page.locator('#page-archive').innerText();
           must(!arch.includes('Nessuna revisione conservata'),'Saved revision did not reach archive');
           await download('#exportBackup','/tmp/archive-backup.json');
-          await page.locator('#password').fill('HealthSolver-Archive-047!');
+          await page.locator('#password').fill('HealthSolver-Archive-048!');
           await download('#encryptBackup','/tmp/archive-backup-encrypted.json');
           await action('#clearSession'); await page.waitForTimeout(120);
           arch=await page.locator('#page-archive').innerText();
@@ -268,7 +275,7 @@ jobs:
           arch=await page.locator('#page-archive').innerText();
           must(!arch.includes('Nessuna revisione conservata'),'Archive JSON restore failed');
           await action('#clearSession');
-          await page.locator('#restorePassword').fill('HealthSolver-Archive-047!');
+          await page.locator('#restorePassword').fill('HealthSolver-Archive-048!');
           await page.locator('#restoreFile').setInputFiles('/tmp/archive-backup-encrypted.json');
           await page.locator('#confirmDialog').waitFor({state:'visible',timeout:15000});
           await confirmIfOpen(); await page.waitForTimeout(500);
