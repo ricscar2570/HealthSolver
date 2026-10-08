@@ -3,7 +3,7 @@
 if(window.__HS_PREDICTIVE_ENGINE_040__) return;
 window.__HS_PREDICTIVE_ENGINE_040__=true;
 
-const BASE='./predictive/';
+const BASE=new URL('./predictive/',window.location.href).href;
 const REGISTRY=BASE+'model-registry-v2.json';
 const categorical={
   'HS-UCI-HD-001':{
