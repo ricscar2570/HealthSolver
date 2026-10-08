@@ -42,7 +42,7 @@ jobs:
             const set=(id,v)=>{const e=document.getElementById(id);if(!e)return; e.value=String(v);e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));};
             const firstNonEmpty=id=>{const e=document.getElementById(id);if(!e)return;const os=[...e.options].filter(x=>x.value!=='');const o=os[os.length-1];if(o){e.value=o.value;e.dispatchEvent(new Event('change',{bubbles:true}));}};
             set('ciAge',58);firstNonEmpty('ciSex');set('ci_systolic',138);set('ci_total_chol',238);set('ci_fasting_glucose',126);
-            set('ci_max_heart_rate',154);firstNonEmpty('ci_exercise_angina');set('ci_oldpeak',1.1);set('ci_major_vessels',1);firstNonEmpty('ci_cp_2');firstNonEmpty('ci_ecg_0');firstNonEmpty('ci_slope_2');firstNonEmpty('ci_thal_3');
+            set('ci_max_heart_rate',154);firstNonEmpty('ci_exercise_angina');set('ci_oldpeak',1.1);set('ci_major_vessels',1);set('hs42_cp',2);set('hs42_restecg',0);set('hs42_slope',2);set('hs42_thal',3);
             set('ci_bp',82);set('ci_specific_gravity',1.02);set('ci_urine_albumin',1);set('ci_urine_sugar',0);set('ci_random_glucose',142);
             set('ci_blood_urea',34);set('ci_creatinine',1.3);set('ci_sodium',139);set('ci_potassium',4.3);set('ci_hemoglobin',13.1);set('ci_pcv',40);set('ci_wbc_count',7600);set('ci_rbc_count',4.7);
             const fna={radius1:14.2,texture1:20.1,perimeter1:92.4,area1:630,smoothness1:.098,compactness1:.12,concavity1:.11,concave_points1:.055,symmetry1:.19,fractal_dimension1:.062};
