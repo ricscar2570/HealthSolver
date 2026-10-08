@@ -47,6 +47,9 @@ jobs:
           if(!text.includes('Non devi ricompilare un secondo caso')) throw new Error('Single-dossier UX message missing');
 
           // Use specialist FNA fields embedded in Expert Mode to guarantee one runnable model.
+          const fnaDetails=page.locator('#hs42FnaDetails');
+          if(await fnaDetails.count()!==1) throw new Error('Integrated FNA details section missing');
+          await fnaDetails.evaluate(el=>{el.open=true});
           const vals={
             hs42_radius1:'17.99',hs42_texture1:'10.38',hs42_perimeter1:'122.8',hs42_area1:'1001',
             hs42_smoothness1:'0.1184',hs42_compactness1:'0.2776',hs42_concavity1:'0.3001',
