@@ -38,6 +38,12 @@ jobs:
           }
           const button=page.getByRole('button',{name:'Analizza con tutti i modelli applicabili'});
           if(await button.count()!==1) throw new Error('Unified analyze button not rendered');
+          await page.waitForTimeout(1500);
+          const routerText=await router.innerText();
+          if(/non disponibile|failed to fetch/i.test(routerText)) throw new Error('Unified router rendered but model registry/data did not load: '+routerText);
+          const coverageCount=await router.locator('.coverage .mini').count();
+          if(coverageCount!==3) throw new Error('Expected 3 model coverage cards, got '+coverageCount);
+          if(await button.isDisabled()) throw new Error('Unified analyze button is disabled after model load');
           await router.scrollIntoViewIfNeeded();
           await router.screenshot({path:'HealthSolver-0.41-Unified-Router.png'});
           await page.screenshot({path:'HealthSolver-0.41-Full-Page.png',fullPage:true});
