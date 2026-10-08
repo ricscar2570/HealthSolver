@@ -78,13 +78,26 @@ jobs:
           must((await page.locator('#coachAge').inputValue())==='','Coach blank reset failed');
           await page.locator('#coachRestoreFile').setInputFiles('/tmp/coach-backup.json');
           await page.waitForTimeout(300);
-          must((await page.locator('#coachAge').inputValue())==='67','Coach restore failed');
+          must((await page.locator('#page-coach').innerText()).includes('67 anni'),'Coach restore failed');
+          // Re-open profile editing when the restored workflow is already past the first sub-step.
+          if(await page.locator('#coachAge').count()!==1){
+            const fix=page.getByRole('button',{name:'Correggi'}).first();
+            must(await fix.count()===1,'Coach profile correction control missing');
+            await fix.click(); await page.waitForTimeout(80);
+          }
           await page.locator('#coachAge').fill('68');
           await page.locator('#coachContinue').click();
+          must((await page.locator('#page-coach').innerText()).includes('Problema principale'),'Coach did not advance to next adaptive action');
           await page.reload({waitUntil:'networkidle'});
           await page.waitForFunction(()=>document.body.innerText.includes('Clinical Coach'),{timeout:30000});
           await nav('coach');
-          must((await page.locator('#coachAge').inputValue())==='68','Coach local resume failed');
+          let resumedText=await page.locator('#page-coach').innerText();
+          if(!resumedText.includes('68 anni') && await page.locator('#coachAge').count()!==1){
+            const fix=page.getByRole('button',{name:'Correggi'}).first();
+            if(await fix.count()===1){await fix.click();await page.waitForTimeout(80);}
+          }
+          resumedText=await page.locator('#page-coach').innerText();
+          must(resumedText.includes('68 anni') || (await page.locator('#coachAge').count()===1 && (await page.locator('#coachAge').inputValue())==='68'),'Coach local resume failed');
           await page.locator('#coachClearResume').click();
           console.log('Coach PASS');
 
