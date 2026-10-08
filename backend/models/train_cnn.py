@@ -8,6 +8,8 @@ import pydicom
 import numpy as np
 import cv2
 
+from backend.models.cnn_model import CNNModel
+
 class DICOMDataset(Dataset):
     def __init__(self, image_folder, labels):
         self.image_folder = image_folder
