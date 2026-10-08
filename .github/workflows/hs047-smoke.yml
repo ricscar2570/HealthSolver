@@ -1,0 +1,64 @@
+name: HealthSolver 0.47 UCI Diabetes Readmission Smoke
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'predictive/**'
+      - '.github/workflows/hs047-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: node --check predictive/integrated-predictive-ui.js
+      - name: Verify readmission model and registry
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import json,math,pathlib
+          root=pathlib.Path('predictive')
+          reg=json.loads((root/'model-registry-v2.json').read_text())
+          assert reg['version']=='0.47.0'
+          assert len(reg['models'])==7
+          ids={e['model_id'] for e in reg['models']}
+          assert 'HS-UCI-DMREADM-001' in ids
+          m=json.loads((root/'model-diabetes-readmission-v1.json').read_text())
+          assert m['model_id']=='HS-UCI-DMREADM-001'
+          assert m['dataset']['uci_id']==296
+          assert m['dataset']['license']=='CC BY 4.0'
+          assert m['target_definition']['positive']=='readmitted=<30'
+          assert 'not diabetes diagnosis' in m['target_definition']['meaning']
+          assert len(m['features'])==13
+          q=m['metrics_test']
+          assert q['n_total']==101766
+          assert q['n_test']>0
+          assert q['auroc']>=0.5
+          assert 0<=q['brier']<=1
+          assert 0<m['threshold']<1
+          assert 'Youden' in m['threshold_selection']
+          assert m['research_only'] is True
+          assert m['not_clinically_validated'] is True
+          x=m['imputation']['values']
+          s=m['logistic']['intercept']
+          for f in m['features']:
+              z=(x[f]-m['standardization']['mean'][f])/m['standardization']['scale'][f]
+              s+=z*m['logistic']['coefficients'][f]
+          z=m['calibration']['intercept']+m['calibration']['slope']*s
+          p=1/(1+math.exp(-max(-35,min(35,z))))
+          assert 0<p<1 and math.isfinite(p)
+          print({'median_probability':p,'metrics':q})
+          PY
+      - name: Verify UI references seventh model
+        shell: bash
+        run: |
+          grep -q '7 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -q 'HS-UCI-DMREADM-001' predictive/integrated-predictive-ui.js
+          grep -q 'Dati ricovero diabetologico' predictive/integrated-predictive-ui.js
