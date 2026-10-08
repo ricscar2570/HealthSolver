@@ -1,5 +1,5 @@
 name: HealthSolver 0.47 Preserved Visit Full E2E
-# robust confirmation timing
+# robust confirmation timing\n# password reset + PBKDF2 restore synchronization
 on:
   push:
     branches: ['main']
@@ -100,6 +100,9 @@ jobs:
           await frame.locator('#passwordRepeat').fill(password);
           await frame.locator('#saveVault').click();await page.waitForTimeout(50);await confirmIfOpen();await page.waitForTimeout(250);
           must(await frame.locator('#unlockVault').count()===1,'vault unlock missing');
+          // saveVault intentionally clears both password fields.
+          await frame.locator('#password').fill(password);
+          await frame.locator('#passwordRepeat').fill(password);
           await save(frame.locator('#exportEncrypted'),'/tmp/previous-encrypted.json');
 
           // Verify browser vault survives an in-workspace lock and can be reopened.
@@ -110,18 +113,21 @@ jobs:
           const restorePwd=frame.locator('#restorePassword');
           if(await restorePwd.count()===1){
             await restorePwd.fill(password);
-            await frame.locator('#unlockVault').click();await page.waitForTimeout(300);
+            await frame.locator('#unlockVault').click();
+            await frame.locator('#confirmDialog').waitFor({state:'visible',timeout:15000});
+            await confirmIfOpen(); await page.waitForTimeout(350);
             body=await frame.locator('body').innerText();
-            must(/visita|revisione/i.test(body),'browser vault reopen produced no workspace');
+            must(!body.includes('Nessuna revisione'),'browser vault reopen did not restore revision');
           }
 
           // Verify encrypted downloaded file is accepted by restore control when available.
           if(await frame.locator('#restoreFile').count()===1){
             if(await restorePwd.count()===1) await restorePwd.fill(password);
             await frame.locator('#restoreFile').setInputFiles('/tmp/previous-encrypted.json');
-            await page.waitForTimeout(50);await confirmIfOpen();await page.waitForTimeout(350);
+            await frame.locator('#confirmDialog').waitFor({state:'visible',timeout:15000});
+            await confirmIfOpen();await page.waitForTimeout(350);
             body=await frame.locator('body').innerText();
-            must(/visita|revisione/i.test(body),'encrypted file restore produced no workspace');
+            must(!body.includes('Nessuna revisione'),'encrypted file restore did not restore revision');
           }
 
           must(errors.length===0,'preserved module browser errors '+errors.join(' | '));
