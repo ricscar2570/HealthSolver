@@ -23,8 +23,8 @@ jobs:
         shell: bash
         run: |
           cat > audit.mjs <<'JS'
-          import { chromium } from 'playwright';
-          const browser=await chromium.launch({headless:true});
+          import { chromium } from 'playwright-core';
+          const browser=await chromium.launch({headless:true,channel:'chrome'});
           const page=await browser.newPage({viewport:{width:1440,height:1800}});
           await page.goto('https://ricscar2570.github.io/HealthSolver/?dom-audit=1',{waitUntil:'networkidle',timeout:120000});
           await page.waitForTimeout(3000);
@@ -49,6 +49,7 @@ jobs:
           console.log('\nCOACH_GLOBALS',await page.evaluate(()=>({coachKeys:Object.keys(window.HSClinicalCoach||{}), intelligenceKeys:Object.keys(window.HSIntelligence||{})})));
           console.log('\nINTELLIGENCE_FIELDS',await page.locator('#page-intelligence input, #page-intelligence select, #page-intelligence textarea').evaluateAll(els=>els.map(el=>({tag:el.tagName,id:el.id,name:el.name,type:el.type,value:el.value,placeholder:el.placeholder,aria:el.getAttribute('aria-label')}))));
           console.log('\nCOACH_FIELDS',await page.locator('#page-coach input, #page-coach select, #page-coach textarea').evaluateAll(els=>els.map(el=>({tag:el.tagName,id:el.id,name:el.name,type:el.type,value:el.value,placeholder:el.placeholder,aria:el.getAttribute('aria-label')}))));
+          console.log('\nHEART_SELECT_OPTIONS',await page.evaluate(()=>['ciSex','ci_exercise_angina','ci_cp_1','ci_cp_2','ci_cp_3','ci_cp_4','ci_ecg_0','ci_ecg_1','ci_ecg_2','ci_slope_1','ci_slope_2','ci_slope_3','ci_thal_3','ci_thal_6','ci_thal_7'].map(id=>{const e=document.getElementById(id);return {id,options:e?[...e.options].map(o=>({value:o.value,text:o.textContent})):null}})));
           await browser.close();
           JS
           node audit.mjs > dom-audit.txt
