@@ -1,0 +1,214 @@
+{
+  "abstention": {
+    "max_missing_features": 2,
+    "message": "Prediction withheld when more than two required features are missing."
+  },
+  "calibration": {
+    "intercept": -11.64143878076093,
+    "method": "Platt scaling on held-out calibration split",
+    "slope": 10.659254852287921
+  },
+  "dataset": {
+    "doi": "10.24432/C5D612",
+    "license": "CC BY 4.0",
+    "name": "UCI HCV Data",
+    "source": "https://archive.ics.uci.edu/dataset/571/hcv+data",
+    "uci_id": 571
+  },
+  "features": [
+    "age",
+    "sex",
+    "alb",
+    "alp",
+    "alt",
+    "ast",
+    "bil",
+    "che",
+    "chol",
+    "crea",
+    "ggt",
+    "prot"
+  ],
+  "field_meta": {
+    "age": {
+      "label": "Et\u00e0",
+      "median": 47.5,
+      "training_max": 77.0,
+      "training_min": 19.0,
+      "unit": "anni"
+    },
+    "alb": {
+      "label": "Albumina",
+      "median": 42.3,
+      "training_max": 82.2,
+      "training_min": 20.0,
+      "unit": "g/L"
+    },
+    "alp": {
+      "label": "Fosfatasi alcalina",
+      "median": 66.1,
+      "training_max": 416.6,
+      "training_min": 11.3,
+      "unit": "U/L"
+    },
+    "alt": {
+      "label": "ALT",
+      "median": 23.6,
+      "training_max": 258.0,
+      "training_min": 0.9,
+      "unit": "U/L"
+    },
+    "ast": {
+      "label": "AST",
+      "median": 26.25,
+      "training_max": 324.0,
+      "training_min": 12.2,
+      "unit": "U/L"
+    },
+    "bil": {
+      "label": "Bilirubina",
+      "median": 7.3,
+      "training_max": 254.0,
+      "training_min": 1.8,
+      "unit": "\u00b5mol/L"
+    },
+    "che": {
+      "label": "Colinesterasi",
+      "median": 8.39,
+      "training_max": 16.41,
+      "training_min": 1.42,
+      "unit": "kU/L"
+    },
+    "chol": {
+      "label": "Colesterolo",
+      "median": 5.38,
+      "training_max": 9.67,
+      "training_min": 1.43,
+      "unit": "mmol/L"
+    },
+    "crea": {
+      "label": "Creatinina",
+      "median": 77.0,
+      "training_max": 519.0,
+      "training_min": 8.0,
+      "unit": "\u00b5mol/L"
+    },
+    "ggt": {
+      "label": "GGT",
+      "median": 23.25,
+      "training_max": 650.9,
+      "training_min": 4.5,
+      "unit": "U/L"
+    },
+    "prot": {
+      "label": "Proteine totali",
+      "median": 72.5,
+      "training_max": 90.0,
+      "training_min": 51.0,
+      "unit": "g/L"
+    },
+    "sex": {
+      "encoding": "0=female, 1=male",
+      "label": "Sesso",
+      "median": 1.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    }
+  },
+  "imputation": {
+    "strategy": "training median",
+    "values": {
+      "age": 47.5,
+      "alb": 42.3,
+      "alp": 66.1,
+      "alt": 23.6,
+      "ast": 26.25,
+      "bil": 7.3,
+      "che": 8.39,
+      "chol": 5.38,
+      "crea": 77.0,
+      "ggt": 23.25,
+      "prot": 72.5,
+      "sex": 1.0
+    }
+  },
+  "logistic": {
+    "coefficients": {
+      "age": -0.6508352591772579,
+      "alb": -0.31806940813860857,
+      "alp": -1.935011663538063,
+      "alt": -0.5371761103771865,
+      "ast": 3.2131654208750233,
+      "bil": 0.7173793218915527,
+      "che": 0.44644833914945764,
+      "chol": -0.44177864920974935,
+      "crea": 0.41910778874133425,
+      "ggt": 2.245487777152693,
+      "prot": 0.5130773005462705,
+      "sex": -0.2963801918721339
+    },
+    "intercept": -1.878563183956697
+  },
+  "metrics_test": {
+    "accuracy": 0.9180327868852459,
+    "auprc": 0.7118493312243314,
+    "auroc": 0.9249221183800623,
+    "brier": 0.07766558244895556,
+    "confusion_matrix": {
+      "fn": 7,
+      "fp": 3,
+      "tn": 104,
+      "tp": 8
+    },
+    "n_calibration": 122,
+    "n_test": 122,
+    "n_total": 608,
+    "n_train": 364,
+    "positive_prevalence": 0.12335526315789473,
+    "sensitivity": 0.5333333333333333,
+    "specificity": 0.9719626168224299
+  },
+  "model_id": "HS-UCI-HCV-001",
+  "not_clinically_validated": true,
+  "release": "HealthSolver 0.44 UCI HCV Data Integration",
+  "research_only": true,
+  "schema": "healthsolver.predictive_model.v1",
+  "standardization": {
+    "mean": {
+      "age": 47.252747252747255,
+      "alb": 42.08653846153846,
+      "alp": 68.62527472527472,
+      "alt": 28.04065934065934,
+      "ast": 34.79423076923077,
+      "bil": 11.286263736263736,
+      "che": 8.226593406593407,
+      "chol": 5.395,
+      "crea": 80.12142857142857,
+      "ggt": 40.356043956043955,
+      "prot": 72.43571428571428,
+      "sex": 0.6483516483516484
+    },
+    "scale": {
+      "age": 10.082727485730407,
+      "alb": 5.599181660787471,
+      "alp": 27.11091014887457,
+      "alt": 22.219337326158527,
+      "ast": 33.94346292745019,
+      "bil": 17.643645255685264,
+      "che": 2.149798595105357,
+      "chol": 1.1095114507478774,
+      "crea": 27.836105539129523,
+      "ggt": 61.42168865390278,
+      "prot": 5.1552852731965935,
+      "sex": 0.47748485675605346
+    }
+  },
+  "target_definition": {
+    "excluded": "suspect blood donor",
+    "negative": "blood donor",
+    "positive": "hepatitis/fibrosis/cirrhosis categories"
+  },
+  "task": "Binary research prediction of liver-disease category versus blood-donor reference within the UCI HCV Data domain; suspect-donor rows excluded.",
+  "threshold": 0.5,
+  "version": "1.0.0"
+}
