@@ -1,4 +1,4 @@
-# HealthSolver 0.46 — NHIS Integration + Predictive-First UI
+# HealthSolver 0.47 — UCI Diabetes Readmission Integration + Predictive-First UI
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.46 line.
+The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.47 line.
 
 ## What HealthSolver does
 
@@ -44,7 +44,7 @@ For the deployed GitHub Pages build:
 - core application state, backup and recovery workflows are handled client-side;
 - large static resources are packaged for browser delivery.
 
-The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.46 application.
+The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.47 application.
 
 ## Clinical Coach
 
@@ -438,6 +438,67 @@ The NHIS inputs are integrated in a collapsible specialist panel inside the same
 
 A live Playwright test on GitHub Pages verifies published version metadata, six-model availability, NHIS inputs, model execution and numeric probability rendering.
 
+## UCI Diabetes 130-US Hospitals integration 0.47
+
+HealthSolver 0.47 adds the UCI **Diabetes 130-US Hospitals for Years 1999-2008** dataset as a complete predictive database macrostep.
+
+### New predictive model
+
+**HS-UCI-DMREADM-001 — Riammissione <30 giorni nel diabete**
+
+This model does **not** predict whether a patient has diabetes. It predicts the research probability of hospital readmission within 30 days among encounters contained in the UCI diabetes hospital dataset.
+
+Dataset:
+
+- UCI ID: 296
+- DOI: `10.24432/C5230J`
+- license: CC BY 4.0
+- total encounters: **101,766**
+
+Model inputs include:
+
+- age band midpoint;
+- length of stay;
+- number of laboratory procedures;
+- number of procedures;
+- number of medications;
+- previous outpatient visits;
+- previous emergency visits;
+- previous inpatient admissions;
+- number of diagnoses;
+- HbA1c result category;
+- maximum glucose category;
+- diabetes-medication status;
+- medication-change status.
+
+Training design:
+
+- training: **61,059**
+- calibration: **20,353**
+- held-out test: **20,354**
+- positive class prevalence: **11.16%**
+- class-balanced logistic regression;
+- held-out Platt calibration;
+- decision threshold selected only on calibration data using Youden J.
+
+Held-out test performance:
+
+- AUROC: **0.640**
+- AUPRC: **0.199**
+- Brier score: **0.096**
+- sensitivity: **0.618**
+- specificity: **0.587**
+
+These metrics are intentionally reported without embellishment: this is a substantially harder outcome and the model has only modest discrimination. It remains useful as a research baseline, not as a clinical readmission decision tool.
+
+### Browser integration
+
+HealthSolver 0.47 now contains **7 supervised models** in the Predictive-First Expert Mode.
+
+The readmission model has its own collapsible hospital-episode panel and uses the same global Predictive Engine, registry, calibration, abstention and result-card system.
+
+A live browser audit verifies that the public GitHub Pages build exposes seven models, accepts a complete readmission episode, runs `HS-UCI-DMREADM-001` and renders a numeric probability without abstention.
+
 ## Machine learning and predictive research
 
 HealthSolver is being developed toward a broader machine-learning research architecture in which structured symptoms, history, vital signs, laboratory data and observations can be used as model inputs.
@@ -538,9 +599,9 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.46 — NHIS Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
+**HealthSolver 0.47 — UCI Diabetes Readmission Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
 
-Current predictive release is represented by the 0.46 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and six supervised model artifacts under `predictive/`.
+Current predictive release is represented by the 0.47 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and seven supervised model artifacts under `predictive/`.
 
 The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
