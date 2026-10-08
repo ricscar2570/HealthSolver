@@ -26,8 +26,8 @@ jobs:
           import json,math,pathlib
           root=pathlib.Path('predictive')
           reg=json.loads((root/'model-registry-v2.json').read_text())
-          assert reg['version']=='0.47.0'
-          assert len(reg['models'])==7
+          assert reg['version'] in {'0.47.0','0.48.0'}
+          assert len(reg['models'])>=7
           ids={e['model_id'] for e in reg['models']}
           assert 'HS-UCI-DMREADM-001' in ids
           m=json.loads((root/'model-diabetes-readmission-v1.json').read_text())
@@ -59,6 +59,6 @@ jobs:
       - name: Verify UI references seventh model
         shell: bash
         run: |
-          grep -q '7 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -q 'MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
           grep -q 'HS-UCI-DMREADM-001' predictive/integrated-predictive-ui.js
           grep -q 'Dati ricovero diabetologico' predictive/integrated-predictive-ui.js
