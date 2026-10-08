@@ -27,7 +27,7 @@ jobs:
           root=pathlib.Path('predictive')
           reg=json.loads((root/'model-registry-v2.json').read_text())
           assert reg['schema']=='healthsolver.predictive_registry.v2'
-          assert reg['version'] in {'0.40.0','0.44.0','0.45.0','0.46.0'}
+          assert reg['version'] in {'0.40.0','0.44.0','0.45.0','0.46.0','0.47.0'}
           assert len(reg['models'])>=3
           ids=[]
           for e in reg['models']:
