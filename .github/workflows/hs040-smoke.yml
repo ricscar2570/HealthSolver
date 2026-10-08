@@ -1,0 +1,58 @@
+name: HealthSolver 0.40 Multi-Outcome Smoke
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'predictive/**'
+      - '.github/workflows/hs040-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: node --check predictive/predictive-engine.js
+      - name: Registry and model integrity
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import json,math,pathlib
+          root=pathlib.Path('predictive')
+          reg=json.loads((root/'model-registry-v2.json').read_text())
+          assert reg['schema']=='healthsolver.predictive_registry.v2'
+          assert reg['version']=='0.40.0'
+          assert len(reg['models'])==3
+          ids=[]
+          for e in reg['models']:
+              p=root/e['file']
+              assert p.exists(),p
+              m=json.loads(p.read_text())
+              assert m['model_id']==e['model_id']
+              assert m['schema']=='healthsolver.predictive_model.v1'
+              assert len(m['features'])>=10
+              assert m['metrics_test']['n_test']>0
+              assert 0.5 <= m['metrics_test']['auroc'] <= 1
+              assert 0 <= m['metrics_test']['brier'] <= 1
+              x={f:m['imputation']['values'][f] for f in m['features']}
+              score=m['logistic']['intercept']
+              for f in m['features']:
+                  scale=m['standardization']['scale'][f]
+                  assert scale>0
+                  z=(x[f]-m['standardization']['mean'][f])/scale
+                  score+=z*m['logistic']['coefficients'][f]
+              z=m['calibration']['intercept']+m['calibration']['slope']*score
+              prob=1/(1+math.exp(-max(-35,min(35,z))))
+              assert math.isfinite(prob) and 0<prob<1
+              assert m['abstention']['max_missing_features'] < len(m['features'])
+              ids.append(m['model_id'])
+              print(m['model_id'],prob,m['metrics_test'])
+          assert len(ids)==len(set(ids))
+          assert set(ids)=={'HS-UCI-HD-001','HS-UCI-CKD-001','HS-UCI-BC-001'}
+          PY
