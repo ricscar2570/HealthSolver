@@ -43,9 +43,16 @@ progress{width:100%;height:16px;margin:18px 0}#err{white-space:pre-wrap;color:#f
   if(!peRes.ok) throw new Error("Predictive Engine non disponibile ("+peRes.status+")");
   if(!routerRes.ok) throw new Error("Unified Router non disponibile ("+routerRes.status+")");
   const [peCode,routerCode]=await Promise.all([peRes.text(),routerRes.text()]);
-  const safePe=peCode.replace(/<\\/script/gi,"<\\\\/script");
-  const safeRouter=routerCode.replace(/<\\/script/gi,"<\\\\/script");
-  html=html.replace("</body>","<script>"+safePe+"<\\/script><script>"+safeRouter+"<\\/script></body>");
+  const toB64=(s)=>{
+    const bytes=new TextEncoder().encode(s);
+    let binary="";
+    for(let i=0;i<bytes.length;i++) binary+=String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  };
+  const pe64=toB64(peCode),router64=toB64(routerCode);
+  const inject="<script>eval(new TextDecoder().decode(Uint8Array.from(atob('"+pe64+"'),c=>c.charCodeAt(0))))<\\/script>"+
+               "<script>eval(new TextDecoder().decode(Uint8Array.from(atob('"+router64+"'),c=>c.charCodeAt(0))))<\\/script>";
+  html=html.replace("</body>",inject+"</body>");
   document.open();document.write(html);document.close();
  }catch(e){err.textContent="Impossibile avviare HealthSolver.\n"+(e?.message||String(e));status.textContent="Caricamento interrotto.";}
 })();
