@@ -1,0 +1,145 @@
+name: HealthSolver 0.47 Preserved Laboratory Full E2E
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs047-preserved-lab-e2e.yml']
+permissions:
+  contents: read
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Exercise preserved laboratory workspace
+        shell: bash
+        run: |
+          cat > audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
+
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1700},acceptDownloads:true});
+          const errors=[];
+          page.on('pageerror',e=>errors.push('PAGE '+e.message));
+          page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
+          const must=(v,m)=>{if(!v)throw new Error(m)};
+          const save=async(loc,path)=>{
+            const pending=page.waitForEvent('download',{timeout:60000});
+            await loc.click();
+            const d=await pending;
+            await d.saveAs(path);
+            must(fs.existsSync(path)&&fs.statSync(path).size>20,'empty download '+path);
+            console.log('DOWNLOADED',path,d.suggestedFilename(),fs.statSync(path).size);
+          };
+
+          await page.goto('https://ricscar2570.github.io/HealthSolver/?audit=preserved-lab-e2e',{waitUntil:'networkidle',timeout:120000});
+          await page.waitForFunction(()=>document.body.innerText.includes('Visita e laboratori precedenti'),{timeout:30000});
+          await page.locator('aside .nav[data-page="previous"]').click();
+
+          const prev=page.frameLocator('#previous');
+          await prev.locator('body').waitFor({state:'attached',timeout:30000});
+          const labNav=prev.locator('[data-page="lab"]');
+          must(await labNav.count()===1,'laboratory navigation missing');
+          await labNav.click(); await page.waitForTimeout(250);
+
+          const lab=prev.frameLocator('#laboratory');
+          await lab.locator('body').waitFor({state:'attached',timeout:30000});
+          await lab.getByText('classificazione di ricerca',{exact:false}).first().waitFor({state:'visible',timeout:30000});
+
+          const before=await lab.locator('body').innerText();
+          await lab.locator('#predict').click(); await page.waitForTimeout(250);
+          let body=await lab.locator('body').innerText();
+          must(body!==before,'laboratory prediction produced no UI change');
+          must(/probabil|risultat|classific/i.test(body),'laboratory prediction output missing');
+
+          await lab.locator('#reveal').click(); await page.waitForTimeout(100);
+          body=await lab.locator('body').innerText();
+          must(/etichett|registrat|confront/i.test(body),'laboratory reveal output missing');
+
+          await lab.locator('#saveCase').click(); await page.waitForTimeout(120);
+          body=await lab.locator('body').innerText();
+          must(/revisione|salvat/i.test(body),'laboratory revision save feedback missing');
+
+          // Internal model evaluation.
+          await lab.locator('#evaluate').click(); await page.waitForTimeout(250);
+          body=await lab.locator('body').innerText();
+          must(/AUC|sensibil|specific|Brier|test/i.test(body),'laboratory internal evaluation missing');
+
+          await save(lab.locator('#exportEvaluation'),'/tmp/lab-evaluation.json');
+          await save(lab.locator('#exportModel'),'/tmp/lab-model.json');
+          await save(lab.locator('#exportCSV'),'/tmp/lab-dataset.csv');
+          must(JSON.parse(fs.readFileSync('/tmp/lab-evaluation.json','utf8')),'evaluation JSON invalid');
+          must(JSON.parse(fs.readFileSync('/tmp/lab-model.json','utf8')),'model JSON invalid');
+          must(fs.readFileSync('/tmp/lab-dataset.csv','utf8').split(/\r?\n/).length>20,'dataset CSV too small');
+
+          // Client-side retraining path using the smallest available epoch count.
+          const epochs=lab.locator('#epochs');
+          const opts=await epochs.locator('option').evaluateAll(os=>os.map(o=>o.value));
+          if(opts.length){
+            await epochs.selectOption(opts[0]);
+            await lab.locator('#train').click();
+            await page.waitForFunction(()=>{
+              const f=document.querySelector('#previous')?.contentDocument?.querySelector('#laboratory');
+              const d=f?.contentDocument;
+              const b=d?.querySelector('#train');
+              return b && !b.disabled;
+            },{timeout:90000});
+          }
+          body=await lab.locator('body').innerText();
+          must(/modello|training|addestr/i.test(body),'laboratory training path missing');
+
+          // Full laboratory workspace backup and restore.
+          await save(lab.locator('#backup'),'/tmp/lab-backup.json');
+          const v0=lab.locator('#v0');
+          must(await v0.count()===1,'laboratory feature v0 missing');
+          const original=await v0.inputValue();
+          await v0.fill(String(Number(original)+1));
+          await lab.locator('#backupFile').setInputFiles('/tmp/lab-backup.json');
+          await page.waitForTimeout(350);
+          must((await v0.inputValue())===original,'laboratory backup restore failed');
+
+          // Encrypted complete backup when WebCrypto is available.
+          const encPwd='HealthSolver-Lab-047!';
+          if(await lab.locator('#encryptBackup').count()===1){
+            await lab.locator('#encryptPassword').fill(encPwd);
+            await lab.locator('#encryptRepeat').fill(encPwd);
+            await save(lab.locator('#encryptBackup'),'/tmp/lab-encrypted.json');
+            await v0.fill(String(Number(original)+2));
+            await lab.locator('#decryptPassword').fill(encPwd);
+            await lab.locator('#allRestore').setInputFiles('/tmp/lab-encrypted.json');
+            await page.waitForTimeout(3000);
+            must((await v0.inputValue())===original,'laboratory encrypted restore failed');
+          }
+
+          // Simulator remains reachable.
+          const sim=lab.getByRole('button',{name:/Apri simulatore/i});
+          if(await sim.count()===1){
+            await sim.click(); await page.waitForTimeout(150);
+            body=await lab.locator('body').innerText();
+            must(/simulator|sintetic/i.test(body),'laboratory simulator did not open');
+          }
+
+          must(errors.length===0,'preserved laboratory browser errors '+errors.join(' | '));
+          await page.screenshot({path:'HealthSolver-0.47-Preserved-Laboratory-E2E.png',fullPage:true});
+          console.log('PRESERVED LABORATORY FULL E2E PASS');
+          await browser.close();
+          JS
+          node audit.mjs | tee preserved-lab-e2e.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: healthsolver-047-preserved-laboratory-e2e
+          path: |
+            preserved-lab-e2e.txt
+            HealthSolver-0.47-Preserved-Laboratory-E2E.png
+          if-no-files-found: ignore
+          retention-days: 14
