@@ -1,0 +1,109 @@
+name: HealthSolver 0.47 External Validation E2E
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs047-external-validation-e2e.yml']
+permissions:
+  contents: read
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Exercise frozen external validation workflow
+        shell: bash
+        run: |
+          cat > audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
+
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1600},acceptDownloads:true});
+          const errors=[];
+          page.on('pageerror',e=>errors.push('PAGE '+e.message));
+          page.on('console',m=>{if(m.type()==='error') errors.push('CONSOLE '+m.text())});
+          const must=(v,m)=>{if(!v)throw new Error(m)};
+
+          await page.goto('https://ricscar2570.github.io/HealthSolver/?audit=external-validation-e2e',{waitUntil:'networkidle',timeout:120000});
+          await page.waitForFunction(()=>document.body.innerText.includes('Valutazione e limiti'),{timeout:30000});
+          await page.locator('aside .nav[data-page="validation"]').click();
+
+          const [tmpl]=await Promise.all([
+            page.waitForEvent('download',{timeout:15000}),
+            page.locator('#ciValTemplate').click()
+          ]);
+          await tmpl.saveAs('/tmp/template.csv');
+          const header=fs.readFileSync('/tmp/template.csv','utf8').trim().split(/\r?\n/)[0];
+          const cols=header.split(',');
+          const targetCols=cols.filter(c=>c.startsWith('target_'));
+          const featureCols=cols.filter(c=>!c.startsWith('target_')&&c!=='group');
+          must(featureCols.length>0,'no validation features in template');
+          must(targetCols.length>0,'no validation targets in template');
+
+          const rows=[header];
+          for(let r=0;r<40;r++){
+            const vals=cols.map((c,i)=>{
+              if(c==='group') return 'audit-independent';
+              if(c.startsWith('target_')) return String((r+i)%2);
+              // unique non-overlapping numeric vectors; finite and deterministic
+              return (10000 + r*100 + i + (r+1)/1000).toFixed(3);
+            });
+            rows.push(vals.join(','));
+          }
+          fs.writeFileSync('/tmp/external.csv',rows.join('\n')+'\n');
+
+          await page.locator('#ciValSource').fill('HealthSolver automated independent synthetic software test cohort');
+          await page.locator('#ciValAuthorized').check();
+          await page.locator('#ciValSemantics').check();
+          await page.locator('#ciValIndependent').check();
+          await page.locator('#ciValFile').setInputFiles('/tmp/external.csv');
+          await page.locator('#ciValRun').click();
+
+          await page.waitForFunction(()=>{
+            const s=document.querySelector('#ciValStatus')?.textContent||'';
+            return /Valutati|errore|incompatibile|Rilevate|Servono/i.test(s);
+          },{timeout:30000});
+          const status=await page.locator('#ciValStatus').innerText();
+          console.log('STATUS',status);
+          must(/Valutati 40 record/i.test(status),'external validation did not complete: '+status);
+
+          const report=await page.locator('#ciValReport').innerText();
+          must(/Categoria/.test(report)&&/AUC/.test(report)&&/Sensibilità/.test(report),'external validation report table missing');
+          must(!(await page.locator('#ciValExport').isDisabled()),'external validation export remains disabled');
+
+          const [out]=await Promise.all([
+            page.waitForEvent('download',{timeout:15000}),
+            page.locator('#ciValExport').click()
+          ]);
+          await out.saveAs('/tmp/external-report.json');
+          const exported=JSON.parse(fs.readFileSync('/tmp/external-report.json','utf8'));
+          must(exported.schema==='hs_external_multilabel_report_v1','wrong external validation schema');
+          must(exported.rows===40,'wrong external validation row count');
+          must(exported.clinicalApproval===false,'external validation must not claim clinical approval');
+          must(Array.isArray(exported.per_label)&&exported.per_label.length===targetCols.length,'per-label report mismatch');
+          must(/nessun riaddestramento/i.test(exported.scope),'frozen-model scope missing');
+
+          must(errors.length===0,'browser errors '+errors.join(' | '));
+          await page.screenshot({path:'HealthSolver-0.47-External-Validation-E2E.png',fullPage:true});
+          console.log('EXTERNAL VALIDATION SOFTWARE WORKFLOW PASS', {features:featureCols.length,targets:targetCols.length});
+          await browser.close();
+          JS
+          node audit.mjs | tee external-validation-e2e.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: healthsolver-047-external-validation-e2e
+          path: |
+            external-validation-e2e.txt
+            HealthSolver-0.47-External-Validation-E2E.png
+          if-no-files-found: ignore
+          retention-days: 14
