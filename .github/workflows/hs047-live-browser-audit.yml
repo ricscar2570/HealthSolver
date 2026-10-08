@@ -1,0 +1,104 @@
+name: HealthSolver 0.47 UCI Diabetes Readmission Live Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs047-live-browser-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Verify live readmission model
+        shell: bash
+        run: |
+          cat > audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const meta=await fetch('https://ricscar2570.github.io/HealthSolver/version.json?audit=047-final').then(r=>r.json());
+          if(meta.version!=='0.47.0') throw new Error('wrong version '+meta.version);
+          if(meta.predictive_model_count!==7) throw new Error('wrong model count '+meta.predictive_model_count);
+          if(!meta.predictive_models.includes('HS-UCI-DMREADM-001')) throw new Error('readmission model missing from metadata');
+
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1800}});
+          await page.goto('https://ricscar2570.github.io/HealthSolver/?audit=047-readmission',{waitUntil:'networkidle',timeout:120000});
+          await page.waitForFunction(()=>document.body.innerText.includes('Clinical Coach')&&document.body.innerText.includes('Expert Mode'),{timeout:30000});
+
+          const expert=page.locator('aside .nav[data-page="intelligence"]');
+          if(await expert.count()!==1) throw new Error('Expert Mode missing');
+          await expert.click(); await page.waitForTimeout(500);
+
+          const block=page.locator('#hs-predictive-integrated');
+          if(await block.count()!==1||!(await block.isVisible())) throw new Error('predictive block missing');
+          const initial=await block.innerText();
+          if(!initial.includes('7 MODELLI SUPERVISIONATI')) throw new Error('seven-model badge missing');
+          if(!initial.includes('Riammissione <30 giorni nel diabete')) throw new Error('readmission coverage card missing');
+
+          // Reuse dossier age.
+          await page.evaluate(()=>{
+            const set=(id,v)=>{const e=document.getElementById(id);if(e){e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));}};
+            set('ciAge','68');set('coachAge','68');
+          });
+
+          const details=page.locator('#hs47ReadmDetails');
+          if(await details.count()!==1) throw new Error('readmission details missing');
+          await details.evaluate(el=>{el.open=true});
+
+          const nums={
+            hs47_time_in_hospital:'7',
+            hs47_num_lab_procedures:'55',
+            hs47_num_procedures:'2',
+            hs47_num_medications:'18',
+            hs47_number_outpatient:'1',
+            hs47_number_emergency:'1',
+            hs47_number_inpatient:'2',
+            hs47_number_diagnoses:'9'
+          };
+          for(const [id,v] of Object.entries(nums)){
+            const loc=page.locator('#'+id);
+            if(await loc.count()!==1) throw new Error('missing field '+id);
+            await loc.fill(v);
+          }
+          for(const [id,v] of [
+            ['hs47_a1c_abnormal','1'],['hs47_glucose_abnormal','1'],
+            ['hs47_diabetes_med','1'],['hs47_medication_change','1']
+          ]){
+            const loc=page.locator('#'+id);
+            if(await loc.count()!==1) throw new Error('missing selector '+id);
+            await loc.selectOption(v);
+          }
+
+          const run=page.locator('#hs42Run');
+          await run.click(); await page.waitForTimeout(500);
+
+          const card=page.locator('#hs42Results .card').filter({hasText:'HS-UCI-DMREADM-001'});
+          if(await card.count()!==1) throw new Error('readmission result card missing');
+          const text=await card.innerText();
+          if(!/%/.test(text)) throw new Error('readmission probability missing');
+          if(/Astensione/i.test(text)) throw new Error('readmission unexpectedly abstained');
+
+          await block.scrollIntoViewIfNeeded();
+          await block.screenshot({path:'HealthSolver-0.47-Readmission-Predictive.png'});
+          await page.screenshot({path:'HealthSolver-0.47-Expert-Mode.png',fullPage:true});
+          console.log('READMISSION_RESULT\n'+text);
+          await browser.close();
+          JS
+          node audit.mjs | tee audit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: healthsolver-047-readmission-live
+          path: |
+            HealthSolver-0.47-Readmission-Predictive.png
+            HealthSolver-0.47-Expert-Mode.png
+            audit.txt
+          retention-days: 14
