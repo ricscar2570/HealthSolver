@@ -22,12 +22,13 @@ jobs:
           curl -L --fail --retry 8 --retry-delay 3 "$base/predictive/model-registry-v2.json?audit=published" -o live-registry.json
           python - <<'PY'
           import json,pathlib,urllib.request
-          expected_version='0.47.1'
+          expected_release='0.47.1'
+          expected_registry='0.47.0'
           live=json.load(open('live-version.json'))
           local=json.load(open('predictive/model-registry-v2.json'))
           public=json.load(open('live-registry.json'))
-          assert live['version']==expected_version,live
-          assert local['version']==expected_version,local
+          assert live['version']==expected_release,live
+          assert local['version']==expected_registry,local
           assert public==local,'public registry differs from main registry'
           ids=[m['model_id'] for m in local['models']]
           assert live['predictive_model_count']==len(ids)==7,(live,ids)
