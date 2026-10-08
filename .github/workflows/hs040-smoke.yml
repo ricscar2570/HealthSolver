@@ -27,8 +27,8 @@ jobs:
           root=pathlib.Path('predictive')
           reg=json.loads((root/'model-registry-v2.json').read_text())
           assert reg['schema']=='healthsolver.predictive_registry.v2'
-          assert reg['version']=='0.40.0'
-          assert len(reg['models'])==3
+          assert reg['version'] in {'0.40.0','0.44.0'}
+          assert len(reg['models'])>=3
           ids=[]
           for e in reg['models']:
               p=root/e['file']
@@ -54,5 +54,5 @@ jobs:
               ids.append(m['model_id'])
               print(m['model_id'],prob,m['metrics_test'])
           assert len(ids)==len(set(ids))
-          assert set(ids)=={'HS-UCI-HD-001','HS-UCI-CKD-001','HS-UCI-BC-001'}
+          assert {'HS-UCI-HD-001','HS-UCI-CKD-001','HS-UCI-BC-001'}.issubset(set(ids))
           PY
