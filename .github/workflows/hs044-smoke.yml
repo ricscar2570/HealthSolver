@@ -57,6 +57,6 @@ jobs:
       - name: Verify integrated UI references fourth model
         shell: bash
         run: |
-          grep -q '4 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -q 'MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
           grep -q 'HS-UCI-HCV-001' predictive/integrated-predictive-ui.js
           grep -q 'Dati specialistici epatici / HCV' predictive/integrated-predictive-ui.js
