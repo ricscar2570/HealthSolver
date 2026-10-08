@@ -93,10 +93,16 @@ jobs:
             ok(await p.locator('#coachAge').count()===1,'Coach age field available after Correggi profile');
             await set(p,'coachAge',63);
             await p.locator('#coachContinue').click();await sleep(120);
-            ok((await p.locator('.coach-phase.current').innerText()).includes('Sintomi'),'Coach advances');
+            ok(/63\s*anni|63/.test(await p.locator('#page-coach').innerText()),'Coach correction updates completed example');
             const backup=await dl(p,'#coachExportBackup','Coach backup download');
+
             await p.locator('#coachNewBlank').click();await sleep(150);
-            ok((await p.locator('#page-coach').innerText()).includes('Caso'),'Coach blank reset remains in Coach');
+            ok(await p.locator('#coachAge').count()===1,'Coach blank exposes age field');
+            ok((await p.locator('#coachAge').inputValue())==='','Coach blank reset clears age');
+            await set(p,'coachAge',45);
+            await p.locator('#coachContinue').click();await sleep(120);
+            ok((await p.locator('.coach-phase.current').innerText()).includes('Sintomi'),'Coach blank case advances to symptoms');
+
             await p.locator('#coachRestoreFile').setInputFiles(backup);await sleep(300);
             const restoredText=await p.locator('#page-coach').innerText();
             ok(/63\s*anni|63/.test(restoredText),'Coach backup restore recovers age');
