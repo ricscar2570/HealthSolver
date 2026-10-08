@@ -1,0 +1,87 @@
+name: HealthSolver 0.35 renal hepatic longitudinal sources
+on:
+  push:
+    branches: ['macrostep/v0.33.0-differential-data']
+    paths: ['.github/workflows/hs035-public-data.yml']
+permissions:
+  contents: read
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Acquire public CKD HCV eICU demo files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p hs035-sources
+          python - <<'PY'
+          import urllib.request, pathlib, hashlib, json, time
+          out=pathlib.Path('hs035-sources')
+          sources=[
+            ('hcv-data.zip',[
+              'https://archive.ics.uci.edu/static/public/571/hcv+data.zip',
+              'https://archive.ics.uci.edu/static/public/571/hcv%2Bdata.zip'
+            ],'UCI HCV data','CC BY 4.0'),
+            ('ckd.rar',[
+              'https://archive.ics.uci.edu/static/public/336/chronic+kidney+disease.rar',
+              'https://archive.ics.uci.edu/static/public/336/chronic%2Bkidney%2Bdisease.rar'
+            ],'UCI Chronic Kidney Disease','CC BY 4.0'),
+            ('ckd.zip',[
+              'https://archive.ics.uci.edu/static/public/336/chronic+kidney+disease.zip',
+              'https://archive.ics.uci.edu/static/public/336/chronic%2Bkidney%2Bdisease.zip'
+            ],'UCI Chronic Kidney Disease alternate archive','CC BY 4.0'),
+            ('patient.csv.gz',['https://physionet.org/files/eicu-crd-demo/2.0.1/patient.csv.gz'],'eICU patient','ODbL 1.0'),
+            ('lab.csv.gz',['https://physionet.org/files/eicu-crd-demo/2.0.1/lab.csv.gz'],'eICU lab','ODbL 1.0'),
+            ('vitalPeriodic.csv.gz',['https://physionet.org/files/eicu-crd-demo/2.0.1/vitalPeriodic.csv.gz'],'eICU vitalPeriodic','ODbL 1.0'),
+            ('admissionDx.csv.gz',['https://physionet.org/files/eicu-crd-demo/2.0.1/admissionDx.csv.gz'],'eICU admissionDx','ODbL 1.0'),
+            ('diagnosis.csv.gz',['https://physionet.org/files/eicu-crd-demo/2.0.1/diagnosis.csv.gz'],'eICU diagnosis','ODbL 1.0'),
+            ('apachePatientResult.csv.gz',['https://physionet.org/files/eicu-crd-demo/2.0.1/apachePatientResult.csv.gz'],'eICU APACHE result','ODbL 1.0'),
+            ('LICENSE-eICU.txt',['https://physionet.org/files/eicu-crd-demo/2.0.1/LICENSE.txt'],'eICU license','ODbL 1.0'),
+            ('SHA256SUMS-eICU.txt',['https://physionet.org/files/eicu-crd-demo/2.0.1/SHA256SUMS.txt'],'eICU checksums','ODbL 1.0')
+          ]
+          rows=[]
+          for fn,urls,title,lic in sources:
+            item={'file':fn,'title':title,'license':lic,'attempts':[]}
+            for url in urls:
+              try:
+                req=urllib.request.Request(url,headers={'User-Agent':'HealthSolver research public-data acquisition'})
+                with urllib.request.urlopen(req,timeout=60) as r:
+                  data=r.read(120_000_000)
+                (out/fn).write_bytes(data)
+                item.update(status='downloaded',url=url,bytes=len(data),sha256=hashlib.sha256(data).hexdigest())
+                break
+              except Exception as e:
+                item['attempts'].append({'url':url,'error':str(e)})
+            else:
+              item['status']='failed'
+            rows.append(item)
+            print(fn,item['status'],item.get('bytes'))
+          (out/'acquisition.json').write_text(json.dumps({
+            'retrieved_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),
+            'purpose':'HealthSolver 0.35 research-only renal hepatic longitudinal expansion',
+            'sources':rows
+          },indent=2))
+          PY
+      - name: Inspect archives
+        shell: bash
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq unrar-free >/dev/null || true
+          python - <<'PY'
+          import zipfile, pathlib, json
+          out=pathlib.Path('hs035-sources')
+          for p in out.glob('*.zip'):
+            try:
+              with zipfile.ZipFile(p) as z:
+                print(p.name,z.namelist())
+            except Exception as e: print('ZIP_INSPECT_FAIL',p,e)
+          PY
+          if [ -f hs035-sources/ckd.rar ]; then unrar-free t hs035-sources/ckd.rar || true; fi
+      - name: Upload source bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: hs035-public-clinical-sources
+          path: hs035-sources/
+          retention-days: 14
+          if-no-files-found: error
