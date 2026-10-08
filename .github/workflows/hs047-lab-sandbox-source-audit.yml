@@ -1,4 +1,5 @@
 name: HealthSolver 0.47 Laboratory Sandbox Source Audit
+# exact laboratory iframe declaration
 on:
   push:
     branches: ['main']
@@ -34,8 +35,17 @@ jobs:
                   if snippet not in seen:
                       seen.add(snippet); print('\n===',needle,i,'===\n',snippet)
                   start=i+len(needle)
+          print('\nLAB_IFRAME_DECLARATIONS')
+          patterns=[
+            r'<iframe[^>]{0,1200}id="laboratory"[^>]{0,1200}>',
+            r'<iframe[^>]{0,1200}id=\\\"laboratory\\\"[^>]{0,1200}>',
+            r'id=\\\"laboratory\\\"[^\n]{0,1800}'
+          ]
+          for pat in patterns:
+              for m in re.finditer(pat,html):
+                  print(repr(m.group(0)))
           print('\nSANDBOXES')
-          for m in re.finditer(r'sandbox=[^ >]{0,250}|sandbox="[^"]*"',html):
+          for m in re.finditer(r'sandbox(?:=|\\=)(?:\\?")[^\n]{0,400}',html):
               x=m.group(0)
-              if 'allow-' in x: print(x)
+              if 'allow-' in x: print(repr(x[:500]))
           PY
