@@ -1,0 +1,200 @@
+name: HealthSolver 0.48 UCI Thyroid Cancer Recurrence
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs048-uci-thyroid-recurrence.yml']
+permissions:
+  contents: write
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Train calibrated thyroid-cancer recurrence model
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install --disable-pip-version-check -q numpy pandas scikit-learn ucimlrepo
+          python - <<'PY'
+          import json,re,pathlib,math
+          import numpy as np,pandas as pd
+          from ucimlrepo import fetch_ucirepo
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import accuracy_score,roc_auc_score,average_precision_score,brier_score_loss,confusion_matrix,roc_curve
+          from sklearn.model_selection import train_test_split
+
+          ds=fetch_ucirepo(id=915)
+          Xraw=ds.data.features.copy()
+          yraw=ds.data.targets.iloc[:,0].astype(str).str.strip()
+          print('FEATURE_COLUMNS',list(Xraw.columns))
+          print('TARGET_VALUES',sorted(yraw.unique().tolist()))
+          print('CATEGORIES')
+          for c in Xraw.columns:
+              if Xraw[c].dtype=='object' or str(Xraw[c].dtype).startswith('category'):
+                  print(c,sorted(Xraw[c].astype(str).str.strip().unique().tolist()))
+
+          # Conservative recurrence model: exclude post-treatment Response to reduce
+          # obvious temporal leakage. Recurred is the only target.
+          excluded=[c for c in Xraw.columns if c.strip().lower()=='response']
+          Xraw=Xraw.drop(columns=excluded)
+          target_map={s.lower():s for s in yraw.unique()}
+          pos=None
+          for s in yraw.unique():
+              if str(s).strip().lower() in {'yes','1','recurred','recurrence','positive'}:
+                  pos=s;break
+          if pos is None:
+              raise SystemExit('Cannot identify positive recurrence target: '+repr(sorted(yraw.unique())))
+          y=(yraw==pos).astype(int)
+
+          def key(s):
+              s=str(s).strip().lower()
+              s=re.sub(r'[^a-z0-9]+','_',s).strip('_')
+              return s or 'field'
+
+          numeric=[]
+          categorical=[]
+          raw_schema=[]
+          for col in Xraw.columns:
+              ser=Xraw[col]
+              # Age is numeric in this dataset. Everything else is treated as
+              # categorical unless pandas already provides a real numeric type.
+              if pd.api.types.is_numeric_dtype(ser):
+                  numeric.append(col)
+                  raw_schema.append({'source_name':col,'key':key(col),'kind':'numeric'})
+              else:
+                  vals=sorted(ser.astype(str).str.strip().unique().tolist())
+                  categorical.append(col)
+                  raw_schema.append({'source_name':col,'key':key(col),'kind':'categorical','categories':vals})
+
+          encoded=pd.DataFrame(index=Xraw.index)
+          encoded_map={}
+          for col in numeric:
+              k=key(col)
+              encoded[k]=pd.to_numeric(Xraw[col],errors='coerce')
+              encoded_map[k]={'raw_key':k,'kind':'numeric'}
+          for col in categorical:
+              rk=key(col)
+              vals=Xraw[col].astype(str).str.strip()
+              cats=next(x['categories'] for x in raw_schema if x['source_name']==col)
+              for cat in cats:
+                  ek=f"{rk}__{key(cat)}"
+                  if ek in encoded:
+                      raise SystemExit('duplicate encoded feature '+ek)
+                  encoded[ek]=(vals==cat).astype(float)
+                  encoded_map[ek]={'raw_key':rk,'kind':'category','category':cat}
+
+          features=list(encoded.columns)
+          idx=np.arange(len(y))
+          tr,tmp=train_test_split(idx,test_size=.40,random_state=4801,stratify=y)
+          cal,te=train_test_split(tmp,test_size=.50,random_state=4802,stratify=y.iloc[tmp])
+          Xtr,Xca,Xte=encoded.iloc[tr].copy(),encoded.iloc[cal].copy(),encoded.iloc[te].copy()
+          ytr,yca,yte=y.iloc[tr].to_numpy(),y.iloc[cal].to_numpy(),y.iloc[te].to_numpy()
+
+          med=Xtr.median(numeric_only=True).reindex(features)
+          Xtr=Xtr.fillna(med);Xca=Xca.fillna(med);Xte=Xte.fillna(med)
+          mu=Xtr.mean().reindex(features)
+          sd=Xtr.std(ddof=0).replace(0,1).reindex(features)
+          lo=Xtr.min().reindex(features);hi=Xtr.max().reindex(features)
+          Ztr=(Xtr-mu)/sd;Zca=(Xca-mu)/sd;Zte=(Xte-mu)/sd
+
+          base=LogisticRegression(max_iter=5000,C=.5,solver='lbfgs',class_weight='balanced',random_state=4803)
+          base.fit(Ztr,ytr)
+          platt=LogisticRegression(max_iter=5000,C=1e6,solver='lbfgs',random_state=4804)
+          cals=base.decision_function(Zca).reshape(-1,1)
+          platt.fit(cals,yca)
+          pca=platt.predict_proba(cals)[:,1]
+          fpr,tpr,thr=roc_curve(yca,pca)
+          valid=np.isfinite(thr)
+          threshold=float(thr[valid][np.argmax((tpr-fpr)[valid])])
+
+          p=platt.predict_proba(base.decision_function(Zte).reshape(-1,1))[:,1]
+          pred=(p>=threshold).astype(int)
+          tn,fp,fn,tp=confusion_matrix(yte,pred,labels=[0,1]).ravel()
+          metrics={
+            'n_total':int(len(y)),'n_train':int(len(tr)),'n_calibration':int(len(cal)),'n_test':int(len(te)),
+            'positive_prevalence':float(y.mean()),
+            'auroc':float(roc_auc_score(yte,p)),
+            'auprc':float(average_precision_score(yte,p)),
+            'accuracy':float(accuracy_score(yte,pred)),
+            'brier':float(brier_score_loss(yte,p)),
+            'sensitivity':float(tp/(tp+fn)) if tp+fn else None,
+            'specificity':float(tn/(tn+fp)) if tn+fp else None,
+            'decision_threshold_from_calibration':threshold,
+            'confusion_matrix':{'tn':int(tn),'fp':int(fp),'fn':int(fn),'tp':int(tp)}
+          }
+
+          field_meta={}
+          for f in features:
+              field_meta[f]={
+                'label':f,
+                'training_min':float(lo[f]),
+                'training_max':float(hi[f]),
+                'median':float(med[f])
+              }
+
+          model={
+            'schema':'healthsolver.predictive_model.v1',
+            'model_id':'HS-UCI-THYREC-001','version':'1.0.0',
+            'release':'HealthSolver 0.48 UCI Differentiated Thyroid Cancer Recurrence Integration',
+            'task':'Binary research prediction of differentiated-thyroid-cancer recurrence versus no recurrence within the UCI 915 cohort, excluding the post-treatment Response field.',
+            'research_only':True,'not_clinically_validated':True,
+            'dataset':{
+              'name':'UCI Differentiated Thyroid Cancer Recurrence',
+              'uci_id':915,'doi':'10.24432/C5632J','license':'CC BY 4.0',
+              'source':'https://archive.ics.uci.edu/dataset/915/differentiated+thyroid+cancer+recurrence',
+              'instances':int(len(y)),
+              'follow_up_note':'Source documentation states each patient was followed for at least 10 years.'
+            },
+            'features':features,
+            'field_meta':field_meta,
+            'raw_feature_schema':raw_schema,
+            'encoding_map':encoded_map,
+            'excluded_source_features':excluded,
+            'imputation':{'strategy':'training median after deterministic one-hot encoding','values':{f:float(med[f]) for f in features}},
+            'standardization':{'mean':{f:float(mu[f]) for f in features},'scale':{f:float(sd[f]) for f in features}},
+            'logistic':{'intercept':float(base.intercept_[0]),'coefficients':{f:float(v) for f,v in zip(features,base.coef_[0])}},
+            'calibration':{'method':'Platt scaling on held-out calibration split','intercept':float(platt.intercept_[0]),'slope':float(platt.coef_[0,0])},
+            'threshold':threshold,
+            'threshold_selection':'Youden J maximum on held-out calibration split; evaluated once on independent test split',
+            'metrics_test':metrics,
+            'abstention':{
+              'max_missing_features':0,
+              'message':'Prediction withheld unless all raw clinicopathologic fields required by this model are supplied.'
+            },
+            'target_definition':{
+              'positive':str(pos),
+              'negative':'all non-recurrence target values in the UCI source',
+              'excluded_feature':'Response excluded from predictors to reduce obvious post-treatment temporal leakage'
+            }
+          }
+
+          out=pathlib.Path('predictive')
+          (out/'model-thyroid-recurrence-v1.json').write_text(json.dumps(model,indent=2,sort_keys=True))
+          (out/'model-thyroid-recurrence-v1-report.json').write_text(json.dumps(metrics,indent=2,sort_keys=True))
+          reg=json.loads((out/'model-registry-v2.json').read_text())
+          reg['version']='0.48.0'
+          reg['models']=[m for m in reg['models'] if m['model_id']!='HS-UCI-THYREC-001']
+          reg['models'].append({
+            'model_id':model['model_id'],
+            'title':'Recidiva carcinoma tiroideo differenziato',
+            'file':'model-thyroid-recurrence-v1.json',
+            'task':model['task'],
+            'metrics_test':metrics
+          })
+          (out/'model-registry-v2.json').write_text(json.dumps(reg,indent=2,sort_keys=True))
+          print(json.dumps({'excluded':excluded,'raw_schema':raw_schema,'metrics':metrics},indent=2))
+          PY
+      - name: Commit model and registry
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name "healthsolver-bot"
+          git config user.email "healthsolver-bot@users.noreply.github.com"
+          git add predictive/model-thyroid-recurrence-v1.json predictive/model-thyroid-recurrence-v1-report.json predictive/model-registry-v2.json
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: add UCI thyroid cancer recurrence model HS-UCI-THYREC-001"
+          git push
