@@ -27,10 +27,12 @@ jobs:
           const browser=await chromium.launch({headless:true});
           const page=await browser.newPage({viewport:{width:1440,height:1400}});
           await page.goto('https://ricscar2570.github.io/HealthSolver/?audit=043-predictive-first',{waitUntil:'networkidle',timeout:120000});
-          await page.waitForTimeout(2500);
+          await page.waitForFunction(()=>document.body.innerText.includes('Clinical Coach') && document.body.innerText.includes('Expert Mode'),{timeout:30000});
+          await page.waitForTimeout(1000);
 
-          const expert=page.locator('aside .nav[data-page="intelligence"]');
-          if(await expert.count()!==1) throw new Error('Expert Mode nav missing');
+          let expert=page.locator('aside .nav[data-page="intelligence"]');
+          if(await expert.count()!==1) expert=page.getByText('Expert Mode',{exact:false}).filter({hasNotText:'Dossier'}).first();
+          if(await expert.count()!==1) throw new Error('Expert Mode nav missing after app shell load');
           const navText=await expert.innerText();
           if(!/PREDITTIVO/i.test(navText)) throw new Error('Predictive nav badge missing');
           await expert.click();
