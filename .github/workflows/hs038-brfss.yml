@@ -26,7 +26,7 @@ jobs:
           import numpy as np, pandas as pd, pyreadstat
           z=zipfile.ZipFile('LLCP2024XPT.zip')
           names=z.namelist()
-          xpt=[n for n in names if n.lower().endswith('.xpt')]
+          print('zip members', names)\n          xpt=[n for n in names if n.lower().strip().endswith('.xpt')]\n          if not xpt:\n            xpt=[n for n in names if not n.endswith('/') and pathlib.PurePosixPath(n).name and not n.lower().endswith(('.txt','.pdf','.sas'))]
           if len(xpt)!=1: raise SystemExit(f'expected one XPT, got {xpt}')
           z.extract(xpt[0],'.')
           path=pathlib.Path(xpt[0])
