@@ -1,4 +1,4 @@
-name: HealthSolver 0.47.1 Full Audit Remediation Repack
+name: HealthSolver 0.48 UCI Thyroid Recurrence Repack
 # registry 0.47.1 synchronization
 # final audited registry semantic-version repack
 # 0.42 cardiac fallback integration
@@ -79,15 +79,15 @@ jobs:
           <html lang="it"><head>
           <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
           <meta name="robots" content="noindex,nofollow">
-          <title>HealthSolver 0.47.1 — Full Audit Remediation</title>
+          <title>HealthSolver 0.48.0 — UCI Thyroid Cancer Recurrence Integration</title>
           <style>
           html,body{{margin:0;min-height:100%;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#0b1220;color:#e6edf7}}
           main{{max-width:780px;margin:10vh auto;padding:32px}}.card{{background:#121c2e;border:1px solid #25344e;border-radius:18px;padding:28px;box-shadow:0 16px 50px #0006}}
           h1{{margin:0 0 10px;font-size:clamp(26px,5vw,42px)}}p{{line-height:1.5;color:#b8c5d9}}
           progress{{width:100%;height:16px;margin:18px 0}}#err{{white-space:pre-wrap;color:#ffb4ab}}.small{{font-size:13px;color:#8fa2bf}}
           </style></head><body><main><div class="card">
-          <h1>HealthSolver 0.47.1</h1>
-          <p>Full Audit Remediation + UCI Diabetes Readmission Integration + Predictive-First UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition</p>
+          <h1>HealthSolver 0.48.0</h1>
+          <p>UCI Thyroid Cancer Recurrence Integration + Predictive-First UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition</p>
           <progress id="p" max="{len(chunks)}" value="0"></progress>
           <div id="status" class="small">Preparazione applicazione.</div><pre id="err"></pre>
           </div></main>
@@ -105,21 +105,21 @@ jobs:
              if(!r.ok) throw new Error("Payload non disponibile: "+parts[i]+" ("+r.status+")");
              b64+=(await r.text()).trim();p.value=i+1;
             }}
-            status.textContent="Verifica e avvio HealthSolver 0.47.1…";
+            status.textContent="Verifica e avvio HealthSolver 0.48.0…";
             const bin=atob(b64),bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
             const htmlBytes=new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
             const digest=[...new Uint8Array(await crypto.subtle.digest("SHA-256",htmlBytes))].map(x=>x.toString(16).padStart(2,"0")).join("");
             if(digest!==expected) throw new Error("Controllo SHA-256 applicativo non superato.");
             const html=new TextDecoder().decode(htmlBytes);
-            if(!html.includes("HealthSolver")||!html.includes("Clinical Coach")||!html.includes("HS_INTEGRATED_PREDICTIVE_0471")) throw new Error("Marcatori applicativi mancanti.");
+            if(!html.includes("HealthSolver")||!html.includes("Clinical Coach")||!html.includes("HS_INTEGRATED_PREDICTIVE_048")) throw new Error("Marcatori applicativi mancanti.");
             document.open();document.write(html);document.close();
            }}catch(e){{err.textContent="Impossibile avviare HealthSolver.\\n"+(e?.message||String(e));status.textContent="Caricamento interrotto.";}}
           }})();
           </script></body></html>'''
           (pages/'index.html').write_text(loader)
           v=json.loads((pages/'version.json').read_text())
-          v['version']='0.47.1'
-          v['release']='Full Audit Remediation + UCI Diabetes Readmission Integration + Predictive-First UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition'
+          v['version']='0.48.0'
+          v['release']='UCI Thyroid Cancer Recurrence Integration + Predictive-First UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition'
           v['source_sha256']=sha
           v['payload_parts']=len(chunks)
           v['predictive_modules_embedded']=True
@@ -130,6 +130,7 @@ jobs:
           v['nhis_2023_integrated']=True
           v['uci_diabetes_readmission_integrated']=True
           v['full_audit_remediation']=True
+          v['uci_thyroid_recurrence_integrated']=True
           v['predictive_models']=[m['model_id'] for m in registry['models']]
           v['predictive_model_count']=len(registry['models'])
           v.pop('unified_router',None)
@@ -147,5 +148,5 @@ jobs:
           git config user.email "healthsolver-bot@users.noreply.github.com"
           git add index.html version.json docs/payload predictive
           git diff --cached --stat
-          git commit -m "pages: release HealthSolver 0.47.1 full audit remediation"
+          git commit -m "pages: release HealthSolver 0.48 UCI thyroid recurrence integration"
           git push origin HEAD:gh-pages
