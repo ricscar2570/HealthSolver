@@ -8,13 +8,14 @@
   "predictive_models": [
     "HS-UCI-HD-001",
     "HS-UCI-CKD-001",
-    "HS-UCI-BC-001"
+    "HS-UCI-BC-001",
+    "HS-UCI-HCV-001"
   ],
-  "unified_router": "unified-case-router.js",
   "payload_parts": 7,
-  "source_sha256": "35ca0569a018946389a9d2a61a5c99b6a383eb42cb0f9f8030250063479ca1a1",
+  "source_sha256": "a87aa668b9a7e86bc6270d52ed810da3ea6387779721d8bad182eb71aabd00f4",
   "predictive_modules_embedded": true,
   "integrated_predictive_ui": true,
   "predictive_first_ui": true,
-  "uci_hcv_integrated": true
+  "uci_hcv_integrated": true,
+  "predictive_model_count": 4
 }
