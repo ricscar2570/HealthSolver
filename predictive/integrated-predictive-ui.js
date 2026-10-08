@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.__HS_INTEGRATED_PREDICTIVE_042__) return;
-window.__HS_INTEGRATED_PREDICTIVE_042__=true;
+if(window.__HS_INTEGRATED_PREDICTIVE_043__) return;
+window.__HS_INTEGRATED_PREDICTIVE_043__=true;
 
 const BUNDLE=window.__HS_PREDICTIVE_BUNDLE__||null;
 if(!BUNDLE?.registry||!BUNDLE?.models) return;
@@ -15,9 +15,9 @@ document.getElementById('hs-router041')?.remove();
 // while updating only visible application-release branding.
 (function reconcileReleaseBranding(){
   const replacements=[
-    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'INTEGRATED PREDICTIVE UI · 0.42'],
+    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.43'],
     [/^HealthSolver\s+0\.38\.0\s*·\s*Massive Public Data \+ Clinical Coach Research Edition\s*·\s*Riccardo Scaringi\s*·\s*Non uso clinico\.?$/i,
-     'HealthSolver 0.42.0 · Integrated Predictive UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
+     'HealthSolver 0.43.0 · Predictive-First Integrated UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
   ];
   const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
   const nodes=[];
@@ -58,18 +58,61 @@ const FNA=[
  ['concave_points1','Punti concavi medi'],['symmetry1','Simmetria media'],['fractal_dimension1','Dimensione frattale media']
 ];
 
+const style=document.createElement('style');
+style.textContent=`
+#hs-predictive-integrated{margin:18px 0 28px!important;border:2px solid #0d8f80!important;box-shadow:0 12px 34px rgba(13,143,128,.12)!important;background:linear-gradient(180deg,#f7fffd 0,#fff 34%)!important}
+#hs-predictive-integrated .hs43-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap}
+#hs-predictive-integrated .hs43-kicker{font-size:.82rem;font-weight:800;letter-spacing:.12em;color:#08796d;text-transform:uppercase;margin-bottom:6px}
+#hs-predictive-integrated .hs43-title{font-size:clamp(1.8rem,3vw,2.6rem);line-height:1.04;margin:0;color:#10263b}
+#hs-predictive-integrated .hs43-sub{font-size:1.05rem;max-width:780px;color:#56677a;margin:10px 0 0;line-height:1.5}
+#hs-predictive-integrated .hs43-badge{background:#0d8f80;color:#fff;border-radius:999px;padding:9px 13px;font-size:.78rem;font-weight:800;letter-spacing:.08em;white-space:nowrap}
+#hs-predictive-integrated #hs42Coverage{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:22px 0 16px}
+#hs-predictive-integrated #hs42Coverage .metric{min-height:126px;padding:18px!important;border:1px solid #cfe3df;border-radius:14px;background:#fff;display:flex;flex-direction:column;align-items:flex-start;justify-content:center}
+#hs-predictive-integrated #hs42Coverage .metric b{font-size:2rem!important;line-height:1;color:#10263b}
+#hs-predictive-integrated #hs42Coverage .metric span{margin-top:9px;font-size:.98rem;line-height:1.3}
+#hs-predictive-integrated #hs42Coverage .metric small{font-size:.82rem}
+#hs42Run{font-size:1.08rem!important;font-weight:800!important;padding:15px 24px!important;min-height:54px!important;border-radius:12px!important;box-shadow:0 8px 20px rgba(13,143,128,.18)}
+#hs42Refresh{min-height:54px!important;padding:15px 20px!important}
+#hs42Status{font-size:.95rem!important;margin:12px 0 0!important}
+#hs42Results{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px!important}
+#hs42Results>.card{border:1px solid #d7e5e2!important;border-radius:14px!important;padding:18px!important;background:#fff!important;box-shadow:none!important}
+#hs42Results>.card .metric b{font-size:2.55rem!important;line-height:1!important;color:#0b6f65}
+#hs42Results>.card h3{font-size:1.15rem!important;margin:7px 0 12px!important}
+#hs-predictive-integrated details{border-top:1px solid #dce8e5;padding-top:12px;margin-top:12px!important}
+#hs-predictive-integrated summary{cursor:pointer;font-size:.98rem}
+#hs-predictive-integrated .hs43-guide{margin-top:18px;padding:14px 16px;border-radius:12px;background:#eef9f7;color:#24423f}
+aside .nav[data-page="intelligence"] .hs43-nav-badge{display:inline-block;margin-left:7px;padding:2px 6px;border-radius:999px;background:#0d8f80;color:#fff;font-size:.62rem;font-weight:800;letter-spacing:.06em;vertical-align:middle}
+@media(max-width:760px){#hs-predictive-integrated #hs42Coverage{grid-template-columns:1fr}#hs-predictive-integrated .hs43-title{font-size:1.75rem}}
+`;
+document.head.append(style);
+
+const nav=document.querySelector('aside .nav[data-page="intelligence"]');
+if(nav&&!nav.querySelector('.hs43-nav-badge')){
+  const b=document.createElement('span');b.className='hs43-nav-badge';b.textContent='PREDITTIVO';nav.append(b);
+}
+
 const wrap=document.createElement('div');
 wrap.id='hs-predictive-integrated';
 wrap.className='card';
-wrap.style.marginTop='22px';
 wrap.innerHTML=`
-  <div class="eyebrow">PREDIZIONE SUPERVISIONATA · STESSO DOSSIER</div>
-  <h2>Predizione dai dati già inseriti.</h2>
-  <p class="lead">HealthSolver riusa automaticamente i dati dell'Expert Mode. Non devi ricompilare un secondo caso.</p>
+  <div class="hs43-hero">
+    <div>
+      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.43</div>
+      <h2 class="hs43-title">Predizioni cliniche di ricerca</h2>
+      <p class="hs43-sub">HealthSolver usa lo stesso dossier che hai già compilato per verificare quali modelli sono applicabili e calcolare le stime disponibili. Le funzioni predittive sono qui, in primo piano.</p>
+    </div>
+    <div class="hs43-badge">3 MODELLI SUPERVISIONATI</div>
+  </div>
   <div id="hs42Coverage" class="metrics"></div>
-  <details id="hs42HeartDetails" style="margin-top:16px">
-    <summary><b>Dati specialistici cardiologici mancanti</b> · apri solo se non sono già disponibili nel dossier</summary>
-    <p class="hint">Questi quattro campi completano il modello cardiaco quando il relativo pannello specialistico dell’Expert Mode non è attivo.</p>
+  <div class="actions" style="margin-top:8px">
+    <button id="hs42Run" class="primary">CALCOLA PREDIZIONI</button>
+    <button id="hs42Refresh">Aggiorna dati disponibili</button>
+  </div>
+  <div id="hs42Status" class="hint"></div>
+  <div class="hs43-guide"><b>Come funziona:</b> completa il dossier normalmente. Se un modello richiede dati specialistici che non sono già presenti, apri soltanto la relativa sezione qui sotto.</div>
+  <details id="hs42HeartDetails">
+    <summary><b>Dati specialistici cardiologici</b> · completa solo ciò che manca</summary>
+    <p class="hint">Questi campi completano il modello cardiaco quando i dati equivalenti non sono già disponibili nell'Expert Mode.</p>
     <div class="grid">
       <label>Tipo di dolore toracico<select id="hs42_cp"><option value="">—</option><option value="1">Angina tipica</option><option value="2">Angina atipica</option><option value="3">Dolore non anginoso</option><option value="4">Asintomatico</option></select></label>
       <label>ECG a riposo<select id="hs42_restecg"><option value="">—</option><option value="0">Normale</option><option value="1">Alterazioni ST-T</option><option value="2">Ipertrofia ventricolare sinistra</option></select></label>
@@ -77,20 +120,20 @@ wrap.innerHTML=`
       <label>Thal<select id="hs42_thal"><option value="">—</option><option value="3">Normale</option><option value="6">Difetto fisso</option><option value="7">Difetto reversibile</option></select></label>
     </div>
   </details>
-  <details id="hs42FnaDetails" style="margin-top:16px">
-    <summary><b>Dati specialistici FNA mammella</b> · apri solo se vuoi usare anche il modello FNA</summary>
-    <p class="hint">Queste 10 misure non fanno parte del dossier clinico generale e restano quindi un'integrazione specialistica.</p>
+  <details id="hs42FnaDetails">
+    <summary><b>Dati specialistici FNA mammella</b> · apri solo per il modello FNA</summary>
+    <p class="hint">Le 10 misure FNA sono caratteristiche specialistiche e non fanno parte del dossier clinico generale.</p>
     <div id="hs42FnaGrid" class="grid"></div>
   </details>
-  <div class="actions" style="margin-top:16px">
-    <button id="hs42Run" class="primary">Calcola predizioni dai dati del dossier</button>
-    <button id="hs42Refresh">Aggiorna copertura</button>
-  </div>
-  <div id="hs42Status" class="hint" style="margin-top:10px"></div>
-  <div id="hs42Results" class="grid" style="margin-top:16px"></div>
-  <div class="notice" style="margin-top:16px"><b>Come leggere il risultato.</b> Ogni percentuale appartiene al proprio modello e al proprio dataset. Non sono probabilità concorrenti di una singola diagnosi e non vanno sommate.</div>
+  <h3 style="margin:24px 0 10px;font-size:1.25rem">Risultati predittivi</h3>
+  <div id="hs42Results" class="grid"></div>
+  <div class="notice" style="margin-top:16px"><b>Interpretazione.</b> Ogni percentuale appartiene al proprio modello e al proprio dataset. Non sono probabilità concorrenti di una singola diagnosi e non vanno sommate. Software di ricerca, non diagnosi clinica.</div>
 `;
-host.append(wrap);
+
+const topHeading=host.querySelector('h1,h2');
+const topContainer=topHeading?.parentElement;
+if(topContainer&&topContainer.parentElement===host) topContainer.after(wrap);
+else host.prepend(wrap);
 
 const fnaGrid=$('hs42FnaGrid');
 for(const [id,label] of FNA){
@@ -169,7 +212,7 @@ function renderCoverage(){
   for(const {entry,model} of models){
     const r=readiness(model,values[model.model_id]||{});
     const d=document.createElement('div');d.className='metric';
-    d.innerHTML=`<b>${r.provided}/${model.features.length}</b><span>${titleFor(entry)}<br><small>${r.ready?'pronto':'mancano '+r.missing.length+' dati'}</small></span>`;
+    d.innerHTML=`<b>${r.provided}/${model.features.length}</b><span><strong>${titleFor(entry)}</strong><br><small>${r.ready?'✓ PRONTO ALLA PREDIZIONE':'mancano '+r.missing.length+' dati'}</small></span>`;
     box.append(d);
   }
   $('hs42Status').textContent='Copertura aggiornata dai campi correnti dell’Expert Mode.';
@@ -186,7 +229,7 @@ function renderResult(entry,model,res){
   d.innerHTML=`
     <div class="eyebrow">${model.model_id}</div>
     <h3>${titleFor(entry)}</h3>
-    <div class="metric"><b>${pct.toFixed(1)}%</b><span>stima sperimentale calibrata</span></div>
+    <div class="metric"><b>${pct.toFixed(1)}%</b><span>STIMA PREDITTIVA DEL MODELLO</span></div>
     ${res.imputed.length?`<p class="hint">Imputati con mediana training: ${res.imputed.join(', ')}</p>`:''}
     ${res.ood.length?`<div class="notice">Fuori dal range osservato nel training: ${res.ood.join(', ')}</div>`:''}
     <p class="hint"><b>Contributi principali</b></p><ul>${contrib}</ul>
