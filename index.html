@@ -2,22 +2,22 @@
 <html lang="it"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>HealthSolver 0.45.0 — NHANES Integration</title>
+<title>HealthSolver 0.46.0 — NHIS Integration</title>
 <style>
 html,body{margin:0;min-height:100%;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#0b1220;color:#e6edf7}
 main{max-width:780px;margin:10vh auto;padding:32px}.card{background:#121c2e;border:1px solid #25344e;border-radius:18px;padding:28px;box-shadow:0 16px 50px #0006}
 h1{margin:0 0 10px;font-size:clamp(26px,5vw,42px)}p{line-height:1.5;color:#b8c5d9}
 progress{width:100%;height:16px;margin:18px 0}#err{white-space:pre-wrap;color:#ffb4ab}.small{font-size:13px;color:#8fa2bf}
 </style></head><body><main><div class="card">
-<h1>HealthSolver 0.45.0</h1>
-<p>NHANES Integration + Predictive-First UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition</p>
+<h1>HealthSolver 0.46.0</h1>
+<p>NHIS Integration + Predictive-First UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition</p>
 <progress id="p" max="7" value="0"></progress>
 <div id="status" class="small">Preparazione applicazione.</div><pre id="err"></pre>
 </div></main>
 <script>
 (async()=>{
  const parts=["part-00.b64", "part-01.b64", "part-02.b64", "part-03.b64", "part-04.b64", "part-05.b64", "part-06.b64"];
- const expected="4c88759518074067236894126dd23c5e3d6d419fbcf3e3315b30e03a95a85e79";
+ const expected="f9f2ca0fdb77e515b353733a6905c45a5d969bf46afcd20068bd0d11d26add30";
  const status=document.getElementById("status"),p=document.getElementById("p"),err=document.getElementById("err");
  try{
   if(typeof DecompressionStream!=="function") throw new Error("Browser non compatibile con DecompressionStream/gzip.");
@@ -28,13 +28,13 @@ progress{width:100%;height:16px;margin:18px 0}#err{white-space:pre-wrap;color:#f
    if(!r.ok) throw new Error("Payload non disponibile: "+parts[i]+" ("+r.status+")");
    b64+=(await r.text()).trim();p.value=i+1;
   }
-  status.textContent="Verifica e avvio HealthSolver 0.45…";
+  status.textContent="Verifica e avvio HealthSolver 0.46…";
   const bin=atob(b64),bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
   const htmlBytes=new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
   const digest=[...new Uint8Array(await crypto.subtle.digest("SHA-256",htmlBytes))].map(x=>x.toString(16).padStart(2,"0")).join("");
   if(digest!==expected) throw new Error("Controllo SHA-256 applicativo non superato.");
   const html=new TextDecoder().decode(htmlBytes);
-  if(!html.includes("HealthSolver")||!html.includes("Clinical Coach")||!html.includes("HS_INTEGRATED_PREDICTIVE_045")) throw new Error("Marcatori applicativi mancanti.");
+  if(!html.includes("HealthSolver")||!html.includes("Clinical Coach")||!html.includes("HS_INTEGRATED_PREDICTIVE_046")) throw new Error("Marcatori applicativi mancanti.");
   document.open();document.write(html);document.close();
  }catch(e){err.textContent="Impossibile avviare HealthSolver.\n"+(e?.message||String(e));status.textContent="Caricamento interrotto.";}
 })();
