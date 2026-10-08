@@ -1,5 +1,5 @@
 name: HealthSolver 0.47 Preserved Laboratory Full E2E
-# navigate each laboratory workspace page explicitly\n# force a changed WDBC input before prediction\n# verify historical-label reveal before modification
+# navigate each laboratory workspace page explicitly\n# force a changed WDBC input before prediction\n# verify historical-label reveal before modification\n# keep model export on training page and CSV export on data page
 on:
   push:
     branches: ['main']
@@ -106,6 +106,8 @@ jobs:
           }
           body=await lab.locator('body').innerText();
           must(/modello|training|addestr/i.test(body),'laboratory training path missing');
+          await save(lab.locator('#exportModel'),'/tmp/lab-model.json');
+          must(Boolean(JSON.parse(fs.readFileSync('/tmp/lab-model.json','utf8'))),'model JSON invalid');
 
           // Internal evaluation controls can share this page.
           if(await lab.locator('#evaluate').isVisible().catch(()=>false)){
@@ -124,10 +126,8 @@ jobs:
           must(Boolean(JSON.parse(fs.readFileSync('/tmp/lab-evaluation.json','utf8'))),'evaluation JSON invalid');
 
           // 04 · Dati e importazione
-          await go(/Dati e importazione/i,'#exportModel');
-          await save(lab.locator('#exportModel'),'/tmp/lab-model.json');
+          await go(/Dati e importazione/i,'#exportCSV');
           await save(lab.locator('#exportCSV'),'/tmp/lab-dataset.csv');
-          must(Boolean(JSON.parse(fs.readFileSync('/tmp/lab-model.json','utf8'))),'model JSON invalid');
           must(fs.readFileSync('/tmp/lab-dataset.csv','utf8').split(/\r?\n/).length>20,'dataset CSV too small');
 
           // 05 · Archivio e backup — plain full-workspace backup / restore.
