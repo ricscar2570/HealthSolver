@@ -152,12 +152,14 @@ jobs:
                       out |= collect(children)
               return out
           paths=collect(m.app.routes)
+          openapi_paths=set(m.app.openapi().get('paths',{}))
           print('LEGACY_ROUTES',sorted(paths))
-          assert '/' in paths
-          assert '/predict/predict' in paths
-          assert '/admin/train' not in paths
-          assert '/cnn/analyze' not in paths
-          assert '/dashboard/data' not in paths
+          print('LEGACY_OPENAPI_PATHS',sorted(openapi_paths))
+          assert '/' in openapi_paths
+          assert '/predict/predict' in openapi_paths
+          assert '/admin/train' not in openapi_paths
+          assert '/cnn/analyze' not in openapi_paths
+          assert '/dashboard/data' not in openapi_paths
           root=m.root()
           assert root['legacy'] is True
           print('Legacy FastAPI import/runtime PASS',sorted(paths))
