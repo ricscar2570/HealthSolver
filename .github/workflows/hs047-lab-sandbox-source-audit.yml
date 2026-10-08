@@ -1,0 +1,41 @@
+name: HealthSolver 0.47 Laboratory Sandbox Source Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs047-lab-sandbox-source-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Inspect laboratory iframe sandbox in published payload
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git fetch origin gh-pages
+          git worktree add /tmp/pages origin/gh-pages
+          python - <<'PY'
+          import base64,gzip,pathlib,re
+          p=pathlib.Path('/tmp/pages/docs/payload')
+          html=gzip.decompress(base64.b64decode(''.join(x.read_text().strip() for x in sorted(p.glob('part-*.b64'))))).decode()
+          needles=['id="laboratory"',"id=\\\"laboratory\\\"",'laboratory']
+          seen=set()
+          for needle in needles:
+              start=0
+              while True:
+                  i=html.find(needle,start)
+                  if i<0: break
+                  snippet=html[max(0,i-1800):i+2500]
+                  if snippet not in seen:
+                      seen.add(snippet); print('\n===',needle,i,'===\n',snippet)
+                  start=i+len(needle)
+          print('\nSANDBOXES')
+          for m in re.finditer(r'sandbox=[^ >]{0,250}|sandbox="[^"]*"',html):
+              x=m.group(0)
+              if 'allow-' in x: print(x)
+          PY
