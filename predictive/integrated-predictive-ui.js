@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.__HS_INTEGRATED_PREDICTIVE_043__) return;
-window.__HS_INTEGRATED_PREDICTIVE_043__=true;
+if(window.__HS_INTEGRATED_PREDICTIVE_044__) return;
+window.__HS_INTEGRATED_PREDICTIVE_044__=true;
 
 const BUNDLE=window.__HS_PREDICTIVE_BUNDLE__||null;
 if(!BUNDLE?.registry||!BUNDLE?.models) return;
@@ -15,9 +15,9 @@ document.getElementById('hs-router041')?.remove();
 // while updating only visible application-release branding.
 (function reconcileReleaseBranding(){
   const replacements=[
-    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.43'],
+    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.44'],
     [/^HealthSolver\s+0\.38\.0\s*·\s*Massive Public Data \+ Clinical Coach Research Edition\s*·\s*Riccardo Scaringi\s*·\s*Non uso clinico\.?$/i,
-     'HealthSolver 0.43.0 · Predictive-First Integrated UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
+     'HealthSolver 0.44.0 · UCI HCV Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
   ];
   const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
   const nodes=[];
@@ -58,6 +58,12 @@ const FNA=[
  ['concave_points1','Punti concavi medi'],['symmetry1','Simmetria media'],['fractal_dimension1','Dimensione frattale media']
 ];
 
+const HCV=[
+ ['alb','Albumina','g/L'],['alp','Fosfatasi alcalina','U/L'],['alt','ALT','U/L'],['ast','AST','U/L'],
+ ['bil','Bilirubina','µmol/L'],['che','Colinesterasi','kU/L'],['chol','Colesterolo','mmol/L'],
+ ['crea','Creatinina','µmol/L'],['ggt','GGT','U/L'],['prot','Proteine totali','g/L']
+];
+
 const style=document.createElement('style');
 style.textContent=`
 #hs-predictive-integrated{margin:18px 0 28px!important;border:2px solid #0d8f80!important;box-shadow:0 12px 34px rgba(13,143,128,.12)!important;background:linear-gradient(180deg,#f7fffd 0,#fff 34%)!important}
@@ -66,7 +72,7 @@ style.textContent=`
 #hs-predictive-integrated .hs43-title{font-size:clamp(1.8rem,3vw,2.6rem);line-height:1.04;margin:0;color:#10263b}
 #hs-predictive-integrated .hs43-sub{font-size:1.05rem;max-width:780px;color:#56677a;margin:10px 0 0;line-height:1.5}
 #hs-predictive-integrated .hs43-badge{background:#0d8f80;color:#fff;border-radius:999px;padding:9px 13px;font-size:.78rem;font-weight:800;letter-spacing:.08em;white-space:nowrap}
-#hs-predictive-integrated #hs42Coverage{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:22px 0 16px}
+#hs-predictive-integrated #hs42Coverage{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:22px 0 16px}
 #hs-predictive-integrated #hs42Coverage .metric{min-height:126px;padding:18px!important;border:1px solid #cfe3df;border-radius:14px;background:#fff;display:flex;flex-direction:column;align-items:flex-start;justify-content:center}
 #hs-predictive-integrated #hs42Coverage .metric b{font-size:2rem!important;line-height:1;color:#10263b}
 #hs-predictive-integrated #hs42Coverage .metric span{margin-top:9px;font-size:.98rem;line-height:1.3}
@@ -97,11 +103,11 @@ wrap.className='card';
 wrap.innerHTML=`
   <div class="hs43-hero">
     <div>
-      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.43</div>
+      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.44</div>
       <h2 class="hs43-title">Predizioni cliniche di ricerca</h2>
       <p class="hs43-sub">HealthSolver usa lo stesso dossier che hai già compilato per verificare quali modelli sono applicabili e calcolare le stime disponibili. Le funzioni predittive sono qui, in primo piano.</p>
     </div>
-    <div class="hs43-badge">3 MODELLI SUPERVISIONATI</div>
+    <div class="hs43-badge">4 MODELLI SUPERVISIONATI</div>
   </div>
   <div id="hs42Coverage" class="metrics"></div>
   <div class="actions" style="margin-top:8px">
@@ -125,6 +131,11 @@ wrap.innerHTML=`
     <p class="hint">Le 10 misure FNA sono caratteristiche specialistiche e non fanno parte del dossier clinico generale.</p>
     <div id="hs42FnaGrid" class="grid"></div>
   </details>
+  <details id="hs44HcvDetails">
+    <summary><b>Dati specialistici epatici / HCV</b> · apri per il modello epatico</summary>
+    <p class="hint">Età e sesso vengono riutilizzati dal dossier. Inserisci qui soltanto il pannello biochimico nelle unità UCI indicate, evitando conversioni implicite da altri campi con unità diverse.</p>
+    <div id="hs44HcvGrid" class="grid"></div>
+  </details>
   <h3 style="margin:24px 0 10px;font-size:1.25rem">Risultati predittivi</h3>
   <div id="hs42Results" class="grid"></div>
   <div class="notice" style="margin-top:16px"><b>Interpretazione.</b> Ogni percentuale appartiene al proprio modello e al proprio dataset. Non sono probabilità concorrenti di una singola diagnosi e non vanno sommate. Software di ricerca, non diagnosi clinica.</div>
@@ -140,6 +151,13 @@ for(const [id,label] of FNA){
   const lab=document.createElement('label');lab.textContent=label;
   const inp=document.createElement('input');inp.type='number';inp.step='any';inp.id='hs42_'+id;
   lab.append(inp);fnaGrid.append(lab);
+}
+
+const hcvGrid=$('hs44HcvGrid');
+for(const [id,label,unit] of HCV){
+  const lab=document.createElement('label');lab.textContent=label+(unit?' ('+unit+')':'');
+  const inp=document.createElement('input');inp.type='number';inp.step='any';inp.id='hs44_'+id;
+  lab.append(inp);hcvGrid.append(lab);
 }
 
 const registry=BUNDLE.registry;
@@ -180,10 +198,13 @@ function dossierCase(){
   };
   const fna={};
   for(const [id] of FNA) fna[id]=num('hs42_'+id);
+  const hcv={age,sex:sexVal()};
+  for(const [id] of HCV) hcv[id]=num('hs44_'+id);
   return {
     'HS-UCI-HD-001':heart,
     'HS-UCI-CKD-001':ckd,
-    'HS-UCI-BC-001':fna
+    'HS-UCI-BC-001':fna,
+    'HS-UCI-HCV-001':hcv
   };
 }
 function readiness(model,values){
