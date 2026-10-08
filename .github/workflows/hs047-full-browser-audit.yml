@@ -48,8 +48,25 @@ jobs:
             const loc=page.locator('#'+id);must(await loc.count()===1,'missing select '+id);
             await loc.selectOption({label});
           };
+          const confirmIfOpen=async()=>{
+            const dlg=page.locator('#confirmDialog');
+            if(await dlg.count()===1 && await dlg.isVisible()){
+              const yes=page.locator('#confirmYes');
+              must(await yes.count()===1,'confirmation dialog missing confirm button');
+              await yes.click();
+            }
+          };
+          const action=async(selector)=>{
+            await page.locator(selector).click();
+            await page.waitForTimeout(50);
+            await confirmIfOpen();
+          };
           const download=async(selector,path)=>{
-            const [d]=await Promise.all([page.waitForEvent('download',{timeout:15000}),page.locator(selector).click()]);
+            const dp=page.waitForEvent('download',{timeout:15000});
+            await page.locator(selector).click();
+            await page.waitForTimeout(50);
+            await confirmIfOpen();
+            const d=await dp;
             await d.saveAs(path); must(fs.existsSync(path)&&fs.statSync(path).size>0,'empty download '+selector);
             return path;
           };
@@ -243,13 +260,13 @@ jobs:
           await download('#exportBackup','/tmp/archive-backup.json');
           await page.locator('#password').fill('HealthSolver-Archive-047!');
           await download('#encryptBackup','/tmp/archive-backup-encrypted.json');
-          await page.locator('#clearSession').click(); await page.waitForTimeout(120);
+          await action('#clearSession'); await page.waitForTimeout(120);
           arch=await page.locator('#page-archive').innerText();
           must(arch.includes('Nessuna revisione conservata'),'Archive clear failed');
           await page.locator('#restoreFile').setInputFiles('/tmp/archive-backup.json'); await page.waitForTimeout(300);
           arch=await page.locator('#page-archive').innerText();
           must(!arch.includes('Nessuna revisione conservata'),'Archive JSON restore failed');
-          await page.locator('#clearSession').click();
+          await action('#clearSession');
           await page.locator('#restorePassword').fill('HealthSolver-Archive-047!');
           await page.locator('#restoreFile').setInputFiles('/tmp/archive-backup-encrypted.json'); await page.waitForTimeout(500);
           arch=await page.locator('#page-archive').innerText();
