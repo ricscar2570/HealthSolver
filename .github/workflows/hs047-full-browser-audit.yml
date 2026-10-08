@@ -263,12 +263,14 @@ jobs:
           await action('#clearSession'); await page.waitForTimeout(120);
           arch=await page.locator('#page-archive').innerText();
           must(arch.includes('Nessuna revisione conservata'),'Archive clear failed');
-          await page.locator('#restoreFile').setInputFiles('/tmp/archive-backup.json'); await page.waitForTimeout(300);
+          await page.locator('#restoreFile').setInputFiles('/tmp/archive-backup.json'); await page.waitForTimeout(80);
+          await confirmIfOpen(); await page.waitForTimeout(300);
           arch=await page.locator('#page-archive').innerText();
           must(!arch.includes('Nessuna revisione conservata'),'Archive JSON restore failed');
           await action('#clearSession');
           await page.locator('#restorePassword').fill('HealthSolver-Archive-047!');
-          await page.locator('#restoreFile').setInputFiles('/tmp/archive-backup-encrypted.json'); await page.waitForTimeout(500);
+          await page.locator('#restoreFile').setInputFiles('/tmp/archive-backup-encrypted.json'); await page.waitForTimeout(80);
+          await confirmIfOpen(); await page.waitForTimeout(500);
           arch=await page.locator('#page-archive').innerText();
           must(!arch.includes('Nessuna revisione conservata'),'Archive encrypted restore failed');
           console.log('Archive backup PASS');
