@@ -1,4 +1,5 @@
 name: HealthSolver 0.47 Preserved Visit Full E2E
+# robust confirmation timing
 on:
   push:
     branches: ['main']
@@ -36,11 +37,15 @@ jobs:
           const save=async(loc,path)=>{
             const pending=page.waitForEvent('download',{timeout:60000});
             await loc.click();
-            await page.waitForTimeout(50);
-            await confirmIfOpen();
+            const dlg=frame.locator('#confirmDialog');
+            try{
+              await dlg.waitFor({state:'visible',timeout:1500});
+              await confirmIfOpen();
+            }catch(_){}
             const d=await pending;
             await d.saveAs(path);
             must(fs.existsSync(path)&&fs.statSync(path).size>20,'empty download '+path);
+            console.log('DOWNLOADED',path,d.suggestedFilename(),fs.statSync(path).size);
           };
           await page.goto('https://ricscar2570.github.io/HealthSolver/?audit=previous-full-e2e',{waitUntil:'networkidle',timeout:120000});
           await page.waitForFunction(()=>document.body.innerText.includes('Visita e laboratori precedenti'),{timeout:30000});
