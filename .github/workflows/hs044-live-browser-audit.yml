@@ -1,4 +1,5 @@
 name: HealthSolver 0.44 UCI HCV Live Browser Audit
+# final metadata-synchronized rerun
 on:
   push:
     branches: ['main']
@@ -24,6 +25,10 @@ jobs:
         run: |
           cat > audit.mjs <<'JS'
           import { chromium } from 'playwright';
+          const meta=await fetch('https://ricscar2570.github.io/HealthSolver/version.json?audit=044-final').then(r=>r.json());
+          if(meta.version!=='0.44.0') throw new Error('wrong published version '+meta.version);
+          if(meta.predictive_model_count!==4) throw new Error('wrong predictive model count '+meta.predictive_model_count);
+          if(!meta.predictive_models.includes('HS-UCI-HCV-001')) throw new Error('HCV model missing from published metadata');
           const browser=await chromium.launch({headless:true});
           const page=await browser.newPage({viewport:{width:1440,height:1600}});
           await page.goto('https://ricscar2570.github.io/HealthSolver/?audit=044-hcv',{waitUntil:'networkidle',timeout:120000});
