@@ -3,7 +3,7 @@
 if(window.__HS_UNIFIED_ROUTER_041__) return;
 window.__HS_UNIFIED_ROUTER_041__=true;
 
-const BASE='./predictive/';
+const BASE=new URL('./predictive/',window.location.href).href;
 const REGISTRY=BASE+'model-registry-v2.json';
 const heartLabels={
  age:['Età','anni','Generale'],sex:['Sesso','','Cardiovascolare'],cp:['Tipo di dolore toracico','','Cardiovascolare'],
@@ -66,8 +66,12 @@ const resetBtn=el('button',{type:'button',class:'secondary',text:'Azzera caso',d
 actions.append(runBtn,resetBtn);
 const status=el('div',{class:'muted',text:'Caricamento registry e modelli…'}),results=el('div',{class:'results','aria-live':'polite'});
 card.append(formHost,coverage,actions,status,results);root.append(card);
-const anchor=document.querySelector('#hs-pe040,main,#app,#root,body>div');
-if(anchor&&anchor.parentNode) anchor.parentNode.insertBefore(root,anchor); else document.body.prepend(root);
+const mainHost=document.querySelector('main');
+if(mainHost) mainHost.prepend(root);
+else {
+ const anchor=document.querySelector('#app,#root,body>div');
+ if(anchor) anchor.prepend(root); else document.body.prepend(root);
+}
 
 let registry=null,models=[],controls={},featureInfo={};
 const sigmoid=z=>1/(1+Math.exp(-Math.max(-35,Math.min(35,z))));
