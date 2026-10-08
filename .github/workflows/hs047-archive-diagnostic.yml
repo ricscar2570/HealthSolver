@@ -1,4 +1,5 @@
 name: HealthSolver 0.47 Archive Diagnostic
+# rerun with async restore confirmation wait
 on:
   push:
     branches: ['main']
