@@ -1,4 +1,4 @@
-# HealthSolver 0.38 — Clinical Coach Research Edition
+# HealthSolver 0.39 — Predictive Engine + Clinical Coach Research Edition
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.38 line.
+The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.39 line.
 
 ## What HealthSolver does
 
@@ -147,6 +147,18 @@ The repository also contains research workflows for additional freely available 
 
 Availability of a workflow in the repository does not imply that every source is embedded in the public browser build.
 
+## Predictive Engine 0.39
+
+HealthSolver 0.39 adds its first supervised predictive model that runs directly in the browser.
+
+**HS-UCI-HD-001** is a calibrated logistic model trained from the UCI Heart Disease dataset (UCI ID 45, CC BY 4.0) to estimate the research probability of angiographic heart-disease presence (>50% diameter narrowing) versus absence within the dataset's feature domain.
+
+The model uses 13 documented clinical/exercise-test features and a deterministic pipeline with training-median imputation, training-set standardization, logistic regression and held-out Platt calibration. The browser engine displays the estimated probability, major model contributions, missing/imputed inputs, model/version metadata and an abstention result when more than three required features are missing.
+
+Held-out test metrics recorded for v1: AUROC 0.895, AUPRC 0.904, accuracy 0.836, sensitivity 0.750, specificity 0.909 and Brier score 0.128 (n=61 test records; total dataset n=303).
+
+These are software/research performance measurements, not clinical validation. No prospective or external clinical validation is claimed.
+
 ## Machine learning and predictive research
 
 HealthSolver is being developed toward a broader machine-learning research architecture in which structured symptoms, history, vital signs, laboratory data and observations can be used as model inputs.
@@ -247,17 +259,11 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.38 — Massive Public Data / Clinical Coach Research Edition**
+**HealthSolver 0.39 — Predictive Engine v1 / Massive Public Data / Clinical Coach Research Edition**
 
-Current consolidated checkpoint:
+Current predictive release is represented by the 0.39 checkpoint and the `HS-UCI-HD-001` model artifact under `predictive/`.
 
-`406526e5e70ca8739f953f50f67a8f7c3351fead`
-
-Development branch:
-
-`macrostep/v0.38.0-massive-public-data`
-
-The branch has been fast-forwarded into `main`; both currently point to the same development state.
+The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
 ## Safety and research boundary
 
