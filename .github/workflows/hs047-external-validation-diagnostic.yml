@@ -1,0 +1,51 @@
+name: HealthSolver 0.47 External Validation Diagnostic
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs047-external-validation-diagnostic.yml']
+permissions:
+  contents: read
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Inspect and exercise external validation input contract
+        shell: bash
+        run: |
+          cat > diag.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1600},acceptDownloads:true});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          await page.goto('https://ricscar2570.github.io/HealthSolver/?audit=external-validation',{waitUntil:'networkidle',timeout:120000});
+          await page.waitForFunction(()=>document.body.innerText.includes('Valutazione e limiti'),{timeout:30000});
+          await page.locator('aside .nav[data-page="validation"]').click();
+          const [d]=await Promise.all([page.waitForEvent('download'),page.locator('#ciValTemplate').click()]);
+          await d.saveAs('/tmp/template.csv');
+          const template=fs.readFileSync('/tmp/template.csv','utf8');
+          console.log('TEMPLATE\n'+template.slice(0,6000));
+          console.log('DATASET',await page.locator('#ciValDataset').inputValue());
+          console.log('TEXT\n'+(await page.locator('#page-validation').innerText()).slice(0,7000));
+          console.log('ERRORS',errors);
+          await browser.close();
+          JS
+          node diag.mjs | tee validation-diagnostic.txt
+          cp /tmp/template.csv validation-template.csv
+      - uses: actions/upload-artifact@v4
+        with:
+          name: healthsolver-047-validation-diagnostic
+          path: |
+            validation-diagnostic.txt
+            validation-template.csv
+          retention-days: 14
