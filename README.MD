@@ -1,4 +1,4 @@
-# HealthSolver 0.39 — Predictive Engine + Clinical Coach Research Edition
+# HealthSolver 0.40 — Multi-Outcome Predictive Engine + Clinical Coach Research Edition
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.39 line.
+The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.40 line.
 
 ## What HealthSolver does
 
@@ -44,7 +44,7 @@ For the deployed GitHub Pages build:
 - core application state, backup and recovery workflows are handled client-side;
 - large static resources are packaged for browser delivery.
 
-The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.38 application.
+The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.40 application.
 
 ## Clinical Coach
 
@@ -147,17 +147,56 @@ The repository also contains research workflows for additional freely available 
 
 Availability of a workflow in the repository does not imply that every source is embedded in the public browser build.
 
-## Predictive Engine 0.39
+## Predictive Engine 0.40 — Multi-Outcome
 
-HealthSolver 0.39 adds its first supervised predictive model that runs directly in the browser.
+HealthSolver 0.40 expands the first predictive release into a multi-model browser engine with a versioned registry and three independently trained supervised models.
 
-**HS-UCI-HD-001** is a calibrated logistic model trained from the UCI Heart Disease dataset (UCI ID 45, CC BY 4.0) to estimate the research probability of angiographic heart-disease presence (>50% diameter narrowing) versus absence within the dataset's feature domain.
+### 1. HS-UCI-HD-001 — angiographic heart disease
 
-The model uses 13 documented clinical/exercise-test features and a deterministic pipeline with training-median imputation, training-set standardization, logistic regression and held-out Platt calibration. The browser engine displays the estimated probability, major model contributions, missing/imputed inputs, model/version metadata and an abstention result when more than three required features are missing.
+- Dataset: UCI Heart Disease (UCI ID 45, CC BY 4.0)
+- Task: heart-disease presence (>50% diameter narrowing) versus absence within the supported UCI domain
+- Features: 13
+- Test set: 61 / 303 total records
+- AUROC: **0.895**
+- AUPRC: **0.904**
+- Accuracy: **0.836**
+- Sensitivity: **0.750**
+- Specificity: **0.909**
+- Brier score: **0.128**
 
-Held-out test metrics recorded for v1: AUROC 0.895, AUPRC 0.904, accuracy 0.836, sensitivity 0.750, specificity 0.909 and Brier score 0.128 (n=61 test records; total dataset n=303).
+### 2. HS-UCI-CKD-001 — chronic kidney disease
 
-These are software/research performance measurements, not clinical validation. No prospective or external clinical validation is claimed.
+- Dataset: UCI Chronic Kidney Disease (UCI ID 336, CC BY 4.0)
+- Task: CKD versus not-CKD within the supported UCI domain
+- Features: 14
+- Test set: 80 / 400 total records
+- AUROC: **0.998**
+- AUPRC: **0.999**
+- Accuracy: **0.975**
+- Sensitivity: **1.000**
+- Specificity: **0.933**
+- Brier score: **0.025**
+
+### 3. HS-UCI-BC-001 — breast FNA malignancy pattern
+
+- Dataset: UCI Breast Cancer Wisconsin (Diagnostic) (UCI ID 17, CC BY 4.0)
+- Task: malignant versus benign FNA-derived feature pattern within the supported WDBC domain
+- Features: 10 mean nuclear features
+- Test set: 114 / 569 total records
+- AUROC: **0.975**
+- AUPRC: **0.965**
+- Accuracy: **0.921**
+- Sensitivity: **0.857**
+- Specificity: **0.958**
+- Brier score: **0.060**
+
+### Multi-model browser behavior
+
+The public browser application now loads a versioned predictive registry, lets the user select the predictive task, dynamically builds the corresponding feature form, performs deterministic local inference, applies held-out Platt calibration, reports missing-value imputation, flags inputs outside the observed training range, shows ranked feature contributions, and withholds a prediction when too many required inputs are missing.
+
+Population-level BRFSS evidence remains separate from model-derived individual research estimates.
+
+All three models are research models only. The reported test metrics are internal held-out measurements from the same dataset family used for development. They are not external or prospective clinical validation.
 
 ## Machine learning and predictive research
 
@@ -240,7 +279,7 @@ The public application is deployed at:
 
 https://ricscar2570.github.io/HealthSolver/
 
-The 0.38 deployment uses the native GitHub Pages pipeline and a chunked static payload.
+The current deployment uses the native GitHub Pages pipeline, preserves the verified 0.38 standalone base payload, and overlays the 0.40 predictive engine and model registry.
 
 The loader verifies the reconstructed standalone application against its expected SHA-256 before launch.
 
@@ -259,9 +298,9 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.39 — Predictive Engine v1 / Massive Public Data / Clinical Coach Research Edition**
+**HealthSolver 0.40 — Multi-Outcome Predictive Engine / Massive Public Data / Clinical Coach Research Edition**
 
-Current predictive release is represented by the 0.39 checkpoint and the `HS-UCI-HD-001` model artifact under `predictive/`.
+Current predictive release is represented by the 0.40 checkpoint, the versioned predictive registry and the three model artifacts under `predictive/`.
 
 The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
