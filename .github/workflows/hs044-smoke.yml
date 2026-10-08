@@ -26,7 +26,7 @@ jobs:
           import json,math,pathlib
           root=pathlib.Path('predictive')
           reg=json.loads((root/'model-registry-v2.json').read_text())
-          assert reg['version'] in {'0.44.0','0.45.0','0.46.0'},reg['version']
+          assert reg['version'] in {'0.44.0','0.45.0','0.46.0','0.47.0'},reg['version']
           entries={e['model_id']:e for e in reg['models']}
           assert 'HS-UCI-HCV-001' in entries
           assert len(reg['models'])>=4
