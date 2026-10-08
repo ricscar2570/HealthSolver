@@ -1,0 +1,229 @@
+{
+  "abstention": {
+    "max_missing_features": 3,
+    "message": "Prediction withheld when too many required features are missing."
+  },
+  "calibration": {
+    "intercept": 3.9585987681263255,
+    "method": "Platt scaling on held-out calibration split",
+    "slope": 11.990136327034612
+  },
+  "dataset": {
+    "doi": "10.24432/C5G020",
+    "license": "CC BY 4.0",
+    "name": "UCI Chronic Kidney Disease",
+    "source": "https://archive.ics.uci.edu/dataset/336",
+    "uci_id": 336
+  },
+  "features": [
+    "age",
+    "bp",
+    "sg",
+    "al",
+    "su",
+    "bgr",
+    "bu",
+    "sc",
+    "sod",
+    "pot",
+    "hemo",
+    "pcv",
+    "wbcc",
+    "rbcc"
+  ],
+  "field_meta": {
+    "age": {
+      "label": "Et\u00e0",
+      "median": 54.0,
+      "training_max": 82.0,
+      "training_min": 2.0,
+      "unit": "anni"
+    },
+    "al": {
+      "label": "Albumina urinaria (classe)",
+      "median": 0.0,
+      "training_max": 5.0,
+      "training_min": 0.0
+    },
+    "bgr": {
+      "label": "Glicemia random",
+      "median": 119.0,
+      "training_max": 490.0,
+      "training_min": 22.0,
+      "unit": "mg/dL"
+    },
+    "bp": {
+      "label": "Pressione arteriosa",
+      "median": 80.0,
+      "training_max": 180.0,
+      "training_min": 50.0,
+      "unit": "mmHg"
+    },
+    "bu": {
+      "label": "Urea ematica",
+      "median": 40.0,
+      "training_max": 391.0,
+      "training_min": 1.5,
+      "unit": "mg/dL"
+    },
+    "hemo": {
+      "label": "Emoglobina",
+      "median": 12.6,
+      "training_max": 17.4,
+      "training_min": 3.1,
+      "unit": "g/dL"
+    },
+    "pcv": {
+      "label": "Ematocrito / PCV",
+      "median": 41.0,
+      "training_max": 54.0,
+      "training_min": 9.0
+    },
+    "pot": {
+      "label": "Potassio",
+      "median": 4.5,
+      "training_max": 39.0,
+      "training_min": 2.7,
+      "unit": "mEq/L"
+    },
+    "rbcc": {
+      "label": "Eritrociti",
+      "median": 4.8,
+      "training_max": 8.0,
+      "training_min": 2.1,
+      "unit": "milioni/cmm"
+    },
+    "sc": {
+      "label": "Creatinina sierica",
+      "median": 1.2,
+      "training_max": 32.0,
+      "training_min": 0.4,
+      "unit": "mg/dL"
+    },
+    "sg": {
+      "label": "Peso specifico urine",
+      "median": 1.02,
+      "training_max": 1.025,
+      "training_min": 1.005
+    },
+    "sod": {
+      "label": "Sodio",
+      "median": 138.0,
+      "training_max": 163.0,
+      "training_min": 114.0,
+      "unit": "mEq/L"
+    },
+    "su": {
+      "label": "Zucchero urinario (classe)",
+      "median": 0.0,
+      "training_max": 5.0,
+      "training_min": 0.0
+    },
+    "wbcc": {
+      "label": "Leucociti",
+      "median": 8100.0,
+      "training_max": 26400.0,
+      "training_min": 3800.0,
+      "unit": "cellule/cumm"
+    }
+  },
+  "imputation": {
+    "strategy": "training median",
+    "values": {
+      "age": 54.0,
+      "al": 0.0,
+      "bgr": 119.0,
+      "bp": 80.0,
+      "bu": 40.0,
+      "hemo": 12.6,
+      "pcv": 41.0,
+      "pot": 4.5,
+      "rbcc": 4.8,
+      "sc": 1.2,
+      "sg": 1.02,
+      "sod": 138.0,
+      "su": 0.0,
+      "wbcc": 8100.0
+    }
+  },
+  "logistic": {
+    "coefficients": {
+      "age": -0.02496946627567003,
+      "al": 1.6511029808337776,
+      "bgr": 0.8565616426512944,
+      "bp": 0.38475455365867745,
+      "bu": 0.5832462714564656,
+      "hemo": -1.5852817482323378,
+      "pcv": -1.1495453490399778,
+      "pot": 0.18817842527773268,
+      "rbcc": -0.737128360452237,
+      "sc": 1.1591723481340783,
+      "sg": -1.840683618834037,
+      "sod": -0.7203793345476274,
+      "su": 0.765098178606891,
+      "wbcc": -0.06576122902329448
+    },
+    "intercept": 4.0373944244609685
+  },
+  "metrics_test": {
+    "accuracy": 0.975,
+    "auprc": 0.9988307692307692,
+    "auroc": 0.998,
+    "brier": 0.02476232214110584,
+    "confusion_matrix": {
+      "fn": 0,
+      "fp": 2,
+      "tn": 28,
+      "tp": 50
+    },
+    "n_calibration": 80,
+    "n_test": 80,
+    "n_total": 400,
+    "n_train": 240,
+    "prevalence_total": 0.625,
+    "sensitivity": 1.0,
+    "specificity": 0.9333333333333333
+  },
+  "model_id": "HS-UCI-CKD-001",
+  "not_clinically_validated": true,
+  "release": "HealthSolver 0.40 Multi-Outcome Predictive Engine",
+  "research_only": true,
+  "schema": "healthsolver.predictive_model.v1",
+  "standardization": {
+    "mean": {
+      "age": 50.8375,
+      "al": 0.9916666666666667,
+      "bgr": 144.425,
+      "bp": 77.125,
+      "bu": 57.812916666666666,
+      "hemo": 12.495416666666666,
+      "pcv": 39.3125,
+      "pot": 4.6016666666666675,
+      "rbcc": 4.72875,
+      "sc": 2.81875,
+      "sg": 1.0176458333333334,
+      "sod": 138.24583333333334,
+      "su": 0.43333333333333335,
+      "wbcc": 8463.75
+    },
+    "scale": {
+      "age": 16.51699408942196,
+      "al": 1.3601215223484833,
+      "bgr": 73.95084656941619,
+      "bp": 14.508079645494092,
+      "bu": 52.944357976020974,
+      "hemo": 2.7049991977304213,
+      "pcv": 8.355029049420875,
+      "pot": 2.3258505015489623,
+      "rbcc": 0.8835808418965786,
+      "sc": 3.806477825693984,
+      "sg": 0.005456225738141285,
+      "sod": 5.876682678650903,
+      "su": 1.085766498326822,
+      "wbcc": 2762.075476430722
+    }
+  },
+  "task": "Binary research prediction of CKD versus not-CKD within the UCI CKD dataset feature domain.",
+  "threshold": 0.5,
+  "version": "1.0.0"
+}
