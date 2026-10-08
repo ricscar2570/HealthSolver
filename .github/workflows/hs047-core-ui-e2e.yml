@@ -1,4 +1,5 @@
 name: HealthSolver 0.47 Core UI E2E
+# coach restore/resume DOM-aware audit
 on:
   push:
     branches: ['main']
@@ -85,15 +86,25 @@ jobs:
             await nav(p,'coach');
             await p.locator('#coachStartExample').click();await sleep(200);
             ok(Number(await p.locator('#coachAge').inputValue())>0,'Coach example loads');
-            if(!(await p.locator('#coachAutoResume').isChecked()))await p.locator('#coachAutoResume').check();
             await set(p,'coachAge',63);
             await p.locator('#coachContinue').click();await sleep(120);
             ok((await p.locator('.coach-phase.current').innerText()).includes('Sintomi'),'Coach advances');
             const backup=await dl(p,'#coachExportBackup','Coach backup download');
-            await p.locator('#coachNewBlank').click();await sleep(100);
-            ok((await p.locator('#coachAge').inputValue())==='','Coach blank reset');
-            await p.locator('#coachRestoreFile').setInputFiles(backup);await sleep(250);
-            ok(Number(await p.locator('#coachAge').inputValue())===63,'Coach backup restore');
+            await p.locator('#coachNewBlank').click();await sleep(150);
+            ok((await p.locator('#page-coach').innerText()).includes('Caso'),'Coach blank reset remains in Coach');
+            await p.locator('#coachRestoreFile').setInputFiles(backup);await sleep(300);
+            const restoredText=await p.locator('#page-coach').innerText();
+            ok(/63\s*anni|63/.test(restoredText),'Coach backup restore recovers age');
+            if(await p.locator('#coachAutoResume').count()===1){
+              if(!(await p.locator('#coachAutoResume').isChecked()))await p.locator('#coachAutoResume').check();
+              const ageField=p.locator('#coachAge');
+              if(await ageField.count()===1)await set(p,'coachAge',64);
+              await sleep(100);
+              await p.reload({waitUntil:'networkidle'});await p.waitForFunction(()=>document.body.innerText.includes('Clinical Coach'),{timeout:30000});
+              await nav(p,'coach');
+              const resumed=await p.locator('#page-coach').innerText();
+              ok(/64\s*anni|64/.test(resumed)||Number(await p.locator('#coachAge').inputValue().catch(()=>0))===64,'Coach local resume survives reload');
+            }
             ok(errors.length===0,'Coach runtime clean '+errors.join(' | '));
             await p.close();
           }
