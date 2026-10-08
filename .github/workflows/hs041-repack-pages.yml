@@ -52,6 +52,13 @@ jobs:
               'sandbox="allow-scripts allow-forms allow-downloads allow-modals allow-popups allow-popups-to-escape-sandbox"',
               'sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups allow-popups-to-escape-sandbox"'
           )
+          # The nested preserved Real Data Lab is itself a trusted HealthSolver
+          # srcdoc iframe. It contains real forms (classification/training/import)
+          # and browser-local workspace storage, so it needs both permissions too.
+          html=html.replace(
+              'sandbox=\\\"allow-scripts allow-downloads allow-modals allow-popups allow-popups-to-escape-sandbox\\\"',
+              'sandbox=\\\"allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups allow-popups-to-escape-sandbox\\\"'
+          )
           overlay='\n<!-- HS_PREDICTIVE_OVERLAY_BEGIN -->\n<script>window.__HS_PREDICTIVE_BUNDLE__='+bundle+';</script>\n<script>\n'+integrated+'\n</script>\n<!-- HS_PREDICTIVE_OVERLAY_END -->\n'
           assert '</body>' in html.lower()
           pos=html.lower().rfind('</body>')
