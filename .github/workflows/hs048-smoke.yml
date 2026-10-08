@@ -1,0 +1,87 @@
+name: HealthSolver 0.48 UCI Thyroid Recurrence Smoke
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'predictive/**'
+      - '.github/workflows/hs048-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: node --check predictive/integrated-predictive-ui.js
+      - name: Verify thyroid recurrence model and registry
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import json,math,pathlib
+          root=pathlib.Path('predictive')
+          reg=json.loads((root/'model-registry-v2.json').read_text())
+          assert reg['version']=='0.48.0',reg['version']
+          assert len(reg['models'])==8,len(reg['models'])
+          ids=[e['model_id'] for e in reg['models']]
+          assert len(ids)==len(set(ids))
+          assert 'HS-UCI-THYREC-001' in ids
+
+          m=json.loads((root/'model-thyroid-recurrence-v1.json').read_text())
+          assert m['model_id']=='HS-UCI-THYREC-001'
+          assert m['dataset']['uci_id']==915
+          assert m['dataset']['doi']=='10.24432/C5632J'
+          assert m['dataset']['license']=='CC BY 4.0'
+          assert m['dataset']['instances']==383
+          assert m['excluded_source_features']==['Response']
+          assert m['target_definition']['excluded_feature'].startswith('Response excluded')
+          assert len(m['raw_feature_schema'])==15
+          assert len(m['features'])==51
+          assert set(m['encoding_map'])==set(m['features'])
+          assert any(x['key']=='age' and x['kind']=='numeric' for x in m['raw_feature_schema'])
+          gender=next(x for x in m['raw_feature_schema'] if x['key']=='gender')
+          assert gender['categories']==['F','M']
+
+          q=m['metrics_test']
+          assert q['n_total']==383
+          assert q['n_train']==229 and q['n_calibration']==77 and q['n_test']==77
+          assert q['auroc']>=0.5
+          assert q['auprc']>=q['positive_prevalence']
+          assert 0<=q['brier']<=1
+          assert q['sensitivity']>=0.5
+          assert q['specificity']>=0.5
+          assert 0<m['threshold']<1
+          assert 'Youden' in m['threshold_selection']
+          assert m['research_only'] is True
+          assert m['not_clinically_validated'] is True
+
+          # Deterministic inference at training medians.
+          x=m['imputation']['values']
+          s=m['logistic']['intercept']
+          for f in m['features']:
+              scale=m['standardization']['scale'][f]
+              assert scale>0
+              z=(x[f]-m['standardization']['mean'][f])/scale
+              s+=z*m['logistic']['coefficients'][f]
+          z=m['calibration']['intercept']+m['calibration']['slope']*s
+          p=1/(1+math.exp(-max(-35,min(35,z))))
+          assert math.isfinite(p) and 0<p<1
+
+          report=json.loads((root/'model-thyroid-recurrence-v1-report.json').read_text())
+          assert report==q
+          entry=next(e for e in reg['models'] if e['model_id']==m['model_id'])
+          assert entry['metrics_test']==q
+          print({'median_probability':p,'threshold':m['threshold'],'metrics':q})
+          PY
+      - name: Verify integrated UI references eighth model
+        shell: bash
+        run: |
+          grep -q '8 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -q 'HS-UCI-THYREC-001' predictive/integrated-predictive-ui.js
+          grep -q 'Carcinoma tiroideo differenziato · recidiva' predictive/integrated-predictive-ui.js
+          grep -q 'Response' predictive/integrated-predictive-ui.js
