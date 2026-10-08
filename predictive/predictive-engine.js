@@ -5,6 +5,7 @@ window.__HS_PREDICTIVE_ENGINE_040__=true;
 
 const BASE=new URL('./predictive/',window.location.href).href;
 const REGISTRY=BASE+'model-registry-v2.json';
+const BUNDLE=window.__HS_PREDICTIVE_BUNDLE__||null;
 const categorical={
   'HS-UCI-HD-001':{
     sex:[['','—'],['0','Femmina'],['1','Maschio']],
@@ -102,8 +103,11 @@ async function loadSelected(){
  modelDesc.textContent=entry.task;
  state.textContent='Caricamento '+entry.model_id+'…';
  try{
-  const r=await fetch(BASE+entry.file,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
-  model=await r.json();
+  if(BUNDLE&&BUNDLE.models&&BUNDLE.models[entry.file]) model=BUNDLE.models[entry.file];
+  else {
+    const r=await fetch(BASE+entry.file,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
+    model=await r.json();
+  }
   for(const f of model.features){
    const lab=el('label',{text:labelFor(model,f)}),inp=inputFor(model,f);controls[f]=inp;lab.append(inp);grid.append(lab);
   }
@@ -153,9 +157,11 @@ predict.addEventListener('click',run);
 reset.addEventListener('click',()=>{Object.values(controls).forEach(x=>x.value='');out.hidden=true;out.innerHTML='';});
 modelSelect.addEventListener('change',loadSelected);
 
-fetch(REGISTRY,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(x=>{
+const initRegistry=(x)=>{
  registry=x;modelSelect.innerHTML='';
  x.models.forEach(m=>modelSelect.append(el('option',{value:m.model_id,text:m.title+' — '+m.model_id})));
  loadSelected();
-}).catch(e=>{state.textContent='Registry predittivo non disponibile: '+e.message;});
+};
+if(BUNDLE&&BUNDLE.registry) initRegistry(BUNDLE.registry);
+else fetch(REGISTRY,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(initRegistry).catch(e=>{state.textContent='Registry predittivo non disponibile: '+e.message;});
 })();
