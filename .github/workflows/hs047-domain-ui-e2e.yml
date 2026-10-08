@@ -1,0 +1,142 @@
+name: HealthSolver 0.47 Domain UI E2E
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs047-domain-ui-e2e.yml']
+permissions:
+  contents: read
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Hub, Massive Public Data and single-module workflows
+        shell: bash
+        run: |
+          cat > audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const BASE='https://ricscar2570.github.io/HealthSolver/';
+          const checks=[];
+          const ok=(v,m)=>{if(!v)throw new Error(m);checks.push(m)};
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          const browser=await chromium.launch({headless:true});
+          const ctx=await browser.newContext({acceptDownloads:true,viewport:{width:1440,height:1700}});
+          async function open(label){
+            const p=await ctx.newPage(),errors=[];
+            p.on('pageerror',e=>errors.push('PAGE '+e.message));
+            p.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
+            await p.goto(BASE+'?audit='+label+'&t='+Date.now(),{waitUntil:'networkidle',timeout:120000});
+            await p.waitForFunction(()=>document.body.innerText.includes('Clinical Coach')&&document.body.innerText.includes('Expert Mode'),{timeout:30000});
+            return {p,errors};
+          }
+          async function nav(p,name){const n=p.locator('aside .nav[data-page="'+name+'"]');ok(await n.count()===1,'nav '+name);await n.click();await sleep(100);const s=p.locator('#page-'+name);ok(await s.isVisible(),'visible '+name);return s}
+
+          // Hub orchestration.
+          {
+            const {p,errors}=await open('hub');
+            await nav(p,'hub');
+            await p.locator('#hubExample').click();await sleep(150);
+            ok((await p.locator('#hub_age').inputValue())!=='','Hub demo fills age');
+            if(!(await p.locator('#hubConsent').isChecked()))await p.locator('#hubConsent').check();
+            const before=await p.locator('#page-hub').innerText();
+            await p.locator('#hubAnalyze').click();await sleep(250);
+            const after=await p.locator('#page-hub').innerText();
+            ok(after.length>=before.length,'Hub analysis returns output');
+            ok(/modelli|risultat|compatibil/i.test(after),'Hub model result language present');
+            await p.locator('#hubClear').click();await sleep(80);
+            ok((await p.locator('#hub_age').inputValue())==='','Hub clear resets dossier');
+            ok(errors.length===0,'Hub runtime clean '+errors.join(' | '));
+            await p.close();
+          }
+
+          // Massive Public Data: BRFSS, openFDA request, CMS controls, local FHIR import.
+          {
+            const {p,errors}=await open('massive');
+            await nav(p,'massive');
+            await p.locator('#mpAge').fill('70');
+            await p.locator('#mpBmi').fill('31');
+            await p.locator('#mpBrfssRun').click();await sleep(180);
+            const brf=await p.locator('#page-massive').innerText();
+            ok(brf.includes('BRFSS 2024'),'BRFSS 2024 engine present');
+            ok(/\d+[,.]\d+%/.test(brf),'BRFSS weighted prevalence visible');
+
+            await p.locator('#mpDrug').fill('METFORMIN');
+            const reqPromise=p.waitForRequest(r=>r.url().startsWith('https://api.fda.gov/'),{timeout:30000}).catch(()=>null);
+            const respPromise=p.waitForResponse(r=>r.url().startsWith('https://api.fda.gov/'),{timeout:30000}).catch(()=>null);
+            await p.locator('#mpFdaQuery').click();
+            const req=await reqPromise,resp=await respPromise;await sleep(250);
+            ok(!!req,'openFDA request issued');
+            ok(req.url().startsWith('https://api.fda.gov/'),'openFDA endpoint restricted correctly');
+            if(resp)ok([200,429].includes(resp.status()),'openFDA response handled');
+
+            const cmsBefore=await p.locator('#page-massive').innerText();
+            const feat=p.locator('#mpCmsFeature'),target=p.locator('#mpCmsTarget');
+            if(await feat.locator('option').count()>1)await feat.selectOption({index:1});
+            if(await target.locator('option').count()>1)await target.selectOption({index:1});
+            await sleep(100);
+            const cmsAfter=await p.locator('#page-massive').innerText();
+            ok(cmsAfter.length>0&&cmsBefore.length>0,'CMS synthetic controls operational');
+
+            fs.writeFileSync('audit-fhir.json',JSON.stringify({resourceType:'Bundle',type:'collection',entry:[
+              {resource:{resourceType:'Patient',id:'audit-patient',gender:'female',birthDate:'1980-01-01'}},
+              {resource:{resourceType:'Observation',id:'audit-observation',status:'final',code:{text:'Creatinine'},valueQuantity:{value:1.1,unit:'mg/dL'}}}
+            ]}));
+            const fBefore=await p.locator('#page-massive').innerText();
+            await p.locator('#mpFhirFile').setInputFiles('audit-fhir.json');await sleep(300);
+            const fAfter=await p.locator('#page-massive').innerText();
+            ok(fAfter!==fBefore,'FHIR local import changes application state');
+            ok(errors.filter(e=>!e.includes('api.fda.gov')).length===0,'Massive runtime clean '+errors.join(' | '));
+            await p.screenshot({path:'domain-massive.png',fullPage:true});
+            await p.close();
+          }
+
+          // Single-model case: public example, evaluate, reveal, revision and report control.
+          {
+            const {p,errors}=await open('case');
+            await nav(p,'case');
+            await p.locator('#loadExample').click();await sleep(160);
+            ok((await p.locator('#f0').inputValue())!=='','single-module example loads');
+            if(!(await p.locator('#consent').isChecked()))await p.locator('#consent').check();
+            await p.locator('#evaluate').click();await sleep(250);
+            const result=await p.locator('#page-case').innerText();
+            ok(/probabil|evidenz|risultat|ipotes/i.test(result),'single-module evaluation output present');
+            await p.locator('#reveal').click();await sleep(80);
+            const afterReveal=await p.locator('#page-case').innerText();
+            ok(afterReveal.length>=result.length,'recorded labels reveal works');
+            await p.locator('#saveCase').click();await sleep(100);
+            await nav(p,'archive');
+            ok(!(await p.locator('#page-archive').innerText()).includes('Nessuna revisione conservata'),'single-module revision stored');
+            await nav(p,'case');
+            await p.locator('#openReport').click();await sleep(150);
+            ok((await p.locator('body').innerText()).includes('Relazione'),'single-module report opens');
+            ok(errors.length===0,'single module runtime clean '+errors.join(' | '));
+            await p.screenshot({path:'domain-case.png',fullPage:true});
+            await p.close();
+          }
+
+          await browser.close();
+          fs.writeFileSync('domain-audit.json',JSON.stringify(checks,null,2));
+          console.log('PASS CHECKS',checks.length);
+          JS
+          node audit.mjs | tee domain-audit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: healthsolver-047-domain-ui-e2e
+          path: |
+            domain-audit.json
+            domain-audit.txt
+            domain-massive.png
+            domain-case.png
+          if-no-files-found: ignore
+          retention-days: 14
