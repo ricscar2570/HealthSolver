@@ -1,4 +1,4 @@
-name: HealthSolver 0.47 Static and Model Integrity
+name: HealthSolver 0.48 Static and Model Integrity
 # rerun after legacy routes remediation
 on:
   push:
@@ -72,8 +72,8 @@ jobs:
           root=pathlib.Path('predictive')
           reg=json.loads((root/'model-registry-v2.json').read_text())
           assert reg['schema']=='healthsolver.predictive_registry.v2'
-          assert reg['version']=='0.47.0'
-          assert len(reg['models'])==7
+          assert reg['version']=='0.48.0'
+          assert len(reg['models'])==8
           ids=[]
           for e in reg['models']:
               m=json.loads((root/e['file']).read_text())
@@ -103,7 +103,7 @@ jobs:
               p=1/(1+math.exp(-max(-35,min(35,z))))
               assert math.isfinite(p) and 0<p<1
               ids.append(m['model_id'])
-          expected=['HS-UCI-HD-001','HS-UCI-CKD-001','HS-UCI-BC-001','HS-UCI-HCV-001','HS-NHANES-DM-001','HS-NHIS-HYP-001','HS-UCI-DMREADM-001']
+          expected=['HS-UCI-HD-001','HS-UCI-CKD-001','HS-UCI-BC-001','HS-UCI-HCV-001','HS-NHANES-DM-001','HS-NHIS-HYP-001','HS-UCI-DMREADM-001','HS-UCI-THYREC-001']
           assert ids==expected,(ids,expected)
           print('MODEL INTEGRITY PASS',ids)
           PY
