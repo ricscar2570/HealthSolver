@@ -49,9 +49,16 @@ jobs:
             const orig=URL.createObjectURL.bind(URL);
             URL.createObjectURL=(blob)=>{window.__auditBlobs.push(blob);return orig(blob)};
           });
+          async function confirmInternal(){
+            const d=p.locator('#confirmDialog');
+            if(await d.count()===1 && await d.isVisible()){
+              await p.locator('#confirmYes').click();await sleep(80);
+            }
+          }
           async function blobExport(selector,label,filename){
             const before=await p.evaluate(()=>window.__auditBlobs.length);
-            await p.locator(selector).click();await sleep(120);
+            await p.locator(selector).click();await sleep(80);
+            await confirmInternal();
             await p.waitForFunction(n=>window.__auditBlobs.length>n,before,{timeout:5000});
             const data=await p.evaluate(async()=>{
               const b=window.__auditBlobs[window.__auditBlobs.length-1];
@@ -117,19 +124,17 @@ jobs:
           const enc=await blobExport('#encryptBackup','encrypted backup','encrypted-backup.bin');
           ok(fs.statSync(enc).size>100,'encrypted backup content');
 
-          p.once('dialog',d=>d.accept());
-          await p.locator('#clearSession').click();await sleep(100);
+          await p.locator('#clearSession').click();await sleep(60);await confirmInternal();await sleep(100);
           text=await p.locator('#page-archive').innerText();
           ok(text.includes('Nessuna revisione conservata'),'clear session works');
 
-          await p.locator('#restoreFile').setInputFiles(plain);await sleep(250);
+          await p.locator('#restoreFile').setInputFiles(plain);await sleep(180);await confirmInternal();await sleep(180);
           text=await p.locator('#page-archive').innerText();
           ok(!text.includes('Nessuna revisione conservata'),'plain restore works');
 
-          p.once('dialog',d=>d.accept());
-          await p.locator('#clearSession').click();await sleep(100);
+          await p.locator('#clearSession').click();await sleep(60);await confirmInternal();await sleep(100);
           await p.locator('#restorePassword').fill('testpass-047');
-          await p.locator('#restoreFile').setInputFiles(enc);await sleep(400);
+          await p.locator('#restoreFile').setInputFiles(enc);await sleep(220);await confirmInternal();await sleep(300);
           text=await p.locator('#page-archive').innerText();
           ok(!text.includes('Nessuna revisione conservata'),'encrypted restore works');
 
