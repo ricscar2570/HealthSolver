@@ -1,5 +1,5 @@
 name: HealthSolver 0.47 Preserved Laboratory Full E2E
-# navigate each laboratory workspace page explicitly\n# force a changed WDBC input before prediction
+# navigate each laboratory workspace page explicitly\n# force a changed WDBC input before prediction\n# verify historical-label reveal before modification
 on:
   push:
     branches: ['main']
@@ -68,18 +68,23 @@ jobs:
           const v0=lab.locator('#v0');
           must(await v0.count()===1,'laboratory feature v0 missing');
           const original=await v0.inputValue();
-          // The default test record may already have a classification rendered.
-          // Change one valid WDBC feature so this click must recompute a new case state.
+
+          // Historical record: comparison with the registered label must work.
+          const reveal=lab.locator('#reveal');
+          must(!(await reveal.isDisabled()),'historical-label reveal unexpectedly disabled');
+          await reveal.click(); await page.waitForTimeout(100);
+          let body=await lab.locator('body').innerText();
+          must(/etichett|registrat|confront/i.test(body),'laboratory historical reveal output missing');
+
+          // Change one valid WDBC feature so the next click must recompute a new case.
           const recomputeValue=String(Number(original)+0.123);
           await v0.fill(recomputeValue);
           const before=await lab.locator('body').innerText();
           await lab.locator('#predict').click(); await page.waitForTimeout(300);
-          let body=await lab.locator('body').innerText();
+          body=await lab.locator('body').innerText();
           must(body!==before,'laboratory prediction produced no UI change');
           must(/probabil|risultat|classific/i.test(body),'laboratory prediction output missing');
-          await lab.locator('#reveal').click(); await page.waitForTimeout(100);
-          body=await lab.locator('body').innerText();
-          must(/etichett|registrat|confront/i.test(body),'laboratory reveal output missing');
+          must(await reveal.isDisabled(),'modified case must not be compared with historical label');
           await lab.locator('#saveCase').click(); await page.waitForTimeout(120);
           body=await lab.locator('body').innerText();
           must(/revisione|salvat/i.test(body),'laboratory revision save feedback missing');
