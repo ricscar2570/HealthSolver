@@ -23,7 +23,7 @@ jobs:
           import io,json,pathlib,requests
           import numpy as np,pandas as pd
           from sklearn.linear_model import LogisticRegression
-          from sklearn.metrics import accuracy_score,roc_auc_score,average_precision_score,brier_score_loss,confusion_matrix
+          from sklearn.metrics import accuracy_score,roc_auc_score,average_precision_score,brier_score_loss,confusion_matrix,roc_curve
           from sklearn.model_selection import train_test_split
 
           BASE='https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2017/DataFiles/'
@@ -81,8 +81,13 @@ jobs:
           cal_scores=base.decision_function(Zca).reshape(-1,1)
           platt=LogisticRegression(max_iter=5000,C=1e6,solver='lbfgs',random_state=4504)
           platt.fit(cal_scores,yca,sample_weight=wca)
+          pca=platt.predict_proba(cal_scores)[:,1]
+          fpr_cal,tpr_cal,thr_cal=roc_curve(yca,pca,sample_weight=wca)
+          valid=np.isfinite(thr_cal)
+          best=np.argmax((tpr_cal-fpr_cal)[valid])
+          threshold=float(thr_cal[valid][best])
           p=platt.predict_proba(base.decision_function(Zte).reshape(-1,1))[:,1]
-          pred=(p>=.5).astype(int)
+          pred=(p>=threshold).astype(int)
           tn,fp,fn,tp=confusion_matrix(yte,pred,labels=[0,1]).ravel()
 
           metrics={
@@ -94,6 +99,7 @@ jobs:
             'brier_weighted':float(brier_score_loss(yte,p,sample_weight=wte)),
             'sensitivity_unweighted':float(tp/(tp+fn)) if tp+fn else None,
             'specificity_unweighted':float(tn/(tn+fp)) if tn+fp else None,
+            'decision_threshold_from_calibration':threshold,
             'confusion_matrix_unweighted':{'tn':int(tn),'fp':int(fp),'fn':int(fn),'tp':int(tp)}
           }
 
@@ -127,7 +133,9 @@ jobs:
             'standardization':{'mean':{f:float(mu[f]) for f in features},'scale':{f:float(sd[f]) for f in features}},
             'logistic':{'intercept':float(base.intercept_[0]),'coefficients':{f:float(v) for f,v in zip(features,base.coef_[0])}},
             'calibration':{'method':'Platt scaling on held-out calibration split using NHANES MEC sample weights','intercept':float(platt.intercept_[0]),'slope':float(platt.coef_[0,0])},
-            'threshold':0.5,'metrics_test':metrics,
+            'threshold':threshold,
+            'threshold_selection':'Youden J maximum on weighted held-out calibration split; evaluated once on independent test split',
+            'metrics_test':metrics,
             'abstention':{'max_missing_features':1,'message':'Prediction withheld when more than one required feature is missing.'},
             'target_definition':{
               'positive':'DIQ010=1, respondent reports a doctor told them they have diabetes',
