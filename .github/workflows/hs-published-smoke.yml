@@ -1,0 +1,38 @@
+name: HealthSolver Published Release Smoke
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs-published-smoke.yml']
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify live HealthSolver 0.39 assets
+        shell: bash
+        run: |
+          set -euxo pipefail
+          base='https://ricscar2570.github.io/HealthSolver'
+          curl -L --fail --retry 6 --retry-delay 5 "$base/" -o index.html
+          grep -q 'HealthSolver 0.39.0' index.html
+          grep -q 'predictive-engine.js' index.html
+          curl -L --fail --retry 6 --retry-delay 5 "$base/version.json" -o version.json
+          python - <<'PY'
+          import json
+          v=json.load(open('version.json'))
+          assert v['version']=='0.39.0',v
+          assert v['predictive_model']=='HS-UCI-HD-001',v
+          print(v)
+          PY
+          curl -L --fail --retry 6 --retry-delay 5 "$base/predictive-engine.js" -o predictive-engine.js
+          grep -q 'HS_PREDICTIVE_ENGINE_039' predictive-engine.js
+          curl -L --fail --retry 6 --retry-delay 5 "$base/predictive/model-heart-disease-v1.json" -o model.json
+          python - <<'PY'
+          import json
+          m=json.load(open('model.json'))
+          assert m['model_id']=='HS-UCI-HD-001'
+          assert m['metrics_test']['auroc'] > 0.5
+          print(m['model_id'],m['metrics_test'])
+          PY
