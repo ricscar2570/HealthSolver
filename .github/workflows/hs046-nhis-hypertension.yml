@@ -36,7 +36,7 @@ jobs:
           if len(csvs)!=1: raise SystemExit(f'expected one CSV, got {csvs}')
           df=pd.read_csv(z.open(csvs[0]),low_memory=False)
           print('ROWS',len(df),'COLS',len(df.columns))
-          need=['AGEP_A','SEX_A','HYPEV_A','WTFA_A','BMICAT_A','SMKCIGST_A','PA18_05R_A','SLPHOURS_A','PHSTAT_A']
+          need=['AGEP_A','SEX_A','HYPEV_A','WTFA_A','BMICAT_A','SMKCIGST_A','PHSTAT_A']
           missing=[c for c in need if c not in df.columns]
           if missing: raise SystemExit(f'missing expected NHIS columns: {missing}')
 
@@ -68,13 +68,6 @@ jobs:
           current_smoker.loc[smoke.isin([1,2])]=1
           current_smoker.loc[smoke.isin([3,4])]=0
 
-          pa=pd.to_numeric(df['PA18_05R_A'],errors='coerce')
-          meets_aerobic=pd.Series(np.nan,index=df.index,dtype=float)
-          meets_aerobic.loc[pa.isin([3,4])]=1
-          meets_aerobic.loc[pa.isin([1,2])]=0
-
-          sleep=valid_num(df['SLPHOURS_A'],1,24)
-
           ph=pd.to_numeric(df['PHSTAT_A'],errors='coerce')
           fair_poor_health=pd.Series(np.nan,index=df.index,dtype=float)
           fair_poor_health.loc[ph.isin([1,2,3])]=0
@@ -82,7 +75,6 @@ jobs:
 
           X=pd.DataFrame({
               'age':age,'sex':sex,'obese':obese,'current_smoker':current_smoker,
-              'meets_aerobic_guideline':meets_aerobic,'sleep_hours':sleep,
               'fair_poor_general_health':fair_poor_health
           })
           features=list(X.columns)
@@ -133,8 +125,6 @@ jobs:
             'sex':{'label':'Sesso','encoding':'0=female, 1=male'},
             'obese':{'label':'Obesità (categoria BMI)','encoding':'0=no, 1=yes'},
             'current_smoker':{'label':'Fumatore attuale','encoding':'0=no, 1=yes'},
-            'meets_aerobic_guideline':{'label':'Raggiunge criterio aerobico','encoding':'0=no, 1=yes'},
-            'sleep_hours':{'label':'Ore di sonno','unit':'ore/24h'},
             'fair_poor_general_health':{'label':'Salute generale discreta/scarsa','encoding':'0=no, 1=yes'}
           }
           for f in features:
