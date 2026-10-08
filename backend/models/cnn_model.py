@@ -9,7 +9,7 @@ import cv2
 class CNNModel(nn.Module):
     def __init__(self):
         super(CNNModel, self).__init__()
-        self.model = models.resnet18(pretrained=True)
+        self.model = models.resnet18(weights=None)
         self.model.fc = nn.Linear(self.model.fc.in_features, 2)
 
     def forward(self, x):
