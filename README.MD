@@ -1,4 +1,4 @@
-# HealthSolver 0.41 — Unified Predictive Case Router + Clinical Coach Research Edition
+# HealthSolver 0.42 — Integrated Predictive UI + Clinical Coach Research Edition
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.41 line.
+The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.42 line.
 
 ## What HealthSolver does
 
@@ -44,7 +44,7 @@ For the deployed GitHub Pages build:
 - core application state, backup and recovery workflows are handled client-side;
 - large static resources are packaged for browser delivery.
 
-The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.41 application.
+The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.42 application.
 
 ## Clinical Coach
 
@@ -218,6 +218,34 @@ The output is intentionally **not** presented as a ranked differential diagnosis
 
 The original 0.40 model selector remains available as a manual model-specific mode.
 
+## Integrated Predictive UI 0.42
+
+HealthSolver 0.42 removes the separate predictive panels introduced by the 0.40/0.41 experiments and integrates supervised prediction directly into the existing **Expert Mode** page.
+
+The predictive engine now reuses the same clinical dossier already being compiled in HealthSolver. There is no second full case form.
+
+Inside Expert Mode, the section **“Predizione dai dati già inseriti”**:
+
+- automatically reads reusable demographic, cardiovascular and laboratory fields already present in the dossier;
+- shows per-model data coverage before inference;
+- asks only for specialist fields that are not part of the general dossier;
+- keeps a collapsible cardiac specialist supplement for four model-specific variables when needed;
+- keeps a collapsible FNA breast specialist supplement for the ten WDBC mean nuclear features;
+- executes the registered supervised models from the same page;
+- reports model-specific calibrated research probabilities;
+- reports explicit abstention when the current dossier is insufficient;
+- shows imputed inputs, out-of-domain warnings and strongest model contributions;
+- preserves the interpretation rule that probabilities from different model tasks are not a ranked differential diagnosis.
+
+The legacy standalone predictive panel `#hs-pe040` and the standalone unified router `#hs-router041` are removed from the rendered application. The model artifacts and routing logic remain internal services.
+
+A final Playwright browser audit on the live GitHub Pages build verifies that:
+- Expert Mode contains exactly one integrated predictive section;
+- the legacy 0.40 and 0.41 panels are absent;
+- the integrated FNA specialist inputs can be completed;
+- the `HS-UCI-BC-001` model runs successfully;
+- a numeric predictive percentage is rendered inside Expert Mode.
+
 ## Machine learning and predictive research
 
 HealthSolver is being developed toward a broader machine-learning research architecture in which structured symptoms, history, vital signs, laboratory data and observations can be used as model inputs.
@@ -318,9 +346,9 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.41 — Unified Predictive Case Router / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
+**HealthSolver 0.42 — Integrated Predictive UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
 
-Current predictive release is represented by the 0.41 checkpoint, the unified router, the versioned predictive registry and the three model artifacts under `predictive/`.
+Current predictive release is represented by the 0.42 checkpoint, the integrated Expert Mode predictive UI, the versioned predictive registry and the three model artifacts under `predictive/`.
 
 The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
