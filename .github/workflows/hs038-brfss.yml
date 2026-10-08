@@ -1,0 +1,171 @@
+name: HealthSolver 0.38 BRFSS 2024 full population evidence
+on:
+  push:
+    branches: ['macrostep/v0.38.0-massive-public-data']
+    paths: ['.github/workflows/hs038-brfss.yml']
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Acquire and process the full 2024 BRFSS public-use file
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p out
+          curl -L --fail --retry 3 --connect-timeout 20 --max-time 300             -o LLCP2024XPT.zip             'https://www.cdc.gov/brfss/annual_data/2024/files/LLCP2024XPT.zip'
+          sha256sum LLCP2024XPT.zip > out/SOURCE_SHA256SUMS.txt
+          python -m pip install --disable-pip-version-check -q pandas pyreadstat numpy
+          python - <<'PY'
+          import json, zipfile, pathlib, hashlib, math, collections
+          import numpy as np, pandas as pd, pyreadstat
+          z=zipfile.ZipFile('LLCP2024XPT.zip')
+          names=z.namelist()
+          xpt=[n for n in names if n.lower().endswith('.xpt')]
+          if len(xpt)!=1: raise SystemExit(f'expected one XPT, got {xpt}')
+          z.extract(xpt[0],'.')
+          path=pathlib.Path(xpt[0])
+          _,meta=pyreadstat.read_xport(path,metadataonly=True)
+          cols=set(meta.column_names)
+          candidates=[
+            '_AGE80','SEXVAR','_BMI5','_SMOKER3','EXERANY2','SLEPTIM1','GENHLTH',
+            'CVDINFR4','CVDCRHD4','CVDSTRK3','ASTHMA3','CHCCOPD3','DIABETE4',
+            'CHCKDNY2','ADDEPEV3','HAVARTH4','_LLCPWT'
+          ]
+          use=[c for c in candidates if c in cols]
+          missing=[c for c in candidates if c not in cols]
+          print('using',use); print('missing',missing)
+          df,_=pyreadstat.read_xport(path,usecols=use)
+          raw_n=len(df)
+          if raw_n != 457670:
+            raise SystemExit(f'unexpected BRFSS row count {raw_n}')
+          # Normalize inputs only; unknown/missing stays missing and is never zero-imputed in aggregates.
+          age=pd.to_numeric(df.get('_AGE80'),errors='coerce')
+          sex=pd.to_numeric(df.get('SEXVAR'),errors='coerce')
+          bmi=pd.to_numeric(df.get('_BMI5'),errors='coerce')/100.0
+          smoker=pd.to_numeric(df.get('_SMOKER3'),errors='coerce')
+          exercise=pd.to_numeric(df.get('EXERANY2'),errors='coerce')
+          sleep=pd.to_numeric(df.get('SLEPTIM1'),errors='coerce')
+          weight=pd.to_numeric(df.get('_LLCPWT'),errors='coerce')
+          # CDC special codes are excluded, not interpreted as real values.
+          age=age.where((age>=18)&(age<=80))
+          sex=sex.where(sex.isin([1,2]))
+          bmi=bmi.where((bmi>=10)&(bmi<=80))
+          smoker=smoker.where(smoker.isin([1,2,3,4]))
+          exercise=exercise.where(exercise.isin([1,2]))
+          sleep=sleep.where((sleep>=1)&(sleep<=24))
+          weight=weight.where(weight>0)
+          age_bin=pd.cut(age,[17,24,34,44,54,64,74,80],labels=['18-24','25-34','35-44','45-54','55-64','65-74','75-80'],include_lowest=True)
+          bmi_bin=pd.cut(bmi,[9.99,18.49,24.99,29.99,39.99,80],labels=['under','normal','over','obese1','obese2plus'],include_lowest=True)
+          sleep_bin=pd.cut(sleep,[0,5,6,8,10,24],labels=['<=5','6','7-8','9-10','>10'],include_lowest=True)
+          base=pd.DataFrame({
+            'age_bin':age_bin.astype('object'),'sex':sex,'bmi_bin':bmi_bin.astype('object'),
+            'smoker':smoker,'exercise':exercise,'sleep_bin':sleep_bin.astype('object'),'w':weight
+          })
+          target_specs={
+            'heart_attack':('CVDINFR4',{1}, {2}),
+            'coronary_heart_disease':('CVDCRHD4',{1},{2}),
+            'stroke':('CVDSTRK3',{1},{2}),
+            'current_or_history_asthma':('ASTHMA3',{1},{2}),
+            'copd':('CHCCOPD3',{1},{2}),
+            'diabetes':('DIABETE4',{1}, {2,3,4}),
+            'kidney_disease':('CHCKDNY2',{1},{2}),
+            'depression_history':('ADDEPEV3',{1},{2}),
+            'arthritis':('HAVARTH4',{1},{2}),
+          }
+          # Build hierarchical evidence cubes. Fallback levels avoid tiny cells.
+          levels=[
+            ['age_bin','sex','bmi_bin','smoker','exercise','sleep_bin'],
+            ['age_bin','sex','bmi_bin','smoker','exercise'],
+            ['age_bin','sex','bmi_bin','smoker'],
+            ['age_bin','sex','bmi_bin'],
+            ['age_bin','sex'],
+            ['age_bin'],
+            []
+          ]
+          cube=[]
+          def encode(v):
+            if pd.isna(v): return None
+            if isinstance(v,(np.integer,)): return int(v)
+            if isinstance(v,(np.floating,)): return float(v)
+            return str(v)
+          for target,(col,pos,neg) in target_specs.items():
+            if col not in df.columns: continue
+            yraw=pd.to_numeric(df[col],errors='coerce')
+            y=pd.Series(np.nan,index=df.index)
+            y[yraw.isin(pos)]=1.0; y[yraw.isin(neg)]=0.0
+            t=base.copy(); t['y']=y
+            t=t[t['y'].notna() & t['w'].notna()]
+            for li,keys in enumerate(levels):
+              if keys:
+                groups=t.groupby(keys,dropna=False,observed=False)
+              else:
+                groups=[((),t)]
+              for key,g in groups:
+                if len(g)<25: continue
+                sw=float(g['w'].sum())
+                if not (sw>0): continue
+                prev=float((g['w']*g['y']).sum()/sw)
+                k=key if isinstance(key,tuple) else (key,)
+                filters={kk:encode(vv) for kk,vv in zip(keys,k)}
+                cube.append({'target':target,'level':li,'filters':filters,'n':int(len(g)),'weighted_n':sw,'prevalence':prev})
+          # Representative non-identifying rows: deterministic first 64 complete-ish profiles with labels only for UI demos.
+          sample=[]
+          ix=base.assign(score=base.notna().sum(axis=1)).sort_values(['score'],ascending=False).head(64).index
+          for i in ix:
+            rec={k:encode(base.loc[i,k]) for k in ['age_bin','sex','bmi_bin','smoker','exercise','sleep_bin']}
+            rec['targets']={}
+            for target,(col,pos,neg) in target_specs.items():
+              if col not in df: continue
+              v=pd.to_numeric(pd.Series([df.loc[i,col]]),errors='coerce').iloc[0]
+              rec['targets'][target]= 1 if v in pos else (0 if v in neg else None)
+            sample.append(rec)
+          payload={
+            'schema':'healthsolver.brfss_population_evidence.v1',
+            'source':{
+              'provider':'CDC BRFSS','year':2024,'raw_records':raw_n,
+              'source_url':'https://www.cdc.gov/brfss/annual_data/2024/files/LLCP2024XPT.zip',
+              'source_zip_sha256':hashlib.sha256(pathlib.Path('LLCP2024XPT.zip').read_bytes()).hexdigest(),
+              'variables':use,'missing_expected_variables':missing
+            },
+            'semantics':{
+              'kind':'weighted population association / prevalence evidence',
+              'not_diagnostic':True,
+              'self_reported_targets':True,
+              'survey_weight':'_LLCPWT',
+              'unknown_codes_excluded':True
+            },
+            'dimensions':{
+              'age_bin':['18-24','25-34','35-44','45-54','55-64','65-74','75-80'],
+              'sex':{'1':'male registered','2':'female registered'},
+              'bmi_bin':['under','normal','over','obese1','obese2plus'],
+              'smoker':{'1':'current daily','2':'current some days','3':'former','4':'never'},
+              'exercise':{'1':'yes','2':'no'},
+              'sleep_bin':['<=5','6','7-8','9-10','>10']
+            },
+            'targets':list(target_specs),
+            'cube':cube,
+            'representative_profiles':sample
+          }
+          out=pathlib.Path('out')
+          compact=json.dumps(payload,separators=(',',':'),ensure_ascii=False).encode()
+          (out/'brfss_2024_population_evidence.json').write_bytes(compact)
+          report={
+            'raw_records':raw_n,'columns_total':len(meta.column_names),'selected_columns':use,
+            'missing_expected_columns':missing,'cube_cells':len(cube),
+            'json_bytes':len(compact),'source_zip_bytes':pathlib.Path('LLCP2024XPT.zip').stat().st_size,
+            'source_zip_sha256':payload['source']['source_zip_sha256']
+          }
+          (out/'report.json').write_text(json.dumps(report,indent=2))
+          print(json.dumps(report,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hs038-brfss-2024-full-evidence
+          path: out/
+          retention-days: 14
