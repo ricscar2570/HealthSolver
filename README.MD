@@ -1,4 +1,4 @@
-# HealthSolver 0.40 — Multi-Outcome Predictive Engine + Clinical Coach Research Edition
+# HealthSolver 0.41 — Unified Predictive Case Router + Clinical Coach Research Edition
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.40 line.
+The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.41 line.
 
 ## What HealthSolver does
 
@@ -44,7 +44,7 @@ For the deployed GitHub Pages build:
 - core application state, backup and recovery workflows are handled client-side;
 - large static resources are packaged for browser delivery.
 
-The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.40 application.
+The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.41 application.
 
 ## Clinical Coach
 
@@ -198,6 +198,26 @@ Population-level BRFSS evidence remains separate from model-derived individual r
 
 All three models are research models only. The reported test metrics are internal held-out measurements from the same dataset family used for development. They are not external or prospective clinical validation.
 
+## Unified Predictive Case Router 0.41
+
+HealthSolver 0.41 adds a unified predictive intake layer above the three-model 0.40 engine.
+
+Instead of requiring the user to choose and complete one model-specific form at a time, the router builds a single combined case form from the union of all currently registered model features. It then:
+
+- measures feature coverage for every registered model in real time;
+- marks each model as currently applicable or abstaining;
+- applies each model's own missing-data threshold;
+- runs all applicable models with one action;
+- preserves model-specific imputation, standardization and calibration;
+- flags input values outside the observed training range;
+- shows the strongest per-feature model contributions;
+- reports explicit abstentions for models that do not have enough information;
+- keeps every outcome in a separate result card.
+
+The output is intentionally **not** presented as a ranked differential diagnosis. The three probabilities refer to different model tasks and source datasets, are not mutually exclusive, and must not be summed or compared as if they were competing diagnoses.
+
+The original 0.40 model selector remains available as a manual model-specific mode.
+
 ## Machine learning and predictive research
 
 HealthSolver is being developed toward a broader machine-learning research architecture in which structured symptoms, history, vital signs, laboratory data and observations can be used as model inputs.
@@ -298,9 +318,9 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.40 — Multi-Outcome Predictive Engine / Massive Public Data / Clinical Coach Research Edition**
+**HealthSolver 0.41 — Unified Predictive Case Router / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
 
-Current predictive release is represented by the 0.40 checkpoint, the versioned predictive registry and the three model artifacts under `predictive/`.
+Current predictive release is represented by the 0.41 checkpoint, the unified router, the versioned predictive registry and the three model artifacts under `predictive/`.
 
 The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
