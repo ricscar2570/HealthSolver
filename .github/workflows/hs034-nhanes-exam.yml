@@ -1,0 +1,33 @@
+name: HealthSolver 0.34 NHANES exam addendum
+on:
+  push:
+    branches: ['macrostep/v0.33.0-differential-data']
+    paths: ['.github/workflows/hs034-nhanes-exam.yml']
+permissions:
+  contents: read
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download public NHANES exam files
+        run: |
+          mkdir -p hs034-exam
+          python - <<'PY'
+          import urllib.request,pathlib,hashlib,json,time
+          out=pathlib.Path('hs034-exam'); rows=[]
+          for fn in ['BPXO_L.xpt','BMX_L.xpt']:
+            url='https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2021/DataFiles/'+fn
+            item={'file':fn,'url':url}
+            try:
+              with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'HealthSolver research'}),timeout=60) as r:data=r.read(10_000_000)
+              (out/fn).write_bytes(data);item.update(status='downloaded',bytes=len(data),sha256=hashlib.sha256(data).hexdigest())
+            except Exception as e:item.update(status='failed',error=str(e))
+            rows.append(item);print(fn,item['status'])
+          (out/'acquisition.json').write_text(json.dumps({'retrieved_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'sources':rows},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hs034-nhanes-exam
+          path: hs034-exam/
+          retention-days: 14
