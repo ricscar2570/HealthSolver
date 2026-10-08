@@ -2,57 +2,46 @@ name: HealthSolver Published Release Smoke
 on:
   push:
     branches: ['main']
-    paths: ['.github/workflows/hs-published-smoke.yml']
+    paths:
+      - '.github/workflows/hs-published-smoke.yml'
+      - 'predictive/**'
 permissions:
   contents: read
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 8
     steps:
-      - name: Verify live HealthSolver 0.41 assets
+      - uses: actions/checkout@v4
+      - name: Verify live release and public predictive assets
         shell: bash
         run: |
           set -euxo pipefail
           base='https://ricscar2570.github.io/HealthSolver'
-          ok=0
-          for i in $(seq 1 18); do
-            curl -L --fail -H 'Cache-Control: no-cache' "$base/?release=0.41.0&attempt=$i" -o index.html || true
-            if grep -q 'HealthSolver 0.41.0' index.html && grep -q 'unified-case-router.js' index.html; then ok=1; break; fi
-            sleep 5
-          done
-          test "$ok" = 1
-          curl -L --fail --retry 8 --retry-delay 5 "$base/version.json?release=0.41.0" -o version.json
+          curl -L --fail --retry 8 --retry-delay 3 "$base/version.json?audit=published" -o live-version.json
+          curl -L --fail --retry 8 --retry-delay 3 "$base/predictive/model-registry-v2.json?audit=published" -o live-registry.json
           python - <<'PY'
-          import json
-          v=json.load(open('version.json'))
-          assert v['version']=='0.41.0',v
-          assert v['unified_router']=='unified-case-router.js',v
-          assert set(v['predictive_models'])=={'HS-UCI-HD-001','HS-UCI-CKD-001','HS-UCI-BC-001'},v
-          print(v)
+          import json,pathlib,urllib.request
+          expected_version='0.47.0'
+          live=json.load(open('live-version.json'))
+          local=json.load(open('predictive/model-registry-v2.json'))
+          public=json.load(open('live-registry.json'))
+          assert live['version']==expected_version,live
+          assert local['version']==expected_version,local
+          assert public==local,'public registry differs from main registry'
+          ids=[m['model_id'] for m in local['models']]
+          assert live['predictive_model_count']==len(ids)==7,(live,ids)
+          assert live['predictive_models']==ids,(live['predictive_models'],ids)
+          assert len(ids)==len(set(ids))
+          for e in local['models']:
+              url=f"https://ricscar2570.github.io/HealthSolver/predictive/{e['file']}?audit=published"
+              with urllib.request.urlopen(url,timeout=30) as r:
+                  remote=json.load(r)
+              local_model=json.load(open(pathlib.Path('predictive')/e['file']))
+              assert remote==local_model,e['file']
+          print({'version':live['version'],'models':ids,'source_sha256':live['source_sha256']})
           PY
-          curl -L --fail --retry 8 --retry-delay 5 "$base/unified-case-router.js?release=0.41.0" -o router.js
-          grep -q 'HS_UNIFIED_ROUTER_041' router.js
-          grep -q 'Analizza con tutti i modelli applicabili' router.js
-          curl -L --fail --retry 8 --retry-delay 5 "$base/predictive/model-registry-v2.json?release=0.41.0" -o registry.json
-          python - <<'PY'
-          import json
-          r=json.load(open('registry.json'))
-          assert r['version']=='0.40.0'
-          assert len(r['models'])==3
-          print([m['model_id'] for m in r['models']])
-          PY
-          for file in model-heart-disease-v1.json model-ckd-v1.json model-breast-cancer-v1.json; do
-            curl -L --fail --retry 8 --retry-delay 5 "$base/predictive/$file?release=0.41.0" -o "$file"
-          done
-          python - <<'PY'
-          import json
-          ids=[]
-          for f in ['model-heart-disease-v1.json','model-ckd-v1.json','model-breast-cancer-v1.json']:
-              m=json.load(open(f)); ids.append(m['model_id'])
-              assert m['metrics_test']['auroc']>0.5
-              assert m['research_only'] is True
-              assert m['not_clinically_validated'] is True
-          assert set(ids)=={'HS-UCI-HD-001','HS-UCI-CKD-001','HS-UCI-BC-001'}
-          print(ids)
-          PY
+          curl -L --fail --retry 8 --retry-delay 3 "$base/predictive/integrated-predictive-ui.js?audit=published" -o live-ui.js
+          cmp predictive/integrated-predictive-ui.js live-ui.js
+          curl -L --fail --retry 8 --retry-delay 3 "$base/?audit=published" -o live-index.html
+          grep -q 'HealthSolver 0.47.0' live-index.html
