@@ -1,4 +1,5 @@
 name: HealthSolver 0.47 Persistence and Validation E2E
+# blob-aware archive export audit
 on:
   push:
     branches: ['main']
@@ -42,6 +43,25 @@ jobs:
           async function dl(selector,label){
             const [d]=await Promise.all([p.waitForEvent('download',{timeout:15000}),p.locator(selector).click()]);
             const q=await d.path();ok(!!q&&fs.statSync(q).size>20,label+' download');return q;
+          }
+          await p.evaluate(()=>{
+            window.__auditBlobs=[];
+            const orig=URL.createObjectURL.bind(URL);
+            URL.createObjectURL=(blob)=>{window.__auditBlobs.push(blob);return orig(blob)};
+          });
+          async function blobExport(selector,label,filename){
+            const before=await p.evaluate(()=>window.__auditBlobs.length);
+            await p.locator(selector).click();await sleep(120);
+            await p.waitForFunction(n=>window.__auditBlobs.length>n,before,{timeout:5000});
+            const data=await p.evaluate(async()=>{
+              const b=window.__auditBlobs[window.__auditBlobs.length-1];
+              const ab=await b.arrayBuffer();
+              let s='';for(const x of new Uint8Array(ab))s+=String.fromCharCode(x);
+              return {b64:btoa(s),type:b.type,size:b.size};
+            });
+            ok(data.size>20,label+' blob created');
+            const file=filename;fs.writeFileSync(file,Buffer.from(data.b64,'base64'));
+            return file;
           }
 
           // Create a real revision first.
@@ -91,10 +111,10 @@ jobs:
           await nav('archive');
           let text=await p.locator('#page-archive').innerText();
           ok(!text.includes('Nessuna revisione conservata'),'revision visible in archive');
-          const plain=await dl('#exportBackup','plain backup');
+          const plain=await blobExport('#exportBackup','plain backup','plain-backup.json');
           const obj=JSON.parse(fs.readFileSync(plain,'utf8'));ok(!!obj,'plain backup parses');
           await p.locator('#password').fill('testpass-047');
-          const enc=await dl('#encryptBackup','encrypted backup');
+          const enc=await blobExport('#encryptBackup','encrypted backup','encrypted-backup.bin');
           ok(fs.statSync(enc).size>100,'encrypted backup content');
 
           p.once('dialog',d=>d.accept());
