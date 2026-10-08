@@ -103,23 +103,24 @@
     {
       "file": "model-nhanes-diabetes-v1.json",
       "metrics_test": {
-        "accuracy_unweighted": 0.8405931417979611,
+        "accuracy_unweighted": 0.6385542168674698,
         "auprc_weighted": 0.34614969097244647,
         "auroc_weighted": 0.8035039958454145,
         "brier_weighted": 0.08754805467071683,
         "confusion_matrix_unweighted": {
-          "fn": 154,
-          "fp": 18,
-          "tn": 885,
-          "tp": 22
+          "fn": 25,
+          "fp": 365,
+          "tn": 538,
+          "tp": 151
         },
+        "decision_threshold_from_calibration": 0.10482057798374526,
         "n_calibration": 1079,
         "n_test": 1079,
         "n_total": 5393,
         "n_train": 3235,
         "positive_prevalence_unweighted": 0.16243278323753013,
-        "sensitivity_unweighted": 0.125,
-        "specificity_unweighted": 0.9800664451827242
+        "sensitivity_unweighted": 0.8579545454545454,
+        "specificity_unweighted": 0.5957918050941307
       },
       "model_id": "HS-NHANES-DM-001",
       "task": "Binary research prediction of self-reported doctor-diagnosed diabetes versus no diabetes among adults in NHANES 2017-2018.",
