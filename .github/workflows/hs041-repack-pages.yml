@@ -31,12 +31,17 @@ jobs:
           html=gzip.decompress(base64.b64decode(b64)).decode('utf-8')
           pe=(main/'predictive'/'predictive-engine.js').read_text()
           router=(main/'predictive'/'unified-case-router.js').read_text()
+          registry=json.loads((main/'predictive'/'model-registry-v2.json').read_text())
+          model_files=[m['file'] for m in registry['models']]
+          models={name:json.loads((main/'predictive'/name).read_text()) for name in model_files}
+          bundle=json.dumps({'registry':registry,'models':models},separators=(',',':'),ensure_ascii=False)
           assert '</script>' not in pe.lower()
           assert '</script>' not in router.lower()
+          assert '</script>' not in bundle.lower()
           # Remove any prior embedded 0.39/0.40/0.41 overlay block if this workflow is rerun.
           html=re.sub(r'\n<!-- HS_PREDICTIVE_OVERLAY_BEGIN -->.*?<!-- HS_PREDICTIVE_OVERLAY_END -->\n',
                       '\n',html,flags=re.S)
-          overlay='\n<!-- HS_PREDICTIVE_OVERLAY_BEGIN -->\n<script>\n'+pe+'\n</script>\n<script>\n'+router+'\n</script>\n<!-- HS_PREDICTIVE_OVERLAY_END -->\n'
+          overlay='\n<!-- HS_PREDICTIVE_OVERLAY_BEGIN -->\n<script>window.__HS_PREDICTIVE_BUNDLE__='+bundle+';</script>\n<script>\n'+pe+'\n</script>\n<script>\n'+router+'\n</script>\n<!-- HS_PREDICTIVE_OVERLAY_END -->\n'
           assert '</body>' in html.lower()
           pos=html.lower().rfind('</body>')
           html=html[:pos]+overlay+html[pos:]
