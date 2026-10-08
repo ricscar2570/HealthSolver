@@ -1,8 +1,19 @@
 name: HealthSolver 0.47 Static and Model Integrity
+# rerun after legacy routes remediation
 on:
   push:
     branches: ['main']
-    paths: ['.github/workflows/hs047-static-model-audit.yml']
+    paths:
+      - '.github/workflows/hs047-static-model-audit.yml'
+      - 'backend/**'
+      - 'dashboard/**'
+      - 'frontend/src/**'
+      - 'predictive/**'
+      - '*.yml'
+      - '*.yaml'
+      - '*.json'
+      - '.gitignore'
+      - '.env.example'
 permissions:
   contents: read
 jobs:
