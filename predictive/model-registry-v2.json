@@ -73,7 +73,7 @@
       },
       "model_id": "HS-UCI-BC-001",
       "task": "Binary research prediction of malignant versus benign FNA-derived breast-mass feature pattern within the UCI WDBC domain.",
-      "title": "Malignità su caratteristiche FNA"
+      "title": "Malignit\u00e0 su caratteristiche FNA"
     },
     {
       "file": "model-hcv-v1.json",
@@ -177,8 +177,34 @@
       "model_id": "HS-UCI-DMREADM-001",
       "task": "Binary research prediction of hospital readmission within 30 days versus later/no readmission among encounters in the UCI Diabetes 130-US Hospitals dataset.",
       "title": "Riammissione <30 giorni nel diabete"
+    },
+    {
+      "file": "model-thyroid-recurrence-v1.json",
+      "metrics_test": {
+        "accuracy": 0.8441558441558441,
+        "auprc": 0.8342042545736563,
+        "auroc": 0.9056122448979591,
+        "brier": 0.10246474140940119,
+        "confusion_matrix": {
+          "fn": 2,
+          "fp": 10,
+          "tn": 46,
+          "tp": 19
+        },
+        "decision_threshold_from_calibration": 0.20845706831987568,
+        "n_calibration": 77,
+        "n_test": 77,
+        "n_total": 383,
+        "n_train": 229,
+        "positive_prevalence": 0.2819843342036554,
+        "sensitivity": 0.9047619047619048,
+        "specificity": 0.8214285714285714
+      },
+      "model_id": "HS-UCI-THYREC-001",
+      "task": "Binary research prediction of differentiated-thyroid-cancer recurrence versus no recurrence within the UCI 915 cohort, excluding the post-treatment Response field.",
+      "title": "Recidiva carcinoma tiroideo differenziato"
     }
   ],
   "schema": "healthsolver.predictive_registry.v2",
-  "version": "0.47.0"
+  "version": "0.48.0"
 }
