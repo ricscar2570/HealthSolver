@@ -206,6 +206,11 @@ jobs:
           await page.locator('#reveal').click(); await page.waitForTimeout(100);
           await page.locator('#saveCase').click(); await page.waitForTimeout(150);
           await page.locator('#openReport').click(); await page.waitForTimeout(150);
+          const reportDialog=page.locator('#reportDialog');
+          must(await reportDialog.count()===1 && await reportDialog.isVisible(),'Single-model report dialog did not open');
+          await page.keyboard.press('Escape'); await page.waitForTimeout(100);
+          if(await reportDialog.isVisible()) await reportDialog.evaluate(d=>d.close());
+          must(!(await reportDialog.isVisible()),'Single-model report dialog did not close');
           console.log('Single model/report PASS');
 
           stage('DATA EXPORT + CLIENT TRAINING');
