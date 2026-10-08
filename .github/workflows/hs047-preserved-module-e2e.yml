@@ -81,7 +81,6 @@ jobs:
           body=await frame.locator('body').innerText();
           must(/revisione/i.test(body),'revision feedback missing');
           await save(frame.locator('#exportResult'),'/tmp/previous-result.json');
-          await save(frame.locator('#exportPlain'),'/tmp/previous-archive.json');
 
           await frame.locator('#report').click();await page.waitForTimeout(150);
           const report=frame.locator('#reportDialog');
@@ -89,6 +88,12 @@ jobs:
           await save(frame.locator('#downloadReport'),'/tmp/previous-report.html');
           must(/HealthSolver|visita|relazione/i.test(fs.readFileSync('/tmp/previous-report.html','utf8')),'report HTML content invalid');
           const close=frame.locator('#closeReport');if(await close.count()===1) await close.click();
+
+          const archiveNav=frame.getByRole('button',{name:/Registro e cassaforte/i});
+          must(await archiveNav.count()===1,'preserved archive navigation missing');
+          await archiveNav.click(); await page.waitForTimeout(120);
+          must(await frame.locator('#exportPlain').isVisible(),'preserved archive page did not open');
+          await save(frame.locator('#exportPlain'),'/tmp/previous-archive.json');
 
           const password='HealthSolver-Preserved-047!';
           await frame.locator('#password').fill(password);
