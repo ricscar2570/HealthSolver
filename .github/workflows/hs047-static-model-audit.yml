@@ -52,7 +52,7 @@ jobs:
           for ext in ('*.yml','*.yaml'):
               for p in pathlib.Path('.').rglob(ext):
                   if '.git' not in p.parts:
-                      yaml.safe_load(p.read_text())
+                      list(yaml.safe_load_all(p.read_text()))
           print('JSON/YAML parse PASS')
           PY
           for f in predictive/*.js; do node --check "$f"; done
