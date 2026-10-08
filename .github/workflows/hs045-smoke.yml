@@ -1,0 +1,63 @@
+name: HealthSolver 0.45 NHANES Smoke
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'predictive/**'
+      - '.github/workflows/hs045-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: node --check predictive/integrated-predictive-ui.js
+      - name: Verify NHANES model and registry
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import json,math,pathlib
+          root=pathlib.Path('predictive')
+          reg=json.loads((root/'model-registry-v2.json').read_text())
+          assert reg['version']=='0.45.0'
+          assert len(reg['models'])==5
+          entries={e['model_id']:e for e in reg['models']}
+          assert 'HS-NHANES-DM-001' in entries
+          m=json.loads((root/'model-nhanes-diabetes-v1.json').read_text())
+          assert m['model_id']=='HS-NHANES-DM-001'
+          assert m['dataset']['public_use'] is True
+          assert m['dataset']['survey_cycle']=='2017-2018'
+          assert m['dataset']['target_variable']=='DIQ010'
+          assert m['dataset']['weight_variable']=='WTMEC2YR'
+          assert set(m['features'])=={'age','sex','bmi','waist','sbp','tc','hdl'}
+          assert m['metrics_test']['n_total']==5393
+          assert m['metrics_test']['n_test']==1079
+          assert m['metrics_test']['auroc_weighted']>=0.5
+          assert 0<=m['metrics_test']['brier_weighted']<=1
+          assert 0<m['threshold']<1
+          assert 'Youden' in m['threshold_selection']
+          assert m['research_only'] is True
+          assert m['not_clinically_validated'] is True
+          x=m['imputation']['values']
+          score=m['logistic']['intercept']
+          for f in m['features']:
+              z=(x[f]-m['standardization']['mean'][f])/m['standardization']['scale'][f]
+              score+=z*m['logistic']['coefficients'][f]
+          z=m['calibration']['intercept']+m['calibration']['slope']*score
+          p=1/(1+math.exp(-max(-35,min(35,z))))
+          assert math.isfinite(p) and 0<p<1
+          print({'median_probability':p,'threshold':m['threshold'],'metrics':m['metrics_test']})
+          PY
+      - name: Verify integrated UI references fifth model
+        shell: bash
+        run: |
+          grep -q '5 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -q 'HS-NHANES-DM-001' predictive/integrated-predictive-ui.js
+          grep -q 'Dati NHANES · diabete riferito diagnosticato' predictive/integrated-predictive-ui.js
