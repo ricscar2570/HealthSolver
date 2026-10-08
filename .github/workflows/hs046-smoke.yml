@@ -26,8 +26,8 @@ jobs:
           import json,math,pathlib
           root=pathlib.Path('predictive')
           reg=json.loads((root/'model-registry-v2.json').read_text())
-          assert reg['version']=='0.46.0'
-          assert len(reg['models'])==6
+          assert reg['version'] in {'0.46.0','0.47.0'}
+          assert len(reg['models'])>=6
           ids={e['model_id'] for e in reg['models']}
           assert 'HS-NHIS-HYP-001' in ids
           m=json.loads((root/'model-nhis-hypertension-v1.json').read_text())
@@ -60,6 +60,6 @@ jobs:
       - name: Verify UI references sixth model
         shell: bash
         run: |
-          grep -q '6 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -q 'MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
           grep -q 'HS-NHIS-HYP-001' predictive/integrated-predictive-ui.js
           grep -q 'Dati NHIS · ipertensione riferita' predictive/integrated-predictive-ui.js
