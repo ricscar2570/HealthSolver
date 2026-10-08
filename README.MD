@@ -1,4 +1,4 @@
-# HealthSolver 0.47.1 — Full Audit Remediation + UCI Diabetes Readmission Integration
+# HealthSolver 0.48 — UCI Thyroid Cancer Recurrence Integration + Predictive-First UI
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to the audited HealthSolver 0.47.1 line.
+The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.48 line.
 
 ## What HealthSolver does
 
@@ -44,7 +44,7 @@ For the deployed GitHub Pages build:
 - core application state, backup and recovery workflows are handled client-side;
 - large static resources are packaged for browser delivery.
 
-The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.47 application.
+The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.48 application.
 
 ## Clinical Coach
 
@@ -547,6 +547,85 @@ The readmission model has its own collapsible hospital-episode panel and uses th
 
 A live browser audit verifies that the public GitHub Pages build exposes seven models, accepts a complete readmission episode, runs `HS-UCI-DMREADM-001` and renders a numeric probability without abstention.
 
+## UCI Differentiated Thyroid Cancer Recurrence integration 0.48
+
+HealthSolver 0.48 adds one complete database macrostep based on the **UCI Differentiated Thyroid Cancer Recurrence** cohort (UCI ID 915, DOI `10.24432/C5632J`, CC BY 4.0).
+
+The source contains **383 individual patients**, clinicopathologic variables and a recurrence target. UCI documents that the cohort was collected over 15 years and that each patient was followed for at least 10 years.
+
+### New predictive model
+
+**HS-UCI-THYREC-001 — Recidiva carcinoma tiroideo differenziato**
+
+Research task:
+
+- positive class: recurrence in the UCI source;
+- negative class: no recurrence;
+- the source feature `Response` is **deliberately excluded** from prediction to reduce obvious post-treatment temporal leakage;
+- age and sex are reused from the existing HealthSolver dossier;
+- the remaining clinicopathologic inputs are entered only in the specialist thyroid panel;
+- categorical variables are deterministically one-hot encoded before browser inference.
+
+Raw predictor fields after excluding `Response`: **15**.
+
+Encoded model features: **51**.
+
+Training design:
+
+- total patients: **383**
+- training: **229**
+- calibration: **77**
+- held-out test: **77**
+- class-balanced regularized logistic regression;
+- held-out Platt calibration;
+- decision threshold selected only on the calibration split using Youden J.
+
+Held-out test metrics:
+
+- AUROC: **0.906**
+- AUPRC: **0.834**
+- Accuracy: **0.844**
+- Brier score: **0.102**
+- Sensitivity: **0.905**
+- Specificity: **0.821**
+- decision threshold: **0.208**
+
+These are internal held-out results from the same source cohort. They are not external or prospective clinical validation.
+
+### Browser integration
+
+HealthSolver 0.48 exposes **8 supervised predictive models** in the Predictive-First Expert Mode.
+
+The thyroid recurrence model adds a collapsible specialist section for:
+
+- smoking;
+- previous smoking;
+- previous radiotherapy;
+- thyroid function;
+- physical examination;
+- adenopathy;
+- pathology;
+- focality;
+- source risk class;
+- T;
+- N;
+- M;
+- stage.
+
+Age and sex remain shared dossier fields. The post-treatment `Response` field is not exposed in the UI and is not present among the model predictors.
+
+A live Playwright audit on GitHub Pages verifies that:
+
+- public release metadata report 0.48.0;
+- the public predictive registry contains eight models;
+- `HS-UCI-THYREC-001` is present;
+- the thyroid specialist panel is visible;
+- `Response` is absent;
+- a complete thyroid case reaches **PRONTO ALLA PREDIZIONE**;
+- the model executes without abstention;
+- a numeric probability is rendered;
+- the result card reports the held-out AUROC.
+
 ## Machine learning and predictive research
 
 HealthSolver is being developed toward a broader machine-learning research architecture in which structured symptoms, history, vital signs, laboratory data and observations can be used as model inputs.
@@ -647,9 +726,9 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.47 — UCI Diabetes Readmission Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
+**HealthSolver 0.48 — UCI Thyroid Cancer Recurrence Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
 
-Current predictive release is represented by the 0.47 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and seven supervised model artifacts under `predictive/`.
+Current predictive release is represented by the 0.48 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and eight supervised model artifacts under `predictive/`.
 
 The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
