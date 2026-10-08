@@ -1,0 +1,65 @@
+name: HealthSolver 0.46 NHIS Smoke
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'predictive/**'
+      - '.github/workflows/hs046-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: node --check predictive/integrated-predictive-ui.js
+      - name: Verify NHIS model and registry
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import json,math,pathlib
+          root=pathlib.Path('predictive')
+          reg=json.loads((root/'model-registry-v2.json').read_text())
+          assert reg['version']=='0.46.0'
+          assert len(reg['models'])==6
+          ids={e['model_id'] for e in reg['models']}
+          assert 'HS-NHIS-HYP-001' in ids
+          m=json.loads((root/'model-nhis-hypertension-v1.json').read_text())
+          assert m['model_id']=='HS-NHIS-HYP-001'
+          assert m['dataset']['public_use'] is True
+          assert m['dataset']['survey_year']==2023
+          assert m['dataset']['target_variable']=='HYPEV_A'
+          assert m['dataset']['weight_variable']=='WTFA_A'
+          assert set(m['features'])=={'age','sex','obese','current_smoker','fair_poor_general_health'}
+          q=m['metrics_test']
+          assert q['n_total']==29471
+          assert q['n_test']==5895
+          assert q['auroc_weighted']>=0.5
+          assert 0<=q['brier_weighted']<=1
+          assert q['sensitivity_unweighted']>=0.5
+          assert 0<m['threshold']<1
+          assert 'Youden' in m['threshold_selection']
+          assert m['research_only'] is True
+          assert m['not_clinically_validated'] is True
+          x=m['imputation']['values']
+          score=m['logistic']['intercept']
+          for f in m['features']:
+              z=(x[f]-m['standardization']['mean'][f])/m['standardization']['scale'][f]
+              score+=z*m['logistic']['coefficients'][f]
+          z=m['calibration']['intercept']+m['calibration']['slope']*score
+          p=1/(1+math.exp(-max(-35,min(35,z))))
+          assert math.isfinite(p) and 0<p<1
+          print({'median_probability':p,'threshold':m['threshold'],'metrics':q})
+          PY
+      - name: Verify UI references sixth model
+        shell: bash
+        run: |
+          grep -q '6 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -q 'HS-NHIS-HYP-001' predictive/integrated-predictive-ui.js
+          grep -q 'Dati NHIS · ipertensione riferita' predictive/integrated-predictive-ui.js
