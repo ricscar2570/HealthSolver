@@ -74,8 +74,111 @@
       "model_id": "HS-UCI-BC-001",
       "task": "Binary research prediction of malignant versus benign FNA-derived breast-mass feature pattern within the UCI WDBC domain.",
       "title": "Malignit\u00e0 su caratteristiche FNA"
+    },
+    {
+      "file": "model-hcv-v1.json",
+      "metrics_test": {
+        "accuracy": 0.9180327868852459,
+        "auprc": 0.7118493312243314,
+        "auroc": 0.9249221183800623,
+        "brier": 0.07766558244895556,
+        "confusion_matrix": {
+          "fn": 7,
+          "fp": 3,
+          "tn": 104,
+          "tp": 8
+        },
+        "n_calibration": 122,
+        "n_test": 122,
+        "n_total": 608,
+        "n_train": 364,
+        "positive_prevalence": 0.12335526315789473,
+        "sensitivity": 0.5333333333333333,
+        "specificity": 0.9719626168224299
+      },
+      "model_id": "HS-UCI-HCV-001",
+      "task": "Binary research prediction of liver-disease category versus blood-donor reference within the UCI HCV Data domain; suspect-donor rows excluded.",
+      "title": "Pattern epatico HCV / malattia epatica"
+    },
+    {
+      "file": "model-nhanes-diabetes-v1.json",
+      "metrics_test": {
+        "accuracy_unweighted": 0.6385542168674698,
+        "auprc_weighted": 0.34614969097244647,
+        "auroc_weighted": 0.8035039958454145,
+        "brier_weighted": 0.08754805467071683,
+        "confusion_matrix_unweighted": {
+          "fn": 25,
+          "fp": 365,
+          "tn": 538,
+          "tp": 151
+        },
+        "decision_threshold_from_calibration": 0.10482057798374526,
+        "n_calibration": 1079,
+        "n_test": 1079,
+        "n_total": 5393,
+        "n_train": 3235,
+        "positive_prevalence_unweighted": 0.16243278323753013,
+        "sensitivity_unweighted": 0.8579545454545454,
+        "specificity_unweighted": 0.5957918050941307
+      },
+      "model_id": "HS-NHANES-DM-001",
+      "task": "Binary research prediction of self-reported doctor-diagnosed diabetes versus no diabetes among adults in NHANES 2017-2018.",
+      "title": "Diabete riferito diagnosticato (NHANES)"
+    },
+    {
+      "file": "model-nhis-hypertension-v1.json",
+      "metrics_test": {
+        "accuracy_unweighted": 0.7019508057675996,
+        "auprc_weighted": 0.6570880216540114,
+        "auroc_weighted": 0.8097646831507195,
+        "brier_weighted": 0.162276804289203,
+        "confusion_matrix_unweighted": {
+          "fn": 403,
+          "fp": 1354,
+          "tn": 2322,
+          "tp": 1816
+        },
+        "decision_threshold_from_calibration": 0.29750853183777015,
+        "n_calibration": 5894,
+        "n_test": 5895,
+        "n_total": 29471,
+        "n_train": 17682,
+        "positive_prevalence_unweighted": 0.3764378541617183,
+        "sensitivity_unweighted": 0.8183866606579541,
+        "specificity_unweighted": 0.6316648531011969
+      },
+      "model_id": "HS-NHIS-HYP-001",
+      "task": "Binary research prediction of self-reported ever being told of hypertension versus no such report among NHIS 2023 sample adults.",
+      "title": "Ipertensione riferita (NHIS)"
+    },
+    {
+      "file": "model-diabetes-readmission-v1.json",
+      "metrics_test": {
+        "accuracy": 0.5908420949199175,
+        "auprc": 0.19872356944255892,
+        "auroc": 0.6399775801279305,
+        "brier": 0.09612061856261342,
+        "confusion_matrix": {
+          "fn": 868,
+          "fp": 7460,
+          "tn": 10622,
+          "tp": 1404
+        },
+        "decision_threshold_from_calibration": 0.10191519419725201,
+        "n_calibration": 20353,
+        "n_test": 20354,
+        "n_total": 101766,
+        "n_train": 61059,
+        "positive_prevalence": 0.11159915885462728,
+        "sensitivity": 0.6179577464788732,
+        "specificity": 0.5874350182501935
+      },
+      "model_id": "HS-UCI-DMREADM-001",
+      "task": "Binary research prediction of hospital readmission within 30 days versus later/no readmission among encounters in the UCI Diabetes 130-US Hospitals dataset.",
+      "title": "Riammissione <30 giorni nel diabete"
     }
   ],
   "schema": "healthsolver.predictive_registry.v2",
-  "version": "0.40.0"
+  "version": "0.47.0"
 }

@@ -1,0 +1,166 @@
+{
+  "abstention": {
+    "max_missing_features": 1,
+    "message": "Prediction withheld when more than one required feature is missing."
+  },
+  "calibration": {
+    "intercept": -1.7658136565677376,
+    "method": "Platt scaling on held-out calibration split using NHANES MEC sample weights",
+    "slope": 0.8472357423609549
+  },
+  "dataset": {
+    "files": [
+      "DEMO_J.XPT",
+      "BMX_J.XPT",
+      "BPX_J.XPT",
+      "TCHOL_J.XPT",
+      "HDL_J.XPT",
+      "DIQ_J.XPT"
+    ],
+    "name": "NHANES 2017-2018 public-use files",
+    "public_use": true,
+    "source": "CDC/NCHS NHANES",
+    "survey_cycle": "2017-2018",
+    "target_variable": "DIQ010",
+    "weight_variable": "WTMEC2YR"
+  },
+  "features": [
+    "age",
+    "sex",
+    "bmi",
+    "waist",
+    "sbp",
+    "tc",
+    "hdl"
+  ],
+  "field_meta": {
+    "age": {
+      "label": "Et\u00e0",
+      "median": 53.0,
+      "training_max": 80.0,
+      "training_min": 20.0,
+      "unit": "anni"
+    },
+    "bmi": {
+      "label": "BMI",
+      "median": 28.6,
+      "training_max": 86.2,
+      "training_min": 14.9,
+      "unit": "kg/m\u00b2"
+    },
+    "hdl": {
+      "label": "Colesterolo HDL",
+      "median": 51.0,
+      "training_max": 189.0,
+      "training_min": 10.0,
+      "unit": "mg/dL"
+    },
+    "sbp": {
+      "label": "Pressione sistolica media",
+      "median": 124.0,
+      "training_max": 238.0,
+      "training_min": 72.66666666666667,
+      "unit": "mmHg"
+    },
+    "sex": {
+      "encoding": "0=female, 1=male",
+      "label": "Sesso",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "tc": {
+      "label": "Colesterolo totale",
+      "median": 185.0,
+      "training_max": 446.0,
+      "training_min": 86.0,
+      "unit": "mg/dL"
+    },
+    "waist": {
+      "label": "Circonferenza vita",
+      "median": 99.4,
+      "training_max": 169.5,
+      "training_min": 62.3,
+      "unit": "cm"
+    }
+  },
+  "imputation": {
+    "strategy": "training median",
+    "values": {
+      "age": 53.0,
+      "bmi": 28.6,
+      "hdl": 51.0,
+      "sbp": 124.0,
+      "sex": 0.0,
+      "tc": 185.0,
+      "waist": 99.4
+    }
+  },
+  "logistic": {
+    "coefficients": {
+      "age": 1.300521275504548,
+      "bmi": 0.05957721426840817,
+      "hdl": -0.6697205939559971,
+      "sbp": 0.12402850350757402,
+      "sex": -0.06385830260603088,
+      "tc": -0.1976557761443867,
+      "waist": 0.4280796701237914
+    },
+    "intercept": -0.5606716153640253
+  },
+  "metrics_test": {
+    "accuracy_unweighted": 0.6385542168674698,
+    "auprc_weighted": 0.34614969097244647,
+    "auroc_weighted": 0.8035039958454145,
+    "brier_weighted": 0.08754805467071683,
+    "confusion_matrix_unweighted": {
+      "fn": 25,
+      "fp": 365,
+      "tn": 538,
+      "tp": 151
+    },
+    "decision_threshold_from_calibration": 0.10482057798374526,
+    "n_calibration": 1079,
+    "n_test": 1079,
+    "n_total": 5393,
+    "n_train": 3235,
+    "positive_prevalence_unweighted": 0.16243278323753013,
+    "sensitivity_unweighted": 0.8579545454545454,
+    "specificity_unweighted": 0.5957918050941307
+  },
+  "model_id": "HS-NHANES-DM-001",
+  "not_clinically_validated": true,
+  "release": "HealthSolver 0.45 NHANES 2017-2018 Integration",
+  "research_only": true,
+  "schema": "healthsolver.predictive_model.v1",
+  "standardization": {
+    "mean": {
+      "age": 51.363833075734156,
+      "bmi": 29.76160741885626,
+      "hdl": 53.079443585780524,
+      "sbp": 126.96197836166924,
+      "sex": 0.49149922720247297,
+      "tc": 187.7564142194745,
+      "waist": 100.56578052550233
+    },
+    "scale": {
+      "age": 17.90658197544226,
+      "bmi": 7.170224617388841,
+      "hdl": 15.280323266671717,
+      "sbp": 19.33622081339059,
+      "sex": 0.49992773163912885,
+      "tc": 37.68155044607475,
+      "waist": 15.822895409366668
+    }
+  },
+  "survey_design_note": "MEC examination weights are used as sample weights; this does not reproduce the full complex-survey variance design.",
+  "target_definition": {
+    "excluded": "borderline, refused, do not know, age <20, invalid survey weight",
+    "negative": "DIQ010=2, respondent reports no doctor-diagnosed diabetes",
+    "positive": "DIQ010=1, respondent reports a doctor told them they have diabetes"
+  },
+  "task": "Binary research prediction of self-reported doctor-diagnosed diabetes versus no diabetes among adults in NHANES 2017-2018.",
+  "threshold": 0.10482057798374526,
+  "threshold_selection": "Youden J maximum on weighted held-out calibration split; evaluated once on independent test split",
+  "version": "1.0.0"
+}

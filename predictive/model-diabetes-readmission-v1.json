@@ -1,0 +1,221 @@
+{
+  "abstention": {
+    "max_missing_features": 2,
+    "message": "Prediction withheld when more than two required features are missing."
+  },
+  "calibration": {
+    "intercept": -2.0761452976430648,
+    "method": "Platt scaling on held-out calibration split",
+    "slope": 0.896036773537726
+  },
+  "dataset": {
+    "doi": "10.24432/C5230J",
+    "license": "CC BY 4.0",
+    "name": "UCI Diabetes 130-US Hospitals for Years 1999-2008",
+    "source": "https://archive.ics.uci.edu/dataset/296/diabetes+130-us+hospitals+for+years+1999-2008",
+    "uci_id": 296
+  },
+  "features": [
+    "age_mid",
+    "time_in_hospital",
+    "num_lab_procedures",
+    "num_procedures",
+    "num_medications",
+    "number_outpatient",
+    "number_emergency",
+    "number_inpatient",
+    "number_diagnoses",
+    "a1c_abnormal",
+    "glucose_abnormal",
+    "diabetes_med",
+    "medication_change"
+  ],
+  "field_meta": {
+    "a1c_abnormal": {
+      "encoding": "0=normal, 1=>7/>8, missing=not measured/other",
+      "label": "HbA1c anomala/misurata",
+      "median": 1.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "age_mid": {
+      "label": "Et\u00e0 (punto medio fascia)",
+      "median": 65.0,
+      "training_max": 95.0,
+      "training_min": 5.0,
+      "unit": "anni"
+    },
+    "diabetes_med": {
+      "encoding": "0=no, 1=yes",
+      "label": "Farmaci per diabete",
+      "median": 1.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "glucose_abnormal": {
+      "encoding": "0=normal, 1=>200/>300, missing=not measured/other",
+      "label": "Glicemia massima anomala",
+      "median": 1.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "medication_change": {
+      "encoding": "0=no, 1=change",
+      "label": "Cambio terapia",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "num_lab_procedures": {
+      "label": "Numero procedure di laboratorio",
+      "median": 44.0,
+      "training_max": 132.0,
+      "training_min": 1.0
+    },
+    "num_medications": {
+      "label": "Numero farmaci",
+      "median": 15.0,
+      "training_max": 81.0,
+      "training_min": 1.0
+    },
+    "num_procedures": {
+      "label": "Numero procedure",
+      "median": 1.0,
+      "training_max": 6.0,
+      "training_min": 0.0
+    },
+    "number_diagnoses": {
+      "label": "Numero diagnosi",
+      "median": 8.0,
+      "training_max": 16.0,
+      "training_min": 1.0
+    },
+    "number_emergency": {
+      "label": "Accessi emergenza pregressi",
+      "median": 0.0,
+      "training_max": 76.0,
+      "training_min": 0.0
+    },
+    "number_inpatient": {
+      "label": "Ricoveri inpatient pregressi",
+      "median": 0.0,
+      "training_max": 21.0,
+      "training_min": 0.0
+    },
+    "number_outpatient": {
+      "label": "Visite outpatient pregresse",
+      "median": 0.0,
+      "training_max": 42.0,
+      "training_min": 0.0
+    },
+    "time_in_hospital": {
+      "label": "Durata ricovero",
+      "median": 4.0,
+      "training_max": 14.0,
+      "training_min": 1.0,
+      "unit": "giorni"
+    }
+  },
+  "imputation": {
+    "strategy": "training median",
+    "values": {
+      "a1c_abnormal": 1.0,
+      "age_mid": 65.0,
+      "diabetes_med": 1.0,
+      "glucose_abnormal": 1.0,
+      "medication_change": 0.0,
+      "num_lab_procedures": 44.0,
+      "num_medications": 15.0,
+      "num_procedures": 1.0,
+      "number_diagnoses": 8.0,
+      "number_emergency": 0.0,
+      "number_inpatient": 0.0,
+      "number_outpatient": 0.0,
+      "time_in_hospital": 4.0
+    }
+  },
+  "logistic": {
+    "coefficients": {
+      "a1c_abnormal": 0.024182039059803716,
+      "age_mid": 0.08296547556225886,
+      "diabetes_med": 0.0780203334975331,
+      "glucose_abnormal": -0.011654411251757814,
+      "medication_change": -0.004848301656920451,
+      "num_lab_procedures": 0.006667516082074095,
+      "num_medications": 0.05780391949773637,
+      "num_procedures": -0.05740810233215924,
+      "number_diagnoses": 0.07272357661710677,
+      "number_emergency": 0.045837368480045625,
+      "number_inpatient": 0.37135431632501903,
+      "number_outpatient": -0.00023083350346562878,
+      "time_in_hospital": 0.08044574626703847
+    },
+    "intercept": -0.07570774565050921
+  },
+  "metrics_test": {
+    "accuracy": 0.5908420949199175,
+    "auprc": 0.19872356944255892,
+    "auroc": 0.6399775801279305,
+    "brier": 0.09612061856261342,
+    "confusion_matrix": {
+      "fn": 868,
+      "fp": 7460,
+      "tn": 10622,
+      "tp": 1404
+    },
+    "decision_threshold_from_calibration": 0.10191519419725201,
+    "n_calibration": 20353,
+    "n_test": 20354,
+    "n_total": 101766,
+    "n_train": 61059,
+    "positive_prevalence": 0.11159915885462728,
+    "sensitivity": 0.6179577464788732,
+    "specificity": 0.5874350182501935
+  },
+  "model_id": "HS-UCI-DMREADM-001",
+  "not_clinically_validated": true,
+  "release": "HealthSolver 0.47 UCI Diabetes 130-US Hospitals Integration",
+  "research_only": true,
+  "schema": "healthsolver.predictive_model.v1",
+  "standardization": {
+    "mean": {
+      "a1c_abnormal": 0.9511456132593066,
+      "age_mid": 65.97512242257488,
+      "diabetes_med": 0.7699602024271606,
+      "glucose_abnormal": 0.9741725216593786,
+      "medication_change": 0.4605381680014412,
+      "num_lab_procedures": 43.07792463027563,
+      "num_medications": 15.994366104914919,
+      "num_procedures": 1.3355934424081626,
+      "number_diagnoses": 7.420855238375997,
+      "number_emergency": 0.19807071848539937,
+      "number_inpatient": 0.6360569285445226,
+      "number_outpatient": 0.36978987536644886,
+      "time_in_hospital": 4.386609672611736
+    },
+    "scale": {
+      "a1c_abnormal": 0.21556353039622492,
+      "age_mid": 15.966717423967967,
+      "diabetes_med": 0.42085803913610403,
+      "glucose_abnormal": 0.15862036345685912,
+      "medication_change": 0.49844033124870374,
+      "num_lab_procedures": 19.619387756539513,
+      "num_medications": 8.103249667177291,
+      "num_procedures": 1.6990645081764637,
+      "number_diagnoses": 1.9360900462736852,
+      "number_emergency": 0.9527267092005833,
+      "number_inpatient": 1.2603456283115808,
+      "number_outpatient": 1.280719189267494,
+      "time_in_hospital": 2.9806521431974518
+    }
+  },
+  "target_definition": {
+    "meaning": "30-day readmission outcome, not diabetes diagnosis",
+    "negative": "readmitted=>30 or NO",
+    "positive": "readmitted=<30"
+  },
+  "task": "Binary research prediction of hospital readmission within 30 days versus later/no readmission among encounters in the UCI Diabetes 130-US Hospitals dataset.",
+  "threshold": 0.10191519419725201,
+  "threshold_selection": "Youden J maximum on held-out calibration split; evaluated once on independent test split",
+  "version": "1.0.0"
+}
