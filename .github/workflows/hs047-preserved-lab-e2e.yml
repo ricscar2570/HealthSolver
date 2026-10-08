@@ -1,4 +1,5 @@
 name: HealthSolver 0.47 Preserved Laboratory Full E2E
+# navigate each laboratory workspace page explicitly
 on:
   push:
     branches: ['main']
@@ -53,43 +54,43 @@ jobs:
 
           const lab=prev.frameLocator('#laboratory');
           await lab.locator('body').waitFor({state:'attached',timeout:30000});
-          await lab.getByText('classificazione di ricerca',{exact:false}).first().waitFor({state:'visible',timeout:30000});
 
+          const go=async(name,waitSelector)=>{
+            const b=lab.getByRole('button',{name});
+            must(await b.count()>=1,'laboratory internal navigation missing: '+name);
+            await b.first().click(); await page.waitForTimeout(150);
+            if(waitSelector) await lab.locator(waitSelector).waitFor({state:'visible',timeout:15000});
+            console.log('LAB PAGE',String(name),waitSelector||'');
+          };
+
+          // 02 · Esplora un caso
+          await go(/Esplora un caso/i,'#predict');
+          const v0=lab.locator('#v0');
+          must(await v0.count()===1,'laboratory feature v0 missing');
+          const original=await v0.inputValue();
           const before=await lab.locator('body').innerText();
           await lab.locator('#predict').click(); await page.waitForTimeout(250);
           let body=await lab.locator('body').innerText();
           must(body!==before,'laboratory prediction produced no UI change');
           must(/probabil|risultat|classific/i.test(body),'laboratory prediction output missing');
-
           await lab.locator('#reveal').click(); await page.waitForTimeout(100);
           body=await lab.locator('body').innerText();
           must(/etichett|registrat|confront/i.test(body),'laboratory reveal output missing');
-
           await lab.locator('#saveCase').click(); await page.waitForTimeout(120);
           body=await lab.locator('body').innerText();
           must(/revisione|salvat/i.test(body),'laboratory revision save feedback missing');
 
-          // Internal model evaluation.
-          await lab.locator('#evaluate').click(); await page.waitForTimeout(250);
-          body=await lab.locator('body').innerText();
-          must(/AUC|sensibil|specific|Brier|test/i.test(body),'laboratory internal evaluation missing');
-
-          await save(lab.locator('#exportEvaluation'),'/tmp/lab-evaluation.json');
-          await save(lab.locator('#exportModel'),'/tmp/lab-model.json');
-          await save(lab.locator('#exportCSV'),'/tmp/lab-dataset.csv');
-          must(JSON.parse(fs.readFileSync('/tmp/lab-evaluation.json','utf8')),'evaluation JSON invalid');
-          must(JSON.parse(fs.readFileSync('/tmp/lab-model.json','utf8')),'model JSON invalid');
-          must(fs.readFileSync('/tmp/lab-dataset.csv','utf8').split(/\r?\n/).length>20,'dataset CSV too small');
-
-          // Client-side retraining path using the smallest available epoch count.
+          // 03 · Addestra e confronta
+          await go(/Addestra e confronta/i,'#train');
           const epochs=lab.locator('#epochs');
           const opts=await epochs.locator('option').evaluateAll(os=>os.map(o=>o.value));
           if(opts.length){
             await epochs.selectOption(opts[0]);
             await lab.locator('#train').click();
+            await lab.locator('#train').waitFor({state:'visible',timeout:90000});
             await page.waitForFunction(()=>{
-              const f=document.querySelector('#previous')?.contentDocument?.querySelector('#laboratory');
-              const d=f?.contentDocument;
+              const p=document.querySelector('#previous')?.contentDocument;
+              const d=p?.querySelector('#laboratory')?.contentDocument;
               const b=d?.querySelector('#train');
               return b && !b.disabled;
             },{timeout:90000});
@@ -97,36 +98,72 @@ jobs:
           body=await lab.locator('body').innerText();
           must(/modello|training|addestr/i.test(body),'laboratory training path missing');
 
-          // Full laboratory workspace backup and restore.
+          // Internal evaluation controls can share this page.
+          if(await lab.locator('#evaluate').isVisible().catch(()=>false)){
+            await lab.locator('#evaluate').click(); await page.waitForTimeout(250);
+          } else {
+            await go(/Panoramica/i);
+            const metrics=lab.locator('#viewMetrics');
+            must(await metrics.count()===1,'internal evaluation navigation missing');
+            await metrics.click(); await page.waitForTimeout(150);
+            await lab.locator('#evaluate').waitFor({state:'visible',timeout:15000});
+            await lab.locator('#evaluate').click(); await page.waitForTimeout(250);
+          }
+          body=await lab.locator('body').innerText();
+          must(/AUC|sensibil|specific|Brier|test/i.test(body),'laboratory internal evaluation missing');
+          await save(lab.locator('#exportEvaluation'),'/tmp/lab-evaluation.json');
+          must(Boolean(JSON.parse(fs.readFileSync('/tmp/lab-evaluation.json','utf8'))),'evaluation JSON invalid');
+
+          // 04 · Dati e importazione
+          await go(/Dati e importazione/i,'#exportModel');
+          await save(lab.locator('#exportModel'),'/tmp/lab-model.json');
+          await save(lab.locator('#exportCSV'),'/tmp/lab-dataset.csv');
+          must(Boolean(JSON.parse(fs.readFileSync('/tmp/lab-model.json','utf8'))),'model JSON invalid');
+          must(fs.readFileSync('/tmp/lab-dataset.csv','utf8').split(/\r?\n/).length>20,'dataset CSV too small');
+
+          // 05 · Archivio e backup — plain full-workspace backup / restore.
+          await go(/Archivio e backup/i,'#backup');
           await save(lab.locator('#backup'),'/tmp/lab-backup.json');
-          const v0=lab.locator('#v0');
-          must(await v0.count()===1,'laboratory feature v0 missing');
-          const original=await v0.inputValue();
+          await go(/Esplora un caso/i,'#v0');
           await v0.fill(String(Number(original)+1));
+          must((await v0.inputValue())!==original,'laboratory mutation failed');
+          await go(/Archivio e backup/i,'#backupFile');
           await lab.locator('#backupFile').setInputFiles('/tmp/lab-backup.json');
-          await page.waitForTimeout(350);
+          await page.waitForTimeout(500);
+          await go(/Esplora un caso/i,'#v0');
           must((await v0.inputValue())===original,'laboratory backup restore failed');
 
-          // Encrypted complete backup when WebCrypto is available.
+          // 08 · Spazi e backup cifrato.
           const encPwd='HealthSolver-Lab-047!';
-          if(await lab.locator('#encryptBackup').count()===1){
-            await lab.locator('#encryptPassword').fill(encPwd);
-            await lab.locator('#encryptRepeat').fill(encPwd);
-            await save(lab.locator('#encryptBackup'),'/tmp/lab-encrypted.json');
-            await v0.fill(String(Number(original)+2));
-            await lab.locator('#decryptPassword').fill(encPwd);
-            await lab.locator('#allRestore').setInputFiles('/tmp/lab-encrypted.json');
-            await page.waitForTimeout(3000);
-            must((await v0.inputValue())===original,'laboratory encrypted restore failed');
-          }
+          await go(/Spazi e backup cifrato/i,'#encryptBackup');
+          await lab.locator('#encryptPassword').fill(encPwd);
+          await lab.locator('#encryptRepeat').fill(encPwd);
+          await save(lab.locator('#encryptBackup'),'/tmp/lab-encrypted.json');
+          await go(/Esplora un caso/i,'#v0');
+          await v0.fill(String(Number(original)+2));
+          await go(/Spazi e backup cifrato/i,'#allRestore');
+          await lab.locator('#decryptPassword').fill(encPwd);
+          await lab.locator('#allRestore').setInputFiles('/tmp/lab-encrypted.json');
+          await page.waitForTimeout(3500);
+          await go(/Esplora un caso/i,'#v0');
+          must((await v0.inputValue())===original,'laboratory encrypted restore failed');
+
+          // 06 · NHAMCS importer surface is reachable and exposes its authorization gate.
+          await go(/Respiratorio · NHAMCS/i,'#nhamcsAuthorized');
+          must(await lab.locator('#nhamcsFile').count()===1,'NHAMCS file input missing');
+          must(await lab.locator('#useNhamcs').count()===1,'NHAMCS importer action missing');
+
+          // 07 · External-cohort validation surface is reachable.
+          await go(/Valuta una nuova coorte/i,'#externalTemplate');
+          must(await lab.locator('#externalFile').count()===1,'laboratory external-cohort file input missing');
+          must(await lab.locator('#freezeValidation').count()===1,'freeze-validation control missing');
 
           // Simulator remains reachable.
-          const sim=lab.getByRole('button',{name:/Apri simulatore/i});
-          if(await sim.count()===1){
-            await sim.click(); await page.waitForTimeout(150);
-            body=await lab.locator('body').innerText();
-            must(/simulator|sintetic/i.test(body),'laboratory simulator did not open');
-          }
+          const sim=lab.getByRole('button',{name:/Simulatore respiratorio/i});
+          must(await sim.count()===1,'laboratory simulator navigation missing');
+          await sim.click(); await page.waitForTimeout(150);
+          body=await lab.locator('body').innerText();
+          must(/simulator|sintetic/i.test(body),'laboratory simulator did not open');
 
           must(errors.length===0,'preserved laboratory browser errors '+errors.join(' | '));
           await page.screenshot({path:'HealthSolver-0.47-Preserved-Laboratory-E2E.png',fullPage:true});
