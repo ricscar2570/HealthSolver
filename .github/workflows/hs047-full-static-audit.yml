@@ -130,6 +130,27 @@ jobs:
               raise SystemExit(1)
           print('Internal import references PASS')
           PY
+      - name: Import legacy FastAPI safely with optional routes disabled
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install --disable-pip-version-check -q fastapi sqlalchemy joblib scikit-learn prometheus-fastapi-instrumentator prometheus-client
+          python - <<'PY'
+          import os
+          for k in list(os.environ):
+              if k.startswith('ENABLE_LEGACY_'):
+                  os.environ.pop(k,None)
+          import backend.main as m
+          paths={r.path for r in m.app.routes}
+          assert '/' in paths
+          assert '/predict/predict' in paths
+          assert '/admin/train' not in paths
+          assert '/cnn/analyze' not in paths
+          assert '/dashboard/data' not in paths
+          root=m.root()
+          assert root['legacy'] is True
+          print('Legacy FastAPI import/runtime PASS',sorted(paths))
+          PY
       - name: Check release documentation and Pages repack invariants
         shell: bash
         run: |
