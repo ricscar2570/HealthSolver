@@ -1,0 +1,113 @@
+name: HealthSolver 0.39 Predictive Engine v1
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs039-predictive-engine.yml']
+permissions:
+  contents: write
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Train calibrated UCI Heart Disease model
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install --disable-pip-version-check -q numpy pandas scikit-learn ucimlrepo
+          mkdir -p predictive
+          python - <<'PY'
+          import json, math, pathlib
+          import numpy as np, pandas as pd
+          from ucimlrepo import fetch_ucirepo
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import accuracy_score, roc_auc_score, average_precision_score, brier_score_loss, confusion_matrix
+          from sklearn.model_selection import train_test_split
+          
+          ds=fetch_ucirepo(id=45)
+          X=ds.data.features.copy()
+          yraw=ds.data.targets.iloc[:,0].copy()
+          features=['age','sex','cp','trestbps','chol','fbs','restecg','thalach','exang','oldpeak','slope','ca','thal']
+          missing=[c for c in features if c not in X.columns]
+          if missing: raise SystemExit(f'missing expected features: {missing}')
+          X=X[features].apply(pd.to_numeric,errors='coerce')
+          y=pd.to_numeric(yraw,errors='coerce')
+          keep=y.notna()
+          X=X.loc[keep].reset_index(drop=True)
+          y=(y.loc[keep].reset_index(drop=True)>0).astype(int)
+          idx=np.arange(len(y))
+          train_idx,temp_idx=train_test_split(idx,test_size=0.40,random_state=3901,stratify=y)
+          cal_idx,test_idx=train_test_split(temp_idx,test_size=0.50,random_state=3902,stratify=y.iloc[temp_idx])
+          Xtr=X.iloc[train_idx].copy(); Xcal=X.iloc[cal_idx].copy(); Xte=X.iloc[test_idx].copy()
+          ytr=y.iloc[train_idx].to_numpy(); ycal=y.iloc[cal_idx].to_numpy(); yte=y.iloc[test_idx].to_numpy()
+          med=Xtr.median(numeric_only=True).reindex(features)
+          Xtr=Xtr.fillna(med); Xcal=Xcal.fillna(med); Xte=Xte.fillna(med)
+          mu=Xtr.mean().reindex(features)
+          sd=Xtr.std(ddof=0).replace(0,1).reindex(features)
+          Ztr=(Xtr-mu)/sd; Zcal=(Xcal-mu)/sd; Zte=(Xte-mu)/sd
+          base=LogisticRegression(max_iter=5000,C=1.0,solver='lbfgs',random_state=3903)
+          base.fit(Ztr,ytr)
+          cal_scores=base.decision_function(Zcal).reshape(-1,1)
+          platt=LogisticRegression(max_iter=5000,C=1e6,solver='lbfgs',random_state=3904)
+          platt.fit(cal_scores,ycal)
+          test_scores=base.decision_function(Zte)
+          p=platt.predict_proba(test_scores.reshape(-1,1))[:,1]
+          pred=(p>=0.5).astype(int)
+          tn,fp,fn,tp=confusion_matrix(yte,pred,labels=[0,1]).ravel()
+          metrics={
+            'n_total':int(len(y)),'n_train':int(len(train_idx)),'n_calibration':int(len(cal_idx)),'n_test':int(len(test_idx)),
+            'prevalence_total':float(y.mean()),
+            'auroc':float(roc_auc_score(yte,p)),
+            'auprc':float(average_precision_score(yte,p)),
+            'accuracy':float(accuracy_score(yte,pred)),
+            'brier':float(brier_score_loss(yte,p)),
+            'sensitivity':float(tp/(tp+fn)) if tp+fn else None,
+            'specificity':float(tn/(tn+fp)) if tn+fp else None,
+            'confusion_matrix':{'tn':int(tn),'fp':int(fp),'fn':int(fn),'tp':int(tp)}
+          }
+          payload={
+            'schema':'healthsolver.predictive_model.v1',
+            'model_id':'HS-UCI-HD-001',
+            'version':'1.0.0',
+            'release':'HealthSolver 0.39 Predictive Engine v1',
+            'task':'Binary prediction of angiographic heart disease presence (>50% diameter narrowing) versus absence in the UCI Heart Disease dataset.',
+            'research_only':True,
+            'not_clinically_validated':True,
+            'dataset':{
+              'name':'UCI Heart Disease','uci_id':45,'doi':'10.24432/C52P4X','license':'CC BY 4.0',
+              'source':'https://archive.ics.uci.edu/dataset/45/heart+disease'
+            },
+            'features':features,
+            'imputation':{'strategy':'training median','values':{c:float(med[c]) for c in features}},
+            'standardization':{'mean':{c:float(mu[c]) for c in features},'scale':{c:float(sd[c]) for c in features}},
+            'logistic':{'intercept':float(base.intercept_[0]),'coefficients':{c:float(v) for c,v in zip(features,base.coef_[0])}},
+            'calibration':{'method':'Platt scaling on held-out calibration split','intercept':float(platt.intercept_[0]),'slope':float(platt.coef_[0,0])},
+            'threshold':0.5,
+            'metrics_test':metrics,
+            'abstention':{'max_missing_features':3,'message':'Prediction withheld when more than three required features are missing.'},
+            'input_semantics':{
+              'age':'years','sex':'0=female, 1=male','cp':'1=typical angina,2=atypical angina,3=non-anginal pain,4=asymptomatic',
+              'trestbps':'resting systolic blood pressure mmHg','chol':'serum cholesterol mg/dL','fbs':'1 if fasting blood sugar >120 mg/dL else 0',
+              'restecg':'0=normal,1=ST-T abnormality,2=LVH','thalach':'maximum heart rate achieved','exang':'exercise-induced angina 0/1',
+              'oldpeak':'ST depression induced by exercise relative to rest','slope':'1=upsloping,2=flat,3=downsloping',
+              'ca':'number of major vessels colored by fluoroscopy (0-3)','thal':'3=normal,6=fixed defect,7=reversible defect'
+            }
+          }
+          pathlib.Path('predictive/model-heart-disease-v1.json').write_text(json.dumps(payload,indent=2,sort_keys=True))
+          pathlib.Path('predictive/model-heart-disease-v1-report.json').write_text(json.dumps(metrics,indent=2,sort_keys=True))
+          print(json.dumps(metrics,indent=2))
+          PY
+      - name: Commit trained model artifact and metrics
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name "healthsolver-bot"
+          git config user.email "healthsolver-bot@users.noreply.github.com"
+          git add predictive/model-heart-disease-v1.json predictive/model-heart-disease-v1-report.json
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: add calibrated predictive model HS-UCI-HD-001"
+          git push
