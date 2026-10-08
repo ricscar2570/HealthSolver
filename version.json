@@ -1,7 +1,7 @@
 {
   "app": "HealthSolver",
-  "version": "0.47.0",
-  "release": "UCI Diabetes Readmission Integration + Predictive-First UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition",
+  "version": "0.47.1",
+  "release": "Full Audit Remediation + UCI Diabetes Readmission Integration + Predictive-First UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition",
   "base_release": "0.38.0",
   "base_source_sha256": "c1bef787551183db369643036e9fc9a7f64ddec515ad804066b9a37279df6b68",
   "predictive_registry": "predictive/model-registry-v2.json",
@@ -15,7 +15,7 @@
     "HS-UCI-DMREADM-001"
   ],
   "payload_parts": 7,
-  "source_sha256": "98f6d523645a50987db82aaefae97c6e2440f7626dca4159724c88a1f9afc2f9",
+  "source_sha256": "d2bedbd2ef4cec09c97a93bf2badb4d987ef8ae6e0562b5002b28c21ab0b8150",
   "predictive_modules_embedded": true,
   "integrated_predictive_ui": true,
   "predictive_first_ui": true,
@@ -23,5 +23,6 @@
   "predictive_model_count": 7,
   "nhanes_2017_2018_integrated": true,
   "nhis_2023_integrated": true,
-  "uci_diabetes_readmission_integrated": true
+  "uci_diabetes_readmission_integrated": true,
+  "full_audit_remediation": true
 }
