@@ -1,84 +1,97 @@
-# backend/main.py
-import logging
-import os # Importa os per le variabili d'ambiente
+"""Legacy FastAPI entry point.
 
-from fastapi import FastAPI, HTTPException, Request, Depends # Aggiungi Depends
+The current HealthSolver Research Edition is the browser-only GitHub Pages app.
+This module is retained for historical/local development. Optional legacy
+features are disabled by default and only registered when explicitly enabled.
+"""
+import logging
+import os
+
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
-from prometheus_client import make_asgi_app
 
-# Importa i router che vuoi attivare
 from backend.routes.predict import router as predict_router
-from backend.routes.analytics import router as analytics_router # Per dashboard/data e predict
-from backend.routes.cnn_api import router as cnn_router # Per analisi DICOM
-from backend.routes.train_trigger import router as train_trigger_router # Per triggerare training
-from backend.routes.alerts import router as alerts_router # Per vedere gli alert loggati
-# from backend.routes.pacs import router as pacs_router # Da includere se PACS è configurato
-# from backend.routes.ehr import router as ehr_router # Da includere se FHIR è configurato
-
-# === Autenticazione (Richiede Implementazione Helper) ===
-# Se vuoi attivare auth/mfa, DEVI implementare le funzioni mancanti in un file
-# come backend/auth_utils.py e importare/usare i router qui.
-# Altrimenti, lasciali commentati.
-# from backend.routes.auth import router as auth_router
-# from backend.routes.mfa import router as mfa_router
-# import backend.auth_utils # Assicurati che esista e contenga le funzioni
-
-# Configura il logging UNIFICATO
 from backend.utils.logging_config import setup_logging
-setup_logging() # Chiama la funzione di setup
 
-# Carica configurazioni da variabili d'ambiente (esempio)
-# API_TITLE = os.getenv("API_TITLE", "HealthSolver API")
+setup_logging()
+logger = logging.getLogger(__name__)
 
-app = FastAPI(title="HealthSolver API") # Usa API_TITLE se definito
+app = FastAPI(
+    title="HealthSolver Legacy API",
+    description="Deprecated local backend; not used by the browser-based Research Edition.",
+)
 
-# Middleware globale per la gestione degli errori
+
 @app.middleware("http")
 async def catch_exceptions_middleware(request: Request, call_next):
     try:
         return await call_next(request)
-    except HTTPException as e:
-        logging.error(f"HTTP Error ({request.method} {request.url}): {e.status_code} - {e.detail}")
-        return JSONResponse(status_code=e.status_code, content={"error": e.detail})
-    except Exception as e:
-        logging.exception(f"Internal Server Error ({request.method} {request.url})")
-        return JSONResponse(status_code=500, content={"error": "Internal Server Error", "details": str(e)})
+    except HTTPException as exc:
+        return JSONResponse(status_code=exc.status_code, content={"error": exc.detail})
+    except Exception:
+        logger.exception("Internal Server Error (%s %s)", request.method, request.url)
+        return JSONResponse(status_code=500, content={"error": "Internal Server Error"})
 
-# Inizializza Prometheus per raccogliere metriche API standard
+
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+app.include_router(predict_router, prefix="/predict", tags=["Legacy Prediction"])
 
-# Espone metriche personalizzate definite in backend/models.py
-# (assicurati che make_asgi_app sia importato da prometheus_client)
-# app.mount("/custom_metrics", make_asgi_app()) # Attenzione: make_asgi_app non aggrega metriche da più processi!
-# Per produzione con più worker (uvicorn -w N), usare una soluzione diversa per le custom metrics
-# come prometheus-client con multiprocess_mode='livesum'.
-# Per semplicità in sviluppo, puoi lasciarlo, ma sappi del limite.
 
-# --- Registra le Rotte ---
-app.include_router(predict_router, prefix="/predict", tags=["Prediction"]) # Cambiato prefix a /predict
-app.include_router(analytics_router, prefix="/dashboard", tags=["Dashboard Support"]) # Per /dashboard/data e /dashboard/predict
-app.include_router(cnn_router, prefix="/cnn", tags=["CNN Analysis"]) # Per /cnn/analyze
-app.include_router(train_trigger_router, prefix="/admin", tags=["Admin"]) # Per /admin/train
-app.include_router(alerts_router, prefix="/admin", tags=["Admin"]) # Per /admin/alerts
+def _enabled(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
 
-# --- Router Opzionali (decommenta e implementa dipendenze se necessario) ---
-# app.include_router(auth_router, prefix="/auth", tags=["Authentication"]) # RICHIEDE IMPLEMENTAZIONE HELPERS
-# app.include_router(mfa_router, prefix="/mfa", tags=["Authentication"]) # RICHIEDE IMPLEMENTAZIONE HELPERS e AUTH
-# app.include_router(pacs_router, prefix="/pacs", tags=["PACS"]) # RICHIEDE SERVER PACS FUNZIONANTE
-# app.include_router(ehr_router, prefix="/ehr", tags=["EHR"]) # RICHIEDE SERVER FHIR FUNZIONANTE
+
+def _load_optional_router(module_name: str, attr: str = "router"):
+    try:
+        module = __import__(module_name, fromlist=[attr])
+        return getattr(module, attr)
+    except Exception as exc:
+        logger.warning("Optional legacy router %s unavailable: %s", module_name, exc)
+        return None
+
+
+if _enabled("ENABLE_LEGACY_ANALYTICS"):
+    router = _load_optional_router("backend.routes.analytics")
+    if router is not None:
+        app.include_router(router, prefix="/dashboard", tags=["Legacy Dashboard"])
+
+if _enabled("ENABLE_LEGACY_CNN"):
+    router = _load_optional_router("backend.routes.cnn_api")
+    if router is not None:
+        app.include_router(router, prefix="/cnn", tags=["Legacy CNN"])
+
+if _enabled("ENABLE_LEGACY_ADMIN_ROUTES"):
+    for module_name in ("backend.routes.train_trigger", "backend.routes.alerts"):
+        router = _load_optional_router(module_name)
+        if router is not None:
+            app.include_router(router, prefix="/admin", tags=["Legacy Admin"])
+
+if _enabled("ENABLE_LEGACY_AUTH"):
+    for module_name, prefix in (
+        ("backend.routes.auth", "/auth"),
+        ("backend.routes.mfa", "/mfa"),
+    ):
+        router = _load_optional_router(module_name)
+        if router is not None:
+            app.include_router(router, prefix=prefix, tags=["Legacy Authentication"])
+
+if _enabled("ENABLE_LEGACY_EHR"):
+    router = _load_optional_router("backend.routes.ehr")
+    if router is not None:
+        app.include_router(router, prefix="/ehr", tags=["Legacy EHR"])
+
+if _enabled("ENABLE_LEGACY_PACS"):
+    router = _load_optional_router("backend.models.pacs")
+    if router is not None:
+        app.include_router(router, prefix="/pacs", tags=["Legacy PACS"])
+
 
 @app.get("/", tags=["General"])
 def root():
-    """ Root endpoint providing basic API information. """
-    logging.info("Root endpoint accessed.")
-    return {"message": "Welcome to HealthSolver API", "status": "running"}
-
-# --- Esempio di gestione dipendenze per Auth (se implementato) ---
-# async def get_api_key(api_key_header: str = Depends(oauth2_scheme)):
-#     if not await backend.auth_utils.validate_api_key(api_key_header):
-#         raise HTTPException(status_code=403, detail="Invalid API Key")
-#     return api_key_header
-
-# Si potrebbe aggiungere `Depends(get_api_key)` ai router che richiedono protezione ?
-# Esempio: app.include_router(admin_router, prefix="/admin", tags=["Admin"], dependencies=[Depends(get_api_key)])
+    return {
+        "message": "HealthSolver legacy API",
+        "status": "running",
+        "browser_research_edition": "https://ricscar2570.github.io/HealthSolver/",
+        "legacy": True,
+    }
