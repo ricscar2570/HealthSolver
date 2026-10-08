@@ -1,0 +1,175 @@
+{
+  "abstention": {
+    "max_missing_features": 2,
+    "message": "Prediction withheld when too many required features are missing."
+  },
+  "calibration": {
+    "intercept": 1.7444888788024342,
+    "method": "Platt scaling on held-out calibration split",
+    "slope": 1.9305486598677426
+  },
+  "dataset": {
+    "doi": "10.24432/C5DW2B",
+    "license": "CC BY 4.0",
+    "name": "UCI Breast Cancer Wisconsin (Diagnostic)",
+    "source": "https://archive.ics.uci.edu/dataset/17",
+    "uci_id": 17
+  },
+  "features": [
+    "radius1",
+    "texture1",
+    "perimeter1",
+    "area1",
+    "smoothness1",
+    "compactness1",
+    "concavity1",
+    "concave_points1",
+    "symmetry1",
+    "fractal_dimension1"
+  ],
+  "field_meta": {
+    "area1": {
+      "label": "Area media",
+      "median": 562.1,
+      "training_max": 2501.0,
+      "training_min": 181.0
+    },
+    "compactness1": {
+      "label": "Compactness media",
+      "median": 0.09546,
+      "training_max": 0.2867,
+      "training_min": 0.01938
+    },
+    "concave_points1": {
+      "label": "Punti concavi medi",
+      "median": 0.034,
+      "training_max": 0.2012,
+      "training_min": 0.0
+    },
+    "concavity1": {
+      "label": "Concavit\u00e0 media",
+      "median": 0.06181,
+      "training_max": 0.4268,
+      "training_min": 0.0
+    },
+    "fractal_dimension1": {
+      "label": "Dimensione frattale media",
+      "median": 0.06144,
+      "training_max": 0.09296,
+      "training_min": 0.05024
+    },
+    "perimeter1": {
+      "label": "Perimetro medio",
+      "median": 87.21,
+      "training_max": 188.5,
+      "training_min": 47.92
+    },
+    "radius1": {
+      "label": "Raggio medio",
+      "median": 13.49,
+      "training_max": 28.11,
+      "training_min": 7.76
+    },
+    "smoothness1": {
+      "label": "Smoothness media",
+      "median": 0.09491,
+      "training_max": 0.1447,
+      "training_min": 0.05263
+    },
+    "symmetry1": {
+      "label": "Simmetria media",
+      "median": 0.1792,
+      "training_max": 0.304,
+      "training_min": 0.1167
+    },
+    "texture1": {
+      "label": "Texture media",
+      "median": 19.04,
+      "training_max": 39.28,
+      "training_min": 9.71
+    }
+  },
+  "imputation": {
+    "strategy": "training median",
+    "values": {
+      "area1": 562.1,
+      "compactness1": 0.09546,
+      "concave_points1": 0.034,
+      "concavity1": 0.06181,
+      "fractal_dimension1": 0.06144,
+      "perimeter1": 87.21,
+      "radius1": 13.49,
+      "smoothness1": 0.09491,
+      "symmetry1": 0.1792,
+      "texture1": 19.04
+    }
+  },
+  "logistic": {
+    "coefficients": {
+      "area1": 1.0451262692137309,
+      "compactness1": -0.141971161948356,
+      "concave_points1": 1.476109710182087,
+      "concavity1": 1.239230194762014,
+      "fractal_dimension1": -0.7101842580286486,
+      "perimeter1": 0.8426539135540232,
+      "radius1": 0.9320883834564831,
+      "smoothness1": 1.0744244719196785,
+      "symmetry1": 0.36701514390999157,
+      "texture1": 1.3442677711015327
+    },
+    "intercept": -0.7672146794472529
+  },
+  "metrics_test": {
+    "accuracy": 0.9210526315789473,
+    "auprc": 0.9653093930966312,
+    "auroc": 0.9745370370370371,
+    "brier": 0.0595773175850383,
+    "confusion_matrix": {
+      "fn": 6,
+      "fp": 3,
+      "tn": 69,
+      "tp": 36
+    },
+    "n_calibration": 114,
+    "n_test": 114,
+    "n_total": 569,
+    "n_train": 341,
+    "prevalence_total": 0.37258347978910367,
+    "sensitivity": 0.8571428571428571,
+    "specificity": 0.9583333333333334
+  },
+  "model_id": "HS-UCI-BC-001",
+  "not_clinically_validated": true,
+  "release": "HealthSolver 0.40 Multi-Outcome Predictive Engine",
+  "research_only": true,
+  "schema": "healthsolver.predictive_model.v1",
+  "standardization": {
+    "mean": {
+      "area1": 663.9885630498534,
+      "compactness1": 0.10369478005865103,
+      "concave_points1": 0.049327727272727266,
+      "concavity1": 0.08982606070381231,
+      "fractal_dimension1": 0.062474897360703815,
+      "perimeter1": 92.63806451612902,
+      "radius1": 14.230064516129033,
+      "smoothness1": 0.09596167155425221,
+      "symmetry1": 0.1812516129032258,
+      "texture1": 19.44838709677419
+    },
+    "scale": {
+      "area1": 358.91829842251,
+      "compactness1": 0.05003729612249992,
+      "concave_points1": 0.039073645550535774,
+      "concavity1": 0.0803923383169902,
+      "fractal_dimension1": 0.006476820687739991,
+      "perimeter1": 24.44180198410996,
+      "radius1": 3.5363316632071298,
+      "smoothness1": 0.013720631418831262,
+      "symmetry1": 0.026399858460303464,
+      "texture1": 4.155572597795878
+    }
+  },
+  "task": "Binary research prediction of malignant versus benign FNA-derived breast-mass feature pattern within the UCI WDBC domain.",
+  "threshold": 0.5,
+  "version": "1.0.0"
+}
