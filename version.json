@@ -15,7 +15,7 @@
     "HS-UCI-DMREADM-001"
   ],
   "payload_parts": 7,
-  "source_sha256": "d2bedbd2ef4cec09c97a93bf2badb4d987ef8ae6e0562b5002b28c21ab0b8150",
+  "source_sha256": "35be8a629f3e4fd55401779b597aa62114cd534314a2eeec40ea7ffafa0c68ef",
   "predictive_modules_embedded": true,
   "integrated_predictive_ui": true,
   "predictive_first_ui": true,

@@ -43,7 +43,7 @@
         "n_total": 400,
         "n_train": 240,
         "prevalence_total": 0.625,
-        "sensitivity": 1.0,
+        "sensitivity": 1,
         "specificity": 0.9333333333333333
       },
       "model_id": "HS-UCI-CKD-001",
@@ -73,7 +73,7 @@
       },
       "model_id": "HS-UCI-BC-001",
       "task": "Binary research prediction of malignant versus benign FNA-derived breast-mass feature pattern within the UCI WDBC domain.",
-      "title": "Malignit\u00e0 su caratteristiche FNA"
+      "title": "Malignità su caratteristiche FNA"
     },
     {
       "file": "model-hcv-v1.json",
@@ -180,5 +180,5 @@
     }
   ],
   "schema": "healthsolver.predictive_registry.v2",
-  "version": "0.47.0"
+  "version": "0.47.1"
 }
