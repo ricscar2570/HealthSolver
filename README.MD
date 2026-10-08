@@ -1,4 +1,4 @@
-# HealthSolver 0.44 — UCI HCV Integration + Predictive-First UI
+# HealthSolver 0.45 — NHANES Integration + Predictive-First UI
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.44 line.
+The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.45 line.
 
 ## What HealthSolver does
 
@@ -44,7 +44,7 @@ For the deployed GitHub Pages build:
 - core application state, backup and recovery workflows are handled client-side;
 - large static resources are packaged for browser delivery.
 
-The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.44 application.
+The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.45 application.
 
 ## Clinical Coach
 
@@ -318,6 +318,70 @@ For the HCV model, age and sex are reused from the existing dossier. The ten bio
 
 A live Playwright test on GitHub Pages verifies that the fourth model is visible, accepts a complete hepatic panel, executes without abstention and renders a numeric probability.
 
+## NHANES 2017–2018 integration 0.45
+
+HealthSolver 0.45 adds a complete database-level integration of the **CDC/NCHS NHANES 2017–2018 public-use files**.
+
+The supervised cohort is built by joining:
+
+- `DEMO_J.XPT` — demographics and MEC sample weights;
+- `BMX_J.XPT` — BMI and waist circumference;
+- `BPX_J.XPT` — measured systolic blood pressure;
+- `TCHOL_J.XPT` — total cholesterol;
+- `HDL_J.XPT` — HDL cholesterol;
+- `DIQ_J.XPT` — diabetes questionnaire outcome.
+
+### New predictive model
+
+**HS-NHANES-DM-001 — Diabete riferito diagnosticato (NHANES)**
+
+The target is deliberately narrow and explicit:
+
+- positive: adult respondent reports that a doctor told them they have diabetes (`DIQ010=1`);
+- negative: respondent reports no doctor-diagnosed diabetes (`DIQ010=2`);
+- excluded: borderline diabetes, refused, don't know, age under 20, invalid MEC survey weight.
+
+This is therefore **not a clinical diabetes diagnosis model**. It predicts membership in the NHANES self-reported doctor-diagnosed diabetes group.
+
+Features:
+
+- age;
+- sex;
+- BMI;
+- waist circumference;
+- mean systolic blood pressure;
+- total cholesterol;
+- HDL cholesterol.
+
+Training cohort:
+
+- total usable adults: **5,393**
+- training: **3,235**
+- calibration: **1,079**
+- held-out test: **1,079**
+
+NHANES MEC examination weights (`WTMEC2YR`) are used as sample weights for model fitting, probability calibration and weighted discrimination/calibration metrics. The implementation explicitly notes that this does not reproduce the full complex-survey variance design.
+
+Performance on the held-out test set:
+
+- weighted AUROC: **0.804**
+- weighted AUPRC: **0.346**
+- weighted Brier score: **0.088**
+- calibration-selected decision threshold: **0.105**
+- sensitivity at that threshold: **0.858**
+- specificity at that threshold: **0.596**
+- unweighted accuracy at that threshold: **0.639**
+
+The decision threshold is selected only on the held-out calibration split using the weighted Youden J criterion and is then evaluated once on the independent test split. The calibrated probability itself is unchanged by threshold selection.
+
+### Browser integration
+
+HealthSolver 0.45 exposes **5 supervised predictive models**.
+
+The NHANES model reuses age and sex from the existing dossier and can reuse compatible BMI, waist, systolic blood pressure, total cholesterol and HDL values when available. A collapsible NHANES supplement allows the user to enter those values explicitly in the source-model units when required.
+
+The live GitHub Pages browser audit verifies that `HS-NHANES-DM-001` executes from Expert Mode with complete input and renders a numeric probability without abstention.
+
 ## Machine learning and predictive research
 
 HealthSolver is being developed toward a broader machine-learning research architecture in which structured symptoms, history, vital signs, laboratory data and observations can be used as model inputs.
@@ -418,9 +482,9 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.44 — UCI HCV Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
+**HealthSolver 0.45 — NHANES Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
 
-Current predictive release is represented by the 0.44 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and four supervised model artifacts under `predictive/`.
+Current predictive release is represented by the 0.45 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and five supervised model artifacts under `predictive/`.
 
 The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
