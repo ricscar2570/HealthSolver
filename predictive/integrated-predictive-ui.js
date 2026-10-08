@@ -181,8 +181,8 @@ function runAll(){
     if(res.status==='predicted') done++;
     out.append(renderResult(entry,model,res));
   }
-  $('hs42Status').textContent=`Analisi completata: ${done}/${models.length} modelli applicabili con i dati correnti.`;
   renderCoverage();
+  $('hs42Status').textContent=`Analisi completata: ${done}/${models.length} modelli applicabili con i dati correnti.`;
 }
 $('hs42Run').addEventListener('click',runAll);
 $('hs42Refresh').addEventListener('click',renderCoverage);
