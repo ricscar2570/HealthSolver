@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.__HS_INTEGRATED_PREDICTIVE_0471__) return;
-window.__HS_INTEGRATED_PREDICTIVE_0471__=true;
+if(window.__HS_INTEGRATED_PREDICTIVE_048__) return;
+window.__HS_INTEGRATED_PREDICTIVE_048__=true;
 
 const BUNDLE=window.__HS_PREDICTIVE_BUNDLE__||null;
 if(!BUNDLE?.registry||!BUNDLE?.models) return;
@@ -15,9 +15,9 @@ document.getElementById('hs-router041')?.remove();
 // while updating only visible application-release branding.
 (function reconcileReleaseBranding(){
   const replacements=[
-    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.47.1'],
+    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.48'],
     [/^HealthSolver\s+0\.38\.0\s*·\s*Massive Public Data \+ Clinical Coach Research Edition\s*·\s*Riccardo Scaringi\s*·\s*Non uso clinico\.?$/i,
-     'HealthSolver 0.47.1 · Full Audit Remediation + UCI Diabetes Readmission Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
+     'HealthSolver 0.48.0 · UCI Thyroid Cancer Recurrence Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
   ];
   const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
   const nodes=[];
@@ -103,11 +103,11 @@ wrap.className='card';
 wrap.innerHTML=`
   <div class="hs43-hero">
     <div>
-      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.47.1</div>
+      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.48</div>
       <h2 class="hs43-title">Predizioni cliniche di ricerca</h2>
       <p class="hs43-sub">HealthSolver usa lo stesso dossier che hai già compilato per verificare quali modelli sono applicabili e calcolare le stime disponibili. Le funzioni predittive sono qui, in primo piano. Ogni nuovo database entra nello stesso registry e nello stesso dossier.</p>
     </div>
-    <div class="hs43-badge">7 MODELLI SUPERVISIONATI</div>
+    <div class="hs43-badge">8 MODELLI SUPERVISIONATI</div>
   </div>
   <div id="hs42Coverage" class="metrics"></div>
   <div class="actions" style="margin-top:8px">
@@ -191,6 +191,12 @@ wrap.innerHTML=`
     </div>
     <div class="notice" style="margin-top:10px"><b>Target del modello:</b> probabilità sperimentale di riammissione ospedaliera entro 30 giorni nel dominio del dataset UCI Diabetes 130-US Hospitals. Non è una diagnosi di diabete.</div>
   </details>
+  <details id="hs48ThyroidDetails">
+    <summary><b>Carcinoma tiroideo differenziato · recidiva</b> · dati clinicopatologici specialistici</summary>
+    <p class="hint">Età e sesso vengono riutilizzati dal dossier. Gli altri campi devono corrispondere alle categorie della coorte UCI 915. La variabile post-trattamento <code>Response</code> è stata esclusa dal modello per ridurre leakage temporale.</p>
+    <div id="hs48ThyroidGrid" class="grid"></div>
+    <div class="notice" style="margin-top:10px"><b>Target del modello:</b> appartenenza al gruppo con recidiva del carcinoma tiroideo differenziato nella coorte UCI. Non è una previsione clinica validata né una raccomandazione terapeutica.</div>
+  </details>
   <h3 style="margin:24px 0 10px;font-size:1.25rem">Risultati predittivi</h3>
   <div id="hs42Results" class="grid"></div>
   <div class="notice" style="margin-top:16px"><b>Interpretazione.</b> Ogni percentuale appartiene al proprio modello e al proprio dataset. Non sono probabilità concorrenti di una singola diagnosi e non vanno sommate. Software di ricerca, non diagnosi clinica.</div>
@@ -217,6 +223,60 @@ for(const [id,label,unit] of HCV){
 
 const registry=BUNDLE.registry;
 const models=registry.models.map(e=>({entry:e,model:BUNDLE.models[e.file]})).filter(x=>x.model);
+
+const THYROID_ID='HS-UCI-THYREC-001';
+const thyroidPair=models.find(x=>x.model.model_id===THYROID_ID)||null;
+const thyroidLabel={
+  smoking:'Fumo',
+  hx_smoking:'Pregresso fumo',
+  hx_radiothreapy:'Pregressa radioterapia',
+  thyroid_function:'Funzione tiroidea',
+  physical_examination:'Esame obiettivo tiroideo',
+  adenopathy:'Adenopatie',
+  pathology:'Istologia',
+  focality:'Focalità',
+  risk:'Classe di rischio',
+  t:'Categoria T',
+  n:'Categoria N',
+  m:'Categoria M',
+  stage:'Stadio'
+};
+const displayCategory=v=>({'Yes':'Sì','No':'No','Normal':'Normale','Low':'Basso','Intermediate':'Intermedio','High':'Alto'}[v]||v);
+
+if(thyroidPair){
+  const grid=$('hs48ThyroidGrid');
+  for(const spec of thyroidPair.model.raw_feature_schema||[]){
+    if(['age','gender'].includes(spec.key)) continue;
+    const lab=document.createElement('label');
+    lab.textContent=thyroidLabel[spec.key]||spec.source_name||spec.key;
+    const sel=document.createElement('select');
+    sel.id='hs48_'+spec.key;
+    sel.append(new Option('—',''));
+    for(const cat of spec.categories||[]) sel.append(new Option(displayCategory(cat),cat));
+    lab.append(sel); grid.append(lab);
+  }
+}
+function thyroidEncodedCase(model,age,sex){
+  if(!model) return {};
+  const rawValues={age,gender:sex===1?'M':sex===0?'F':null};
+  for(const spec of model.raw_feature_schema||[]){
+    if(['age','gender'].includes(spec.key)) continue;
+    const v=raw('hs48_'+spec.key);
+    rawValues[spec.key]=v===''?null:v;
+  }
+  const out={};
+  for(const feature of model.features){
+    const enc=(model.encoding_map||{})[feature];
+    if(!enc){out[feature]=null;continue;}
+    const rv=rawValues[enc.raw_key];
+    if(enc.kind==='numeric'){
+      const n=Number(rv);out[feature]=(rv===null||rv===undefined||rv===''||!Number.isFinite(n))?null:n;
+    }else{
+      out[feature]=(rv===null||rv===undefined||rv==='')?null:(String(rv)===String(enc.category)?1:0);
+    }
+  }
+  return out;
+}
 
 function dossierCase(){
   const age=first(num('ciAge'),num('coachAge'));
@@ -288,6 +348,7 @@ function dossierCase(){
     diabetes_med:num('hs47_diabetes_med'),
     medication_change:num('hs47_medication_change')
   };
+  const thyroid=thyroidEncodedCase(thyroidPair?.model||null,age,sexVal());
   return {
     'HS-UCI-HD-001':heart,
     'HS-UCI-CKD-001':ckd,
@@ -295,7 +356,8 @@ function dossierCase(){
     'HS-UCI-HCV-001':hcv,
     'HS-NHANES-DM-001':nhanes,
     'HS-NHIS-HYP-001':nhis,
-    'HS-UCI-DMREADM-001':readm
+    'HS-UCI-DMREADM-001':readm,
+    'HS-UCI-THYREC-001':thyroid
   };
 }
 function readiness(model,values){

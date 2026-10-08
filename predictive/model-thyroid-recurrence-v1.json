@@ -1,0 +1,1049 @@
+{
+  "abstention": {
+    "max_missing_features": 0,
+    "message": "Prediction withheld unless all raw clinicopathologic fields required by this model are supplied."
+  },
+  "calibration": {
+    "intercept": -0.7723159778646463,
+    "method": "Platt scaling on held-out calibration split",
+    "slope": 0.7517427844881537
+  },
+  "dataset": {
+    "doi": "10.24432/C5632J",
+    "follow_up_note": "Source documentation states each patient was followed for at least 10 years.",
+    "instances": 383,
+    "license": "CC BY 4.0",
+    "name": "UCI Differentiated Thyroid Cancer Recurrence",
+    "source": "https://archive.ics.uci.edu/dataset/915/differentiated+thyroid+cancer+recurrence",
+    "uci_id": 915
+  },
+  "encoding_map": {
+    "adenopathy__bilateral": {
+      "category": "Bilateral",
+      "kind": "category",
+      "raw_key": "adenopathy"
+    },
+    "adenopathy__extensive": {
+      "category": "Extensive",
+      "kind": "category",
+      "raw_key": "adenopathy"
+    },
+    "adenopathy__left": {
+      "category": "Left",
+      "kind": "category",
+      "raw_key": "adenopathy"
+    },
+    "adenopathy__no": {
+      "category": "No",
+      "kind": "category",
+      "raw_key": "adenopathy"
+    },
+    "adenopathy__posterior": {
+      "category": "Posterior",
+      "kind": "category",
+      "raw_key": "adenopathy"
+    },
+    "adenopathy__right": {
+      "category": "Right",
+      "kind": "category",
+      "raw_key": "adenopathy"
+    },
+    "age": {
+      "kind": "numeric",
+      "raw_key": "age"
+    },
+    "focality__multi_focal": {
+      "category": "Multi-Focal",
+      "kind": "category",
+      "raw_key": "focality"
+    },
+    "focality__uni_focal": {
+      "category": "Uni-Focal",
+      "kind": "category",
+      "raw_key": "focality"
+    },
+    "gender__f": {
+      "category": "F",
+      "kind": "category",
+      "raw_key": "gender"
+    },
+    "gender__m": {
+      "category": "M",
+      "kind": "category",
+      "raw_key": "gender"
+    },
+    "hx_radiothreapy__no": {
+      "category": "No",
+      "kind": "category",
+      "raw_key": "hx_radiothreapy"
+    },
+    "hx_radiothreapy__yes": {
+      "category": "Yes",
+      "kind": "category",
+      "raw_key": "hx_radiothreapy"
+    },
+    "hx_smoking__no": {
+      "category": "No",
+      "kind": "category",
+      "raw_key": "hx_smoking"
+    },
+    "hx_smoking__yes": {
+      "category": "Yes",
+      "kind": "category",
+      "raw_key": "hx_smoking"
+    },
+    "m__m0": {
+      "category": "M0",
+      "kind": "category",
+      "raw_key": "m"
+    },
+    "m__m1": {
+      "category": "M1",
+      "kind": "category",
+      "raw_key": "m"
+    },
+    "n__n0": {
+      "category": "N0",
+      "kind": "category",
+      "raw_key": "n"
+    },
+    "n__n1a": {
+      "category": "N1a",
+      "kind": "category",
+      "raw_key": "n"
+    },
+    "n__n1b": {
+      "category": "N1b",
+      "kind": "category",
+      "raw_key": "n"
+    },
+    "pathology__follicular": {
+      "category": "Follicular",
+      "kind": "category",
+      "raw_key": "pathology"
+    },
+    "pathology__hurthel_cell": {
+      "category": "Hurthel cell",
+      "kind": "category",
+      "raw_key": "pathology"
+    },
+    "pathology__micropapillary": {
+      "category": "Micropapillary",
+      "kind": "category",
+      "raw_key": "pathology"
+    },
+    "pathology__papillary": {
+      "category": "Papillary",
+      "kind": "category",
+      "raw_key": "pathology"
+    },
+    "physical_examination__diffuse_goiter": {
+      "category": "Diffuse goiter",
+      "kind": "category",
+      "raw_key": "physical_examination"
+    },
+    "physical_examination__multinodular_goiter": {
+      "category": "Multinodular goiter",
+      "kind": "category",
+      "raw_key": "physical_examination"
+    },
+    "physical_examination__normal": {
+      "category": "Normal",
+      "kind": "category",
+      "raw_key": "physical_examination"
+    },
+    "physical_examination__single_nodular_goiter_left": {
+      "category": "Single nodular goiter-left",
+      "kind": "category",
+      "raw_key": "physical_examination"
+    },
+    "physical_examination__single_nodular_goiter_right": {
+      "category": "Single nodular goiter-right",
+      "kind": "category",
+      "raw_key": "physical_examination"
+    },
+    "risk__high": {
+      "category": "High",
+      "kind": "category",
+      "raw_key": "risk"
+    },
+    "risk__intermediate": {
+      "category": "Intermediate",
+      "kind": "category",
+      "raw_key": "risk"
+    },
+    "risk__low": {
+      "category": "Low",
+      "kind": "category",
+      "raw_key": "risk"
+    },
+    "smoking__no": {
+      "category": "No",
+      "kind": "category",
+      "raw_key": "smoking"
+    },
+    "smoking__yes": {
+      "category": "Yes",
+      "kind": "category",
+      "raw_key": "smoking"
+    },
+    "stage__i": {
+      "category": "I",
+      "kind": "category",
+      "raw_key": "stage"
+    },
+    "stage__ii": {
+      "category": "II",
+      "kind": "category",
+      "raw_key": "stage"
+    },
+    "stage__iii": {
+      "category": "III",
+      "kind": "category",
+      "raw_key": "stage"
+    },
+    "stage__iva": {
+      "category": "IVA",
+      "kind": "category",
+      "raw_key": "stage"
+    },
+    "stage__ivb": {
+      "category": "IVB",
+      "kind": "category",
+      "raw_key": "stage"
+    },
+    "t__t1a": {
+      "category": "T1a",
+      "kind": "category",
+      "raw_key": "t"
+    },
+    "t__t1b": {
+      "category": "T1b",
+      "kind": "category",
+      "raw_key": "t"
+    },
+    "t__t2": {
+      "category": "T2",
+      "kind": "category",
+      "raw_key": "t"
+    },
+    "t__t3a": {
+      "category": "T3a",
+      "kind": "category",
+      "raw_key": "t"
+    },
+    "t__t3b": {
+      "category": "T3b",
+      "kind": "category",
+      "raw_key": "t"
+    },
+    "t__t4a": {
+      "category": "T4a",
+      "kind": "category",
+      "raw_key": "t"
+    },
+    "t__t4b": {
+      "category": "T4b",
+      "kind": "category",
+      "raw_key": "t"
+    },
+    "thyroid_function__clinical_hyperthyroidism": {
+      "category": "Clinical Hyperthyroidism",
+      "kind": "category",
+      "raw_key": "thyroid_function"
+    },
+    "thyroid_function__clinical_hypothyroidism": {
+      "category": "Clinical Hypothyroidism",
+      "kind": "category",
+      "raw_key": "thyroid_function"
+    },
+    "thyroid_function__euthyroid": {
+      "category": "Euthyroid",
+      "kind": "category",
+      "raw_key": "thyroid_function"
+    },
+    "thyroid_function__subclinical_hyperthyroidism": {
+      "category": "Subclinical Hyperthyroidism",
+      "kind": "category",
+      "raw_key": "thyroid_function"
+    },
+    "thyroid_function__subclinical_hypothyroidism": {
+      "category": "Subclinical Hypothyroidism",
+      "kind": "category",
+      "raw_key": "thyroid_function"
+    }
+  },
+  "excluded_source_features": [
+    "Response"
+  ],
+  "features": [
+    "age",
+    "gender__f",
+    "gender__m",
+    "smoking__no",
+    "smoking__yes",
+    "hx_smoking__no",
+    "hx_smoking__yes",
+    "hx_radiothreapy__no",
+    "hx_radiothreapy__yes",
+    "thyroid_function__clinical_hyperthyroidism",
+    "thyroid_function__clinical_hypothyroidism",
+    "thyroid_function__euthyroid",
+    "thyroid_function__subclinical_hyperthyroidism",
+    "thyroid_function__subclinical_hypothyroidism",
+    "physical_examination__diffuse_goiter",
+    "physical_examination__multinodular_goiter",
+    "physical_examination__normal",
+    "physical_examination__single_nodular_goiter_left",
+    "physical_examination__single_nodular_goiter_right",
+    "adenopathy__bilateral",
+    "adenopathy__extensive",
+    "adenopathy__left",
+    "adenopathy__no",
+    "adenopathy__posterior",
+    "adenopathy__right",
+    "pathology__follicular",
+    "pathology__hurthel_cell",
+    "pathology__micropapillary",
+    "pathology__papillary",
+    "focality__multi_focal",
+    "focality__uni_focal",
+    "risk__high",
+    "risk__intermediate",
+    "risk__low",
+    "t__t1a",
+    "t__t1b",
+    "t__t2",
+    "t__t3a",
+    "t__t3b",
+    "t__t4a",
+    "t__t4b",
+    "n__n0",
+    "n__n1a",
+    "n__n1b",
+    "m__m0",
+    "m__m1",
+    "stage__i",
+    "stage__ii",
+    "stage__iii",
+    "stage__iva",
+    "stage__ivb"
+  ],
+  "field_meta": {
+    "adenopathy__bilateral": {
+      "label": "adenopathy__bilateral",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "adenopathy__extensive": {
+      "label": "adenopathy__extensive",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "adenopathy__left": {
+      "label": "adenopathy__left",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "adenopathy__no": {
+      "label": "adenopathy__no",
+      "median": 1.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "adenopathy__posterior": {
+      "label": "adenopathy__posterior",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "adenopathy__right": {
+      "label": "adenopathy__right",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "age": {
+      "label": "age",
+      "median": 37.0,
+      "training_max": 82.0,
+      "training_min": 17.0
+    },
+    "focality__multi_focal": {
+      "label": "focality__multi_focal",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "focality__uni_focal": {
+      "label": "focality__uni_focal",
+      "median": 1.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "gender__f": {
+      "label": "gender__f",
+      "median": 1.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "gender__m": {
+      "label": "gender__m",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "hx_radiothreapy__no": {
+      "label": "hx_radiothreapy__no",
+      "median": 1.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "hx_radiothreapy__yes": {
+      "label": "hx_radiothreapy__yes",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "hx_smoking__no": {
+      "label": "hx_smoking__no",
+      "median": 1.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "hx_smoking__yes": {
+      "label": "hx_smoking__yes",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "m__m0": {
+      "label": "m__m0",
+      "median": 1.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "m__m1": {
+      "label": "m__m1",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "n__n0": {
+      "label": "n__n0",
+      "median": 1.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "n__n1a": {
+      "label": "n__n1a",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "n__n1b": {
+      "label": "n__n1b",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "pathology__follicular": {
+      "label": "pathology__follicular",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "pathology__hurthel_cell": {
+      "label": "pathology__hurthel_cell",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "pathology__micropapillary": {
+      "label": "pathology__micropapillary",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "pathology__papillary": {
+      "label": "pathology__papillary",
+      "median": 1.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "physical_examination__diffuse_goiter": {
+      "label": "physical_examination__diffuse_goiter",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "physical_examination__multinodular_goiter": {
+      "label": "physical_examination__multinodular_goiter",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "physical_examination__normal": {
+      "label": "physical_examination__normal",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "physical_examination__single_nodular_goiter_left": {
+      "label": "physical_examination__single_nodular_goiter_left",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "physical_examination__single_nodular_goiter_right": {
+      "label": "physical_examination__single_nodular_goiter_right",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "risk__high": {
+      "label": "risk__high",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "risk__intermediate": {
+      "label": "risk__intermediate",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "risk__low": {
+      "label": "risk__low",
+      "median": 1.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "smoking__no": {
+      "label": "smoking__no",
+      "median": 1.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "smoking__yes": {
+      "label": "smoking__yes",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "stage__i": {
+      "label": "stage__i",
+      "median": 1.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "stage__ii": {
+      "label": "stage__ii",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "stage__iii": {
+      "label": "stage__iii",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "stage__iva": {
+      "label": "stage__iva",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "stage__ivb": {
+      "label": "stage__ivb",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "t__t1a": {
+      "label": "t__t1a",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "t__t1b": {
+      "label": "t__t1b",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "t__t2": {
+      "label": "t__t2",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "t__t3a": {
+      "label": "t__t3a",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "t__t3b": {
+      "label": "t__t3b",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "t__t4a": {
+      "label": "t__t4a",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "t__t4b": {
+      "label": "t__t4b",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "thyroid_function__clinical_hyperthyroidism": {
+      "label": "thyroid_function__clinical_hyperthyroidism",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "thyroid_function__clinical_hypothyroidism": {
+      "label": "thyroid_function__clinical_hypothyroidism",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "thyroid_function__euthyroid": {
+      "label": "thyroid_function__euthyroid",
+      "median": 1.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "thyroid_function__subclinical_hyperthyroidism": {
+      "label": "thyroid_function__subclinical_hyperthyroidism",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "thyroid_function__subclinical_hypothyroidism": {
+      "label": "thyroid_function__subclinical_hypothyroidism",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    }
+  },
+  "imputation": {
+    "strategy": "training median after deterministic one-hot encoding",
+    "values": {
+      "adenopathy__bilateral": 0.0,
+      "adenopathy__extensive": 0.0,
+      "adenopathy__left": 0.0,
+      "adenopathy__no": 1.0,
+      "adenopathy__posterior": 0.0,
+      "adenopathy__right": 0.0,
+      "age": 37.0,
+      "focality__multi_focal": 0.0,
+      "focality__uni_focal": 1.0,
+      "gender__f": 1.0,
+      "gender__m": 0.0,
+      "hx_radiothreapy__no": 1.0,
+      "hx_radiothreapy__yes": 0.0,
+      "hx_smoking__no": 1.0,
+      "hx_smoking__yes": 0.0,
+      "m__m0": 1.0,
+      "m__m1": 0.0,
+      "n__n0": 1.0,
+      "n__n1a": 0.0,
+      "n__n1b": 0.0,
+      "pathology__follicular": 0.0,
+      "pathology__hurthel_cell": 0.0,
+      "pathology__micropapillary": 0.0,
+      "pathology__papillary": 1.0,
+      "physical_examination__diffuse_goiter": 0.0,
+      "physical_examination__multinodular_goiter": 0.0,
+      "physical_examination__normal": 0.0,
+      "physical_examination__single_nodular_goiter_left": 0.0,
+      "physical_examination__single_nodular_goiter_right": 0.0,
+      "risk__high": 0.0,
+      "risk__intermediate": 0.0,
+      "risk__low": 1.0,
+      "smoking__no": 1.0,
+      "smoking__yes": 0.0,
+      "stage__i": 1.0,
+      "stage__ii": 0.0,
+      "stage__iii": 0.0,
+      "stage__iva": 0.0,
+      "stage__ivb": 0.0,
+      "t__t1a": 0.0,
+      "t__t1b": 0.0,
+      "t__t2": 0.0,
+      "t__t3a": 0.0,
+      "t__t3b": 0.0,
+      "t__t4a": 0.0,
+      "t__t4b": 0.0,
+      "thyroid_function__clinical_hyperthyroidism": 0.0,
+      "thyroid_function__clinical_hypothyroidism": 0.0,
+      "thyroid_function__euthyroid": 1.0,
+      "thyroid_function__subclinical_hyperthyroidism": 0.0,
+      "thyroid_function__subclinical_hypothyroidism": 0.0
+    }
+  },
+  "logistic": {
+    "coefficients": {
+      "adenopathy__bilateral": -0.003106163173738414,
+      "adenopathy__extensive": 0.48911593726129715,
+      "adenopathy__left": 0.22205246511257762,
+      "adenopathy__no": -0.41948863104088563,
+      "adenopathy__posterior": 0.011035713008372458,
+      "adenopathy__right": 0.21598380805695042,
+      "age": 0.6790533139118121,
+      "focality__multi_focal": -0.052886025433919924,
+      "focality__uni_focal": 0.052886025433919924,
+      "gender__f": -0.5643213620253265,
+      "gender__m": 0.5643213620253268,
+      "hx_radiothreapy__no": -0.006293738368803295,
+      "hx_radiothreapy__yes": 0.006293738368803263,
+      "hx_smoking__no": 0.028762929585997896,
+      "hx_smoking__yes": -0.02876292958599781,
+      "m__m0": -0.3668807582328282,
+      "m__m1": 0.3668807582328282,
+      "n__n0": -0.3462537147055202,
+      "n__n1a": 0.0007181460304787196,
+      "n__n1b": 0.3698698324787395,
+      "pathology__follicular": 0.38760379611388235,
+      "pathology__hurthel_cell": -0.1926811509171486,
+      "pathology__micropapillary": -0.295999361591548,
+      "pathology__papillary": 0.08216735530711261,
+      "physical_examination__diffuse_goiter": -0.042120101490766323,
+      "physical_examination__multinodular_goiter": 0.10332421970229963,
+      "physical_examination__normal": 0.0068728179550900876,
+      "physical_examination__single_nodular_goiter_left": -0.06787520980465156,
+      "physical_examination__single_nodular_goiter_right": -0.029498314909786015,
+      "risk__high": 0.5547987042654053,
+      "risk__intermediate": 0.26275111063402884,
+      "risk__low": -0.5636305250523553,
+      "smoking__no": 0.32199467064576925,
+      "smoking__yes": -0.32199467064576925,
+      "stage__i": -0.1820730970258599,
+      "stage__ii": 0.05660146582821167,
+      "stage__iii": 0.05417860614591332,
+      "stage__iva": 0.36876848229852155,
+      "stage__ivb": 0.044416182417976284,
+      "t__t1a": -0.5885289306928139,
+      "t__t1b": -0.2635507535880241,
+      "t__t2": -0.035584384858574944,
+      "t__t3a": -0.023738682106532783,
+      "t__t3b": 0.665444440263948,
+      "t__t4a": 0.6648228402124806,
+      "t__t4b": 0.04295600333153277,
+      "thyroid_function__clinical_hyperthyroidism": -0.31559820654696064,
+      "thyroid_function__clinical_hypothyroidism": 0.3840395975672673,
+      "thyroid_function__euthyroid": 0.3628648119778347,
+      "thyroid_function__subclinical_hyperthyroidism": -0.01812563952604303,
+      "thyroid_function__subclinical_hypothyroidism": -0.6025596366700684
+    },
+    "intercept": -0.9363655459578637
+  },
+  "metrics_test": {
+    "accuracy": 0.8441558441558441,
+    "auprc": 0.8342042545736563,
+    "auroc": 0.9056122448979591,
+    "brier": 0.10246474140940119,
+    "confusion_matrix": {
+      "fn": 2,
+      "fp": 10,
+      "tn": 46,
+      "tp": 19
+    },
+    "decision_threshold_from_calibration": 0.20845706831987568,
+    "n_calibration": 77,
+    "n_test": 77,
+    "n_total": 383,
+    "n_train": 229,
+    "positive_prevalence": 0.2819843342036554,
+    "sensitivity": 0.9047619047619048,
+    "specificity": 0.8214285714285714
+  },
+  "model_id": "HS-UCI-THYREC-001",
+  "not_clinically_validated": true,
+  "raw_feature_schema": [
+    {
+      "key": "age",
+      "kind": "numeric",
+      "source_name": "Age"
+    },
+    {
+      "categories": [
+        "F",
+        "M"
+      ],
+      "key": "gender",
+      "kind": "categorical",
+      "source_name": "Gender"
+    },
+    {
+      "categories": [
+        "No",
+        "Yes"
+      ],
+      "key": "smoking",
+      "kind": "categorical",
+      "source_name": "Smoking"
+    },
+    {
+      "categories": [
+        "No",
+        "Yes"
+      ],
+      "key": "hx_smoking",
+      "kind": "categorical",
+      "source_name": "Hx Smoking"
+    },
+    {
+      "categories": [
+        "No",
+        "Yes"
+      ],
+      "key": "hx_radiothreapy",
+      "kind": "categorical",
+      "source_name": "Hx Radiothreapy"
+    },
+    {
+      "categories": [
+        "Clinical Hyperthyroidism",
+        "Clinical Hypothyroidism",
+        "Euthyroid",
+        "Subclinical Hyperthyroidism",
+        "Subclinical Hypothyroidism"
+      ],
+      "key": "thyroid_function",
+      "kind": "categorical",
+      "source_name": "Thyroid Function"
+    },
+    {
+      "categories": [
+        "Diffuse goiter",
+        "Multinodular goiter",
+        "Normal",
+        "Single nodular goiter-left",
+        "Single nodular goiter-right"
+      ],
+      "key": "physical_examination",
+      "kind": "categorical",
+      "source_name": "Physical Examination"
+    },
+    {
+      "categories": [
+        "Bilateral",
+        "Extensive",
+        "Left",
+        "No",
+        "Posterior",
+        "Right"
+      ],
+      "key": "adenopathy",
+      "kind": "categorical",
+      "source_name": "Adenopathy"
+    },
+    {
+      "categories": [
+        "Follicular",
+        "Hurthel cell",
+        "Micropapillary",
+        "Papillary"
+      ],
+      "key": "pathology",
+      "kind": "categorical",
+      "source_name": "Pathology"
+    },
+    {
+      "categories": [
+        "Multi-Focal",
+        "Uni-Focal"
+      ],
+      "key": "focality",
+      "kind": "categorical",
+      "source_name": "Focality"
+    },
+    {
+      "categories": [
+        "High",
+        "Intermediate",
+        "Low"
+      ],
+      "key": "risk",
+      "kind": "categorical",
+      "source_name": "Risk"
+    },
+    {
+      "categories": [
+        "T1a",
+        "T1b",
+        "T2",
+        "T3a",
+        "T3b",
+        "T4a",
+        "T4b"
+      ],
+      "key": "t",
+      "kind": "categorical",
+      "source_name": "T"
+    },
+    {
+      "categories": [
+        "N0",
+        "N1a",
+        "N1b"
+      ],
+      "key": "n",
+      "kind": "categorical",
+      "source_name": "N"
+    },
+    {
+      "categories": [
+        "M0",
+        "M1"
+      ],
+      "key": "m",
+      "kind": "categorical",
+      "source_name": "M"
+    },
+    {
+      "categories": [
+        "I",
+        "II",
+        "III",
+        "IVA",
+        "IVB"
+      ],
+      "key": "stage",
+      "kind": "categorical",
+      "source_name": "Stage"
+    }
+  ],
+  "release": "HealthSolver 0.48 UCI Differentiated Thyroid Cancer Recurrence Integration",
+  "research_only": true,
+  "schema": "healthsolver.predictive_model.v1",
+  "standardization": {
+    "mean": {
+      "adenopathy__bilateral": 0.09170305676855896,
+      "adenopathy__extensive": 0.021834061135371178,
+      "adenopathy__left": 0.048034934497816595,
+      "adenopathy__no": 0.7030567685589519,
+      "adenopathy__posterior": 0.004366812227074236,
+      "adenopathy__right": 0.13100436681222707,
+      "age": 41.35807860262009,
+      "focality__multi_focal": 0.37554585152838427,
+      "focality__uni_focal": 0.6244541484716157,
+      "gender__f": 0.8296943231441049,
+      "gender__m": 0.1703056768558952,
+      "hx_radiothreapy__no": 0.9868995633187773,
+      "hx_radiothreapy__yes": 0.013100436681222707,
+      "hx_smoking__no": 0.925764192139738,
+      "hx_smoking__yes": 0.07423580786026202,
+      "m__m0": 0.9519650655021834,
+      "m__m1": 0.048034934497816595,
+      "n__n0": 0.6768558951965066,
+      "n__n1a": 0.06550218340611354,
+      "n__n1b": 0.2576419213973799,
+      "pathology__follicular": 0.07860262008733625,
+      "pathology__hurthel_cell": 0.056768558951965066,
+      "pathology__micropapillary": 0.11790393013100436,
+      "pathology__papillary": 0.7467248908296943,
+      "physical_examination__diffuse_goiter": 0.021834061135371178,
+      "physical_examination__multinodular_goiter": 0.3537117903930131,
+      "physical_examination__normal": 0.013100436681222707,
+      "physical_examination__single_nodular_goiter_left": 0.2663755458515284,
+      "physical_examination__single_nodular_goiter_right": 0.34497816593886466,
+      "risk__high": 0.08296943231441048,
+      "risk__intermediate": 0.2794759825327511,
+      "risk__low": 0.6375545851528385,
+      "smoking__no": 0.8646288209606987,
+      "smoking__yes": 0.13537117903930132,
+      "stage__i": 0.8602620087336245,
+      "stage__ii": 0.09606986899563319,
+      "stage__iii": 0.008733624454148471,
+      "stage__iva": 0.008733624454148471,
+      "stage__ivb": 0.026200873362445413,
+      "t__t1a": 0.12663755458515283,
+      "t__t1b": 0.10043668122270742,
+      "t__t2": 0.3799126637554585,
+      "t__t3a": 0.2663755458515284,
+      "t__t3b": 0.05240174672489083,
+      "t__t4a": 0.05240174672489083,
+      "t__t4b": 0.021834061135371178,
+      "thyroid_function__clinical_hyperthyroidism": 0.05240174672489083,
+      "thyroid_function__clinical_hypothyroidism": 0.034934497816593885,
+      "thyroid_function__euthyroid": 0.8646288209606987,
+      "thyroid_function__subclinical_hyperthyroidism": 0.004366812227074236,
+      "thyroid_function__subclinical_hypothyroidism": 0.043668122270742356
+    },
+    "scale": {
+      "adenopathy__bilateral": 0.2886063168883547,
+      "adenopathy__extensive": 0.1461414893509302,
+      "adenopathy__left": 0.21384007941825842,
+      "adenopathy__no": 0.45691131386998535,
+      "adenopathy__posterior": 0.06593741864865282,
+      "adenopathy__right": 0.33740513139007616,
+      "age": 15.097447303618074,
+      "focality__multi_focal": 0.4842635283894556,
+      "focality__uni_focal": 0.4842635283894556,
+      "gender__f": 0.37590112168833795,
+      "gender__m": 0.3759011216883379,
+      "hx_radiothreapy__no": 0.11370494817721867,
+      "hx_radiothreapy__yes": 0.11370494817721867,
+      "hx_smoking__no": 0.2621542536210241,
+      "hx_smoking__yes": 0.2621542536210242,
+      "m__m0": 0.21384007941825844,
+      "m__m1": 0.21384007941825844,
+      "n__n0": 0.4676772309341586,
+      "n__n1a": 0.2474098772788698,
+      "n__n1b": 0.43733575401062985,
+      "pathology__follicular": 0.26911753603721583,
+      "pathology__hurthel_cell": 0.23139984802605718,
+      "pathology__micropapillary": 0.322494330788415,
+      "pathology__papillary": 0.43488714426282526,
+      "physical_examination__diffuse_goiter": 0.1461414893509302,
+      "physical_examination__multinodular_goiter": 0.4781210722505151,
+      "physical_examination__normal": 0.11370494817721867,
+      "physical_examination__single_nodular_goiter_left": 0.44206290776746776,
+      "physical_examination__single_nodular_goiter_right": 0.4753611584514681,
+      "risk__high": 0.2758360121808517,
+      "risk__intermediate": 0.4487417494730176,
+      "risk__low": 0.4807064968392153,
+      "smoking__no": 0.3421196032454304,
+      "smoking__yes": 0.3421196032454304,
+      "stage__i": 0.3467149911140473,
+      "stage__ii": 0.29468703613629676,
+      "stage__iii": 0.09304487228236905,
+      "stage__iva": 0.09304487228236905,
+      "stage__ivb": 0.1597322371892741,
+      "t__t1a": 0.3325665111730964,
+      "t__t1b": 0.30058136051271656,
+      "t__t2": 0.48536484387900447,
+      "t__t3a": 0.44206290776746765,
+      "t__t3b": 0.22283582222136372,
+      "t__t4a": 0.22283582222136372,
+      "t__t4b": 0.1461414893509302,
+      "thyroid_function__clinical_hyperthyroidism": 0.22283582222136372,
+      "thyroid_function__clinical_hypothyroidism": 0.1836139392281977,
+      "thyroid_function__euthyroid": 0.34211960324543045,
+      "thyroid_function__subclinical_hyperthyroidism": 0.06593741864865282,
+      "thyroid_function__subclinical_hypothyroidism": 0.2043556149658968
+    }
+  },
+  "target_definition": {
+    "excluded_feature": "Response excluded from predictors to reduce obvious post-treatment temporal leakage",
+    "negative": "all non-recurrence target values in the UCI source",
+    "positive": "Yes"
+  },
+  "task": "Binary research prediction of differentiated-thyroid-cancer recurrence versus no recurrence within the UCI 915 cohort, excluding the post-treatment Response field.",
+  "threshold": 0.20845706831987568,
+  "threshold_selection": "Youden J maximum on held-out calibration split; evaluated once on independent test split",
+  "version": "1.0.0"
+}
