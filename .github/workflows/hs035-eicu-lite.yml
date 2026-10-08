@@ -1,0 +1,29 @@
+name: HealthSolver 0.35 eICU lite
+on:
+  push:
+    branches: ['macrostep/v0.33.0-differential-data']
+    paths: ['.github/workflows/hs035-eicu-lite.yml']
+permissions:
+  contents: read
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download eICU demo longitudinal essentials
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p out
+          base='https://physionet.org/files/eicu-crd-demo/2.0.1'
+          for f in patient.csv.gz lab.csv.gz apachePatientResult.csv.gz admissionDx.csv.gz apacheApsVar.csv.gz; do
+            curl -L --fail --retry 3 --connect-timeout 15 --max-time 120 -o "out/$f" "$base/$f"
+          done
+          curl -L --fail --retry 3 -o out/LICENSE.txt "$base/LICENSE.txt"
+          curl -L --fail --retry 3 -o out/OFFICIAL_SHA256SUMS.txt "$base/SHA256SUMS.txt"
+          sha256sum out/*.gz > out/DOWNLOAD_SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hs035-eicu-lite
+          path: out/
+          retention-days: 14
