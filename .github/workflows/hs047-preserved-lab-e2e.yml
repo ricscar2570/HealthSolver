@@ -1,5 +1,5 @@
 name: HealthSolver 0.47 Preserved Laboratory Full E2E
-# navigate each laboratory workspace page explicitly
+# navigate each laboratory workspace page explicitly\n# force a changed WDBC input before prediction
 on:
   push:
     branches: ['main']
@@ -68,8 +68,12 @@ jobs:
           const v0=lab.locator('#v0');
           must(await v0.count()===1,'laboratory feature v0 missing');
           const original=await v0.inputValue();
+          // The default test record may already have a classification rendered.
+          // Change one valid WDBC feature so this click must recompute a new case state.
+          const recomputeValue=String(Number(original)+0.123);
+          await v0.fill(recomputeValue);
           const before=await lab.locator('body').innerText();
-          await lab.locator('#predict').click(); await page.waitForTimeout(250);
+          await lab.locator('#predict').click(); await page.waitForTimeout(300);
           let body=await lab.locator('body').innerText();
           must(body!==before,'laboratory prediction produced no UI change');
           must(/probabil|risultat|classific/i.test(body),'laboratory prediction output missing');
@@ -122,16 +126,18 @@ jobs:
           must(fs.readFileSync('/tmp/lab-dataset.csv','utf8').split(/\r?\n/).length>20,'dataset CSV too small');
 
           // 05 · Archivio e backup — plain full-workspace backup / restore.
+          await go(/Esplora un caso/i,'#v0');
+          const workspaceValue=await v0.inputValue();
           await go(/Archivio e backup/i,'#backup');
           await save(lab.locator('#backup'),'/tmp/lab-backup.json');
           await go(/Esplora un caso/i,'#v0');
-          await v0.fill(String(Number(original)+1));
-          must((await v0.inputValue())!==original,'laboratory mutation failed');
+          await v0.fill(String(Number(workspaceValue)+1));
+          must((await v0.inputValue())!==workspaceValue,'laboratory mutation failed');
           await go(/Archivio e backup/i,'#backupFile');
           await lab.locator('#backupFile').setInputFiles('/tmp/lab-backup.json');
           await page.waitForTimeout(500);
           await go(/Esplora un caso/i,'#v0');
-          must((await v0.inputValue())===original,'laboratory backup restore failed');
+          must((await v0.inputValue())===workspaceValue,'laboratory backup restore failed');
 
           // 08 · Spazi e backup cifrato.
           const encPwd='HealthSolver-Lab-047!';
@@ -140,13 +146,13 @@ jobs:
           await lab.locator('#encryptRepeat').fill(encPwd);
           await save(lab.locator('#encryptBackup'),'/tmp/lab-encrypted.json');
           await go(/Esplora un caso/i,'#v0');
-          await v0.fill(String(Number(original)+2));
+          await v0.fill(String(Number(workspaceValue)+2));
           await go(/Spazi e backup cifrato/i,'#allRestore');
           await lab.locator('#decryptPassword').fill(encPwd);
           await lab.locator('#allRestore').setInputFiles('/tmp/lab-encrypted.json');
           await page.waitForTimeout(3500);
           await go(/Esplora un caso/i,'#v0');
-          must((await v0.inputValue())===original,'laboratory encrypted restore failed');
+          must((await v0.inputValue())===workspaceValue,'laboratory encrypted restore failed');
 
           // 06 · NHAMCS importer surface is reachable and exposes its authorization gate.
           await go(/Respiratorio · NHAMCS/i,'#nhamcsAuthorized');
