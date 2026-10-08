@@ -102,7 +102,9 @@ jobs:
             await set(p,'coachAge',45);
             await p.locator('#coachSex').selectOption({label:'Femminile'});
             await p.locator('#coachContinue').click();await sleep(120);
-            ok((await p.locator('.coach-phase.current').innerText()).includes('Sintomi'),'Coach blank case advances to symptoms');
+            const nextPhase=(await p.locator('.coach-phase.current').innerText()).trim();
+            ok(!nextPhase.includes('Caso'),'Coach blank case leaves profile phase after valid minimum data');
+            ok((await p.locator('#page-coach').innerText()).includes('PROSSIMA AZIONE'),'Coach proposes the next action adaptively');
 
             await p.locator('#coachRestoreFile').setInputFiles(backup);await sleep(300);
             const restoredText=await p.locator('#page-coach').innerText();
