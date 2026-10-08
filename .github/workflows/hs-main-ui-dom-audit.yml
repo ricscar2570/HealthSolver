@@ -1,0 +1,55 @@
+name: HealthSolver Main UI DOM Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs-main-ui-dom-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Inspect main application DOM
+        shell: bash
+        run: |
+          cat > audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1800}});
+          await page.goto('https://ricscar2570.github.io/HealthSolver/?dom-audit=1',{waitUntil:'networkidle',timeout:120000});
+          await page.waitForTimeout(3000);
+          const terms=['Modelli','Analisi','Risultato','Clinical Coach','Expert Mode'];
+          for(const term of terms){
+            const loc=page.getByText(term,{exact:true});
+            const n=await loc.count();
+            console.log('\nTERM',term,'COUNT',n);
+            for(let i=0;i<Math.min(n,8);i++){
+              const e=loc.nth(i);
+              console.log('ITEM',i,await e.evaluate(el=>({
+                tag:el.tagName,id:el.id,cls:el.className,
+                parentTag:el.parentElement?.tagName,parentId:el.parentElement?.id,parentCls:el.parentElement?.className,
+                parentText:(el.parentElement?.innerText||'').slice(0,500),
+                html:el.outerHTML.slice(0,1000)
+              })));
+            }
+          }
+          console.log('\nMAIN',await page.locator('main').evaluate(el=>({id:el.id,cls:el.className,html:el.outerHTML.slice(0,15000)})));
+          await browser.close();
+          JS
+          node audit.mjs > dom-audit.txt
+          cat dom-audit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: healthsolver-main-ui-dom-audit
+          path: dom-audit.txt
+          retention-days: 7
