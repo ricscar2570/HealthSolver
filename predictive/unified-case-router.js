@@ -5,6 +5,7 @@ window.__HS_UNIFIED_ROUTER_041__=true;
 
 const BASE=new URL('./predictive/',window.location.href).href;
 const REGISTRY=BASE+'model-registry-v2.json';
+const BUNDLE=window.__HS_PREDICTIVE_BUNDLE__||null;
 const heartLabels={
  age:['Età','anni','Generale'],sex:['Sesso','','Cardiovascolare'],cp:['Tipo di dolore toracico','','Cardiovascolare'],
  trestbps:['Pressione sistolica a riposo','mmHg','Cardiovascolare'],chol:['Colesterolo sierico','mg/dL','Cardiovascolare'],
@@ -176,9 +177,14 @@ runBtn.addEventListener('click',()=>{
 });
 resetBtn.addEventListener('click',()=>{Object.values(controls).forEach(x=>x.value='');results.innerHTML='';status.textContent='Caso azzerato.';updateCoverage();});
 
-fetch(REGISTRY,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('registry HTTP '+r.status);return r.json();}).then(async reg=>{
+const initRouter=async(reg)=>{
  registry=reg;
- const loaded=await Promise.all(reg.models.map(async e=>{const r=await fetch(BASE+e.file,{cache:'no-store'});if(!r.ok)throw new Error(e.file+' HTTP '+r.status);return r.json();}));
+ const loaded=(BUNDLE&&BUNDLE.models)
+   ? reg.models.map(e=>BUNDLE.models[e.file])
+   : await Promise.all(reg.models.map(async e=>{const r=await fetch(BASE+e.file,{cache:'no-store'});if(!r.ok)throw new Error(e.file+' HTTP '+r.status);return r.json();}));
+ if(loaded.some(x=>!x)) throw new Error('embedded model bundle incomplete');
  models=loaded;buildForm();status.textContent=`Router pronto · ${models.length} modelli caricati · ${Object.keys(controls).length} feature unificate disponibili.`;
-}).catch(e=>{status.textContent='Unified router non disponibile: '+e.message;});
+};
+if(BUNDLE&&BUNDLE.registry) initRouter(BUNDLE.registry).catch(e=>{status.textContent='Unified router non disponibile: '+e.message;});
+else fetch(REGISTRY,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('registry HTTP '+r.status);return r.json();}).then(initRouter).catch(e=>{status.textContent='Unified router non disponibile: '+e.message;});
 })();
