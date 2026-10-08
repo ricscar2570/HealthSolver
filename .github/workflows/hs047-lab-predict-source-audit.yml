@@ -1,0 +1,44 @@
+name: HealthSolver 0.47 Laboratory Predict Source Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs047-lab-predict-source-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reconstruct published payload and inspect laboratory predict handler
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git fetch origin gh-pages
+          git worktree add /tmp/pages origin/gh-pages
+          python - <<'PY'
+          import base64,gzip,pathlib,re
+          p=pathlib.Path('/tmp/pages/docs/payload')
+          b64=''.join(x.read_text().strip() for x in sorted(p.glob('part-*.b64')))
+          html=gzip.decompress(base64.b64decode(b64)).decode('utf-8')
+          pats=["$('predict')","id=\"predict\"","predict.onclick","predict=()=>","function predict"]
+          out=[]
+          for pat in pats:
+              start=0
+              while True:
+                  i=html.find(pat,start)
+                  if i<0: break
+                  out.append('\n=== '+pat+' @ '+str(i)+' ===\n'+html[max(0,i-5000):i+9000])
+                  start=i+len(pat)
+          pathlib.Path('lab-predict-source.txt').write_text('\n'.join(out))
+          print('matches',len(out))
+          print('\n'.join(out)[:50000])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: healthsolver-047-lab-predict-source
+          path: lab-predict-source.txt
+          retention-days: 7
