@@ -1,0 +1,135 @@
+{
+  "abstention": {
+    "max_missing_features": 1,
+    "message": "Prediction withheld when more than one required feature is missing."
+  },
+  "calibration": {
+    "intercept": -0.7725173494342389,
+    "method": "Platt scaling on held-out calibration split using NHIS final annual sample weights",
+    "slope": 1.026647914587205
+  },
+  "dataset": {
+    "download": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NHIS/2023/adult23csv.zip",
+    "name": "NHIS 2023 Sample Adult public-use CSV",
+    "public_use": true,
+    "source": "CDC/NCHS NHIS",
+    "survey_year": 2023,
+    "target_variable": "HYPEV_A",
+    "weight_variable": "WTFA_A"
+  },
+  "features": [
+    "age",
+    "sex",
+    "obese",
+    "current_smoker",
+    "fair_poor_general_health"
+  ],
+  "field_meta": {
+    "age": {
+      "label": "Et\u00e0",
+      "median": 55.0,
+      "training_max": 85.0,
+      "training_min": 18.0,
+      "unit": "anni"
+    },
+    "current_smoker": {
+      "encoding": "0=no, 1=yes",
+      "label": "Fumatore attuale",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "fair_poor_general_health": {
+      "encoding": "0=no, 1=yes",
+      "label": "Salute generale discreta/scarsa",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "obese": {
+      "encoding": "0=no, 1=yes",
+      "label": "Obesit\u00e0 (categoria BMI)",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "sex": {
+      "encoding": "0=female, 1=male",
+      "label": "Sesso",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    }
+  },
+  "imputation": {
+    "strategy": "training median",
+    "values": {
+      "age": 55.0,
+      "current_smoker": 0.0,
+      "fair_poor_general_health": 0.0,
+      "obese": 0.0,
+      "sex": 0.0
+    }
+  },
+  "logistic": {
+    "coefficients": {
+      "age": 1.1535448969998214,
+      "current_smoker": 0.041921630629926904,
+      "fair_poor_general_health": 0.3521114951868286,
+      "obese": 0.4773848179769761,
+      "sex": 0.14114898898762424
+    },
+    "intercept": 0.053902716160689396
+  },
+  "metrics_test": {
+    "accuracy_unweighted": 0.7019508057675996,
+    "auprc_weighted": 0.6570880216540114,
+    "auroc_weighted": 0.8097646831507195,
+    "brier_weighted": 0.162276804289203,
+    "confusion_matrix_unweighted": {
+      "fn": 403,
+      "fp": 1354,
+      "tn": 2322,
+      "tp": 1816
+    },
+    "decision_threshold_from_calibration": 0.29750853183777015,
+    "n_calibration": 5894,
+    "n_test": 5895,
+    "n_total": 29471,
+    "n_train": 17682,
+    "positive_prevalence_unweighted": 0.3764378541617183,
+    "sensitivity_unweighted": 0.8183866606579541,
+    "specificity_unweighted": 0.6316648531011969
+  },
+  "model_id": "HS-NHIS-HYP-001",
+  "not_clinically_validated": true,
+  "release": "HealthSolver 0.46 NHIS 2023 Integration",
+  "research_only": true,
+  "schema": "healthsolver.predictive_model.v1",
+  "standardization": {
+    "mean": {
+      "age": 53.30251102816423,
+      "current_smoker": 0.10411718131433095,
+      "fair_poor_general_health": 0.1611243072050673,
+      "obese": 0.32813030200203597,
+      "sex": 0.45735776495871505
+    },
+    "scale": {
+      "age": 18.45011627164413,
+      "current_smoker": 0.30541249789340597,
+      "fair_poor_general_health": 0.3676455695812944,
+      "obese": 0.46953254084257956,
+      "sex": 0.4981783212773151
+    }
+  },
+  "survey_design_note": "WTFA_A is used as a sample weight for fitting, calibration and weighted metrics; full complex-survey variance estimation is not reproduced.",
+  "target_definition": {
+    "excluded": "refused, not ascertained, do not know, invalid annual sample weight",
+    "negative": "HYPEV_A=2, respondent reports no such hypertension history",
+    "positive": "HYPEV_A=1, respondent reports ever being told they had hypertension"
+  },
+  "task": "Binary research prediction of self-reported ever being told of hypertension versus no such report among NHIS 2023 sample adults.",
+  "threshold": 0.29750853183777015,
+  "threshold_selection": "Youden J maximum on weighted held-out calibration split; evaluated once on independent test split",
+  "version": "1.0.0"
+}

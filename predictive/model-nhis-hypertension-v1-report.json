@@ -1,0 +1,20 @@
+{
+  "accuracy_unweighted": 0.7019508057675996,
+  "auprc_weighted": 0.6570880216540114,
+  "auroc_weighted": 0.8097646831507195,
+  "brier_weighted": 0.162276804289203,
+  "confusion_matrix_unweighted": {
+    "fn": 403,
+    "fp": 1354,
+    "tn": 2322,
+    "tp": 1816
+  },
+  "decision_threshold_from_calibration": 0.29750853183777015,
+  "n_calibration": 5894,
+  "n_test": 5895,
+  "n_total": 29471,
+  "n_train": 17682,
+  "positive_prevalence_unweighted": 0.3764378541617183,
+  "sensitivity_unweighted": 0.8183866606579541,
+  "specificity_unweighted": 0.6316648531011969
+}
