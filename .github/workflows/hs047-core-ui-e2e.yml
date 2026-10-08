@@ -87,10 +87,10 @@ jobs:
             await p.locator('#coachStartExample').click();await sleep(200);
             const exampleText=await p.locator('#page-coach').innerText();
             ok(/\d+\s*anni/.test(exampleText),'Coach example loads structured age');
-            const casePhase=p.locator('.coach-phase').filter({hasText:'Caso'}).first();
-            ok(await casePhase.count()===1,'Coach Case phase exists');
-            await casePhase.click();await sleep(100);
-            ok(await p.locator('#coachAge').count()===1,'Coach age field available in Case phase');
+            const correctProfile=p.getByRole('button',{name:'Correggi'}).first();
+            ok(await correctProfile.count()===1,'Coach profile correction control exists');
+            await correctProfile.click();await sleep(100);
+            ok(await p.locator('#coachAge').count()===1,'Coach age field available after Correggi profile');
             await set(p,'coachAge',63);
             await p.locator('#coachContinue').click();await sleep(120);
             ok((await p.locator('.coach-phase.current').innerText()).includes('Sintomi'),'Coach advances');
@@ -102,8 +102,12 @@ jobs:
             ok(/63\s*anni|63/.test(restoredText),'Coach backup restore recovers age');
             if(await p.locator('#coachAutoResume').count()===1){
               if(!(await p.locator('#coachAutoResume').isChecked()))await p.locator('#coachAutoResume').check();
-              const ageField=p.locator('#coachAge');
-              if(await ageField.count()===1)await set(p,'coachAge',64);
+              if(await p.locator('#coachAge').count()!==1){
+                const fix=p.getByRole('button',{name:'Correggi'}).first();
+                if(await fix.count()===1)await fix.click();
+                await sleep(80);
+              }
+              if(await p.locator('#coachAge').count()===1)await set(p,'coachAge',64);
               await sleep(100);
               await p.reload({waitUntil:'networkidle'});await p.waitForFunction(()=>document.body.innerText.includes('Clinical Coach'),{timeout:30000});
               await nav(p,'coach');
