@@ -1,0 +1,64 @@
+name: HealthSolver 0.47 Preserved Visit Module Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs047-previous-module-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Audit preserved 0.32 visit/lab application
+        shell: bash
+        run: |
+          cat > audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const checks=[];
+          const ok=(v,m)=>{if(!v)throw new Error(m);checks.push(m)};
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1600}});
+          const errors=[];
+          page.on('pageerror',e=>errors.push(e.message));
+          await page.goto('https://ricscar2570.github.io/HealthSolver/?audit=previous-module',{waitUntil:'networkidle',timeout:120000});
+          await page.waitForFunction(()=>document.body.innerText.includes('Visita e laboratori precedenti'),{timeout:30000});
+          await page.locator('aside .nav[data-page="previous"]').click();
+          const iframe=page.locator('#previous');
+          ok(await iframe.count()===1,'preserved iframe exists');
+          await page.waitForFunction(()=>{const f=document.getElementById('previous');return f&&f.contentDocument&&f.contentDocument.body&&f.contentDocument.body.innerText.length>1000},{timeout:30000});
+          const frame=page.frameLocator('#previous');
+          const body=await frame.locator('body').innerText();
+          for(const term of ['CRB65','WDBC','NHAMCS','Backup']){
+            ok(body.toLowerCase().includes(term.toLowerCase()),'preserved module contains '+term);
+          }
+          const controls=await frame.locator('button,input,select,textarea').evaluateAll(els=>els.map(e=>({tag:e.tagName,id:e.id||'',type:e.type||'',text:(e.innerText||e.value||e.placeholder||'').trim().slice(0,100)})));
+          ok(controls.length>=10,'preserved module has interactive controls');
+          console.log('CONTROLS',JSON.stringify(controls,null,2));
+          ok(errors.length===0,'preserved module has no page errors '+errors.join(' | '));
+          await page.screenshot({path:'previous-module.png',fullPage:true});
+          await browser.close();
+          fs.writeFileSync('previous-audit.json',JSON.stringify(checks,null,2));
+          console.log('PASS',checks.length);
+          JS
+          node audit.mjs | tee previous-audit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: healthsolver-047-previous-module-audit
+          path: |
+            previous-audit.json
+            previous-audit.txt
+            previous-module.png
+          if-no-files-found: ignore
+          retention-days: 14
