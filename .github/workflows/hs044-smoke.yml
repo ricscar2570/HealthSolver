@@ -1,0 +1,62 @@
+name: HealthSolver 0.44 UCI HCV Smoke
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'predictive/**'
+      - '.github/workflows/hs044-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: node --check predictive/integrated-predictive-ui.js
+      - name: Verify HCV model and registry
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import json,math,pathlib
+          root=pathlib.Path('predictive')
+          reg=json.loads((root/'model-registry-v2.json').read_text())
+          assert reg['version']=='0.44.0',reg['version']
+          entries={e['model_id']:e for e in reg['models']}
+          assert 'HS-UCI-HCV-001' in entries
+          assert len(reg['models'])==4
+          m=json.loads((root/'model-hcv-v1.json').read_text())
+          assert m['model_id']=='HS-UCI-HCV-001'
+          assert m['dataset']['uci_id']==571
+          assert m['dataset']['license']=='CC BY 4.0'
+          assert m['target_definition']['excluded']=='suspect blood donor'
+          assert len(m['features'])==12
+          assert set(['age','sex','alb','alp','alt','ast','bil','che','chol','crea','ggt','prot'])==set(m['features'])
+          q=m['metrics_test']
+          assert q['n_total']==608
+          assert q['n_test']>0
+          assert q['auroc']>=0.5
+          assert 0<=q['brier']<=1
+          assert m['research_only'] is True
+          assert m['not_clinically_validated'] is True
+          x=m['imputation']['values']
+          s=m['logistic']['intercept']
+          for f in m['features']:
+              z=(x[f]-m['standardization']['mean'][f])/m['standardization']['scale'][f]
+              s+=z*m['logistic']['coefficients'][f]
+          z=m['calibration']['intercept']+m['calibration']['slope']*s
+          p=1/(1+math.exp(-max(-35,min(35,z))))
+          assert 0<p<1 and math.isfinite(p)
+          print({'probability_at_training_medians':p,'metrics':q})
+          PY
+      - name: Verify integrated UI references fourth model
+        shell: bash
+        run: |
+          grep -q '4 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -q 'HS-UCI-HCV-001' predictive/integrated-predictive-ui.js
+          grep -q 'Dati specialistici epatici / HCV' predictive/integrated-predictive-ui.js
