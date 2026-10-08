@@ -1,0 +1,140 @@
+name: HealthSolver 0.44 UCI HCV Predictive Model
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs044-uci-hcv.yml']
+permissions:
+  contents: write
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Train calibrated UCI HCV model
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install --disable-pip-version-check -q numpy pandas scikit-learn ucimlrepo
+          python - <<'PY'
+          import json,pathlib
+          import numpy as np,pandas as pd
+          from ucimlrepo import fetch_ucirepo
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import accuracy_score,roc_auc_score,average_precision_score,brier_score_loss,confusion_matrix
+          from sklearn.model_selection import train_test_split
+
+          out=pathlib.Path('predictive');out.mkdir(exist_ok=True)
+          ds=fetch_ucirepo(id=571)
+          X=ds.data.features.copy()
+          yraw=ds.data.targets.iloc[:,0].astype(str).str.strip()
+          print('FEATURES',list(X.columns))
+          print('TARGETS',sorted(yraw.unique().tolist()))
+
+          # Expected HCV Data columns from UCI.
+          canonical={
+            'Age':'age','Sex':'sex','ALB':'alb','ALP':'alp','ALT':'alt','AST':'ast',
+            'BIL':'bil','CHE':'che','CHOL':'chol','CREA':'crea','GGT':'ggt','PROT':'prot'
+          }
+          missing=[k for k in canonical if k not in X.columns]
+          if missing: raise SystemExit(f'missing expected UCI HCV features: {missing}')
+
+          X=X[list(canonical)].rename(columns=canonical)
+          X['sex']=X['sex'].astype(str).str.strip().str.lower().map({'m':1,'f':0,'male':1,'female':0})
+          for c in [x for x in X.columns if x!='sex']:
+              X[c]=pd.to_numeric(X[c],errors='coerce')
+
+          # Use unambiguous reference donors vs liver-disease categories.
+          # Exclude suspect donor rows (0s) from this first supervised binary model.
+          ytxt=yraw.str.lower()
+          keep=~ytxt.str.contains('suspect',na=False)
+          X=X.loc[keep].reset_index(drop=True)
+          ytxt=ytxt.loc[keep].reset_index(drop=True)
+          y=ytxt.map(lambda s: 0 if ('blood donor' in s or s.startswith('0=')) else 1).astype(int)
+
+          features=list(X.columns)
+          idx=np.arange(len(y))
+          tr,tmp=train_test_split(idx,test_size=.40,random_state=4401,stratify=y)
+          cal,te=train_test_split(tmp,test_size=.50,random_state=4402,stratify=y.iloc[tmp])
+          Xtr,Xca,Xte=X.iloc[tr].copy(),X.iloc[cal].copy(),X.iloc[te].copy()
+          ytr,yca,yte=y.iloc[tr].to_numpy(),y.iloc[cal].to_numpy(),y.iloc[te].to_numpy()
+
+          med=Xtr.median(numeric_only=True).reindex(features)
+          Xtr=Xtr.fillna(med);Xca=Xca.fillna(med);Xte=Xte.fillna(med)
+          mu=Xtr.mean().reindex(features);sd=Xtr.std(ddof=0).replace(0,1).reindex(features)
+          lo=Xtr.min().reindex(features);hi=Xtr.max().reindex(features)
+          Ztr=(Xtr-mu)/sd;Zca=(Xca-mu)/sd;Zte=(Xte-mu)/sd
+
+          base=LogisticRegression(max_iter=5000,C=1.0,solver='lbfgs',class_weight='balanced',random_state=4403)
+          base.fit(Ztr,ytr)
+          platt=LogisticRegression(max_iter=5000,C=1e6,solver='lbfgs',random_state=4404)
+          platt.fit(base.decision_function(Zca).reshape(-1,1),yca)
+          p=platt.predict_proba(base.decision_function(Zte).reshape(-1,1))[:,1]
+          pred=(p>=.5).astype(int)
+          tn,fp,fn,tp=confusion_matrix(yte,pred,labels=[0,1]).ravel()
+          metrics={
+            'n_total':int(len(y)),'n_train':int(len(tr)),'n_calibration':int(len(cal)),'n_test':int(len(te)),
+            'positive_prevalence':float(y.mean()),
+            'auroc':float(roc_auc_score(yte,p)),'auprc':float(average_precision_score(yte,p)),
+            'accuracy':float(accuracy_score(yte,pred)),'brier':float(brier_score_loss(yte,p)),
+            'sensitivity':float(tp/(tp+fn)) if tp+fn else None,'specificity':float(tn/(tn+fp)) if tn+fp else None,
+            'confusion_matrix':{'tn':int(tn),'fp':int(fp),'fn':int(fn),'tp':int(tp)}
+          }
+          meta={
+            'age':{'label':'Età','unit':'anni'},
+            'sex':{'label':'Sesso','encoding':'0=female, 1=male'},
+            'alb':{'label':'Albumina','unit':'g/L'},
+            'alp':{'label':'Fosfatasi alcalina','unit':'U/L'},
+            'alt':{'label':'ALT','unit':'U/L'},
+            'ast':{'label':'AST','unit':'U/L'},
+            'bil':{'label':'Bilirubina','unit':'µmol/L'},
+            'che':{'label':'Colinesterasi','unit':'kU/L'},
+            'chol':{'label':'Colesterolo','unit':'mmol/L'},
+            'crea':{'label':'Creatinina','unit':'µmol/L'},
+            'ggt':{'label':'GGT','unit':'U/L'},
+            'prot':{'label':'Proteine totali','unit':'g/L'}
+          }
+          for f in features:
+              meta[f]['training_min']=float(lo[f]);meta[f]['training_max']=float(hi[f]);meta[f]['median']=float(med[f])
+
+          model={
+            'schema':'healthsolver.predictive_model.v1',
+            'model_id':'HS-UCI-HCV-001','version':'1.0.0',
+            'release':'HealthSolver 0.44 UCI HCV Data Integration',
+            'task':'Binary research prediction of liver-disease category versus blood-donor reference within the UCI HCV Data domain; suspect-donor rows excluded.',
+            'research_only':True,'not_clinically_validated':True,
+            'dataset':{'name':'UCI HCV Data','uci_id':571,'doi':'10.24432/C5D612','license':'CC BY 4.0',
+                       'source':'https://archive.ics.uci.edu/dataset/571/hcv+data'},
+            'features':features,'field_meta':meta,
+            'imputation':{'strategy':'training median','values':{f:float(med[f]) for f in features}},
+            'standardization':{'mean':{f:float(mu[f]) for f in features},'scale':{f:float(sd[f]) for f in features}},
+            'logistic':{'intercept':float(base.intercept_[0]),'coefficients':{f:float(v) for f,v in zip(features,base.coef_[0])}},
+            'calibration':{'method':'Platt scaling on held-out calibration split','intercept':float(platt.intercept_[0]),'slope':float(platt.coef_[0,0])},
+            'threshold':0.5,'metrics_test':metrics,
+            'abstention':{'max_missing_features':2,'message':'Prediction withheld when more than two required features are missing.'},
+            'target_definition':{'negative':'blood donor','positive':'hepatitis/fibrosis/cirrhosis categories','excluded':'suspect blood donor'}
+          }
+          (out/'model-hcv-v1.json').write_text(json.dumps(model,indent=2,sort_keys=True))
+
+          reg=json.loads((out/'model-registry-v2.json').read_text())
+          reg['version']='0.44.0'
+          reg['models']=[m for m in reg['models'] if m['model_id']!='HS-UCI-HCV-001']
+          reg['models'].append({'model_id':model['model_id'],'title':'Pattern epatico HCV / malattia epatica',
+                                'file':'model-hcv-v1.json','task':model['task'],'metrics_test':metrics})
+          (out/'model-registry-v2.json').write_text(json.dumps(reg,indent=2,sort_keys=True))
+          (out/'model-hcv-v1-report.json').write_text(json.dumps(metrics,indent=2,sort_keys=True))
+          print(json.dumps(metrics,indent=2))
+          PY
+      - name: Commit model and registry
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name "healthsolver-bot"
+          git config user.email "healthsolver-bot@users.noreply.github.com"
+          git add predictive/model-hcv-v1.json predictive/model-hcv-v1-report.json predictive/model-registry-v2.json
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: add UCI HCV predictive model HS-UCI-HCV-001"
+          git push
