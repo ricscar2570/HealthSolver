@@ -59,9 +59,10 @@ jobs:
 
           await page.locator('#restorePassword').fill(pwd);
           await page.locator('#restoreFile').setInputFiles('/tmp/encrypted.json');
-          await page.waitForTimeout(100);
-          console.log('RESTORE_CONFIRM_VISIBLE',await page.locator('#confirmDialog').isVisible().catch(()=>false));
-          await confirm();await page.waitForTimeout(1500);
+          const dlg=page.locator('#confirmDialog');
+          await dlg.waitFor({state:'visible',timeout:15000});
+          console.log('RESTORE_CONFIRM_VISIBLE',await dlg.isVisible());
+          await confirm();await page.waitForTimeout(500);
           console.log('AFTER_ENCRYPTED_RESTORE\n'+await page.locator('#page-archive').innerText());
           console.log('ERRORS',errors);
           console.log('RESTORE_PASSWORD_AFTER',await page.locator('#restorePassword').inputValue());
