@@ -37,7 +37,7 @@ jobs:
           # Expected HCV Data columns from UCI.
           canonical={
             'Age':'age','Sex':'sex','ALB':'alb','ALP':'alp','ALT':'alt','AST':'ast',
-            'BIL':'bil','CHE':'che','CHOL':'chol','CREA':'crea','GGT':'ggt','PROT':'prot'
+            'BIL':'bil','CHE':'che','CHOL':'chol','CREA':'crea','CGT':'ggt','PROT':'prot'
           }
           missing=[k for k in canonical if k not in X.columns]
           if missing: raise SystemExit(f'missing expected UCI HCV features: {missing}')
