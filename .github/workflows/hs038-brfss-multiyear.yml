@@ -1,0 +1,134 @@
+name: HealthSolver 0.38 BRFSS 2011-2024 massive longitudinal survey pack
+on:
+  push:
+    branches: ['macrostep/v0.38.0-massive-public-data']
+    paths: ['.github/workflows/hs038-brfss-multiyear.yml']
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Build harmonized public BRFSS 2011-2024 evidence
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install --disable-pip-version-check -q pandas pyreadstat numpy requests beautifulsoup4
+          mkdir -p out work
+          python - <<'PY'
+          import requests,re,zipfile,io,pathlib,json,hashlib,math,gc
+          import numpy as np,pandas as pd,pyreadstat
+          from bs4 import BeautifulSoup
+          YEARS=range(2011,2025)
+          S=requests.Session();S.headers['User-Agent']='HealthSolver research public-data acquisition'
+          def discover(year):
+            urls=[
+              f'https://www.cdc.gov/brfss/annual_data/annual_{year}.html',
+              f'https://www.cdc.gov/brfss/annual_data/annual_{year}.htm'
+            ]
+            for page in urls:
+              r=S.get(page,timeout=60)
+              if not r.ok: continue
+              soup=BeautifulSoup(r.text,'html.parser')
+              cand=[]
+              for a in soup.find_all('a',href=True):
+                h=a['href']; t=' '.join(a.stripped_strings).lower()
+                if 'transport' in t and '.zip' in h.lower(): cand.append(requests.compat.urljoin(page,h))
+                elif re.search(r'LLCP.*XPT.*\.zip',h,re.I): cand.append(requests.compat.urljoin(page,h))
+              if cand:return cand[0],page
+            # Stable CDC naming fallback.
+            return f'https://www.cdc.gov/brfss/annual_data/{year}/files/LLCP{year}XPT.zip',None
+          mapping={
+            'age':[' _AGE80','_AGE80'],
+            'sex':['SEXVAR','SEX','_SEX','SEX1'],
+            'bmi':['_BMI5'],
+            'smoker':['_SMOKER3'],
+            'exercise':['EXERANY2','EXERANY'],
+            'weight':['_LLCPWT'],
+          }
+          targets={
+            'heart_attack':['CVDINFR4','CVDINFR3','CVDINFR2','CVDINFR'],
+            'coronary_heart_disease':['CVDCRHD4','CVDCRHD3','CVDCRHD2','CVDCRHD'],
+            'stroke':['CVDSTRK3','CVDSTRK2','CVDSTRK'],
+            'current_or_history_asthma':['ASTHMA3','ASTHMA2'],
+            'copd':['CHCCOPD3','CHCCOPD2','CHCCOPD1'],
+            'diabetes':['DIABETE4','DIABETE3','DIABETE2'],
+            'kidney_disease':['CHCKDNY2','CHCKIDNY','CHCKDNY1'],
+            'depression_history':['ADDEPEV3','ADDEPEV2','ADDEPEV'],
+            'arthritis':['HAVARTH4','HAVARTH3','HAVARTH2'],
+          }
+          def first(cols,cands):
+            for c in cands:
+              c=c.strip()
+              if c in cols:return c
+            return None
+          def enc(v):
+            if pd.isna(v):return None
+            if isinstance(v,(float,np.floating)):
+              f=float(v);return int(f) if f.is_integer() else f
+            if isinstance(v,(int,np.integer)):return int(v)
+            return str(v)
+          levels=[['age_bin','sex','bmi_bin','smoker','exercise'],['age_bin','sex','bmi_bin','smoker'],['age_bin','sex','bmi_bin'],['age_bin','sex'],['age_bin'],[]]
+          all_cube=[]; annual=[]; total=0; source_receipts=[]
+          for year in YEARS:
+            url,page=discover(year); print('YEAR',year,'URL',url,flush=True)
+            rr=S.get(url,timeout=300); rr.raise_for_status(); data=rr.content
+            sha=hashlib.sha256(data).hexdigest()
+            z=zipfile.ZipFile(io.BytesIO(data)); members=[n for n in z.namelist() if not n.endswith('/')]
+            xs=[n for n in members if n.lower().endswith('.xpt')]
+            if not xs: xs=[n for n in members if 'llcp' in n.lower() and not n.lower().endswith(('.txt','.sas','.pdf'))]
+            if len(xs)!=1: raise RuntimeError(f'{year}: ambiguous XPT {members[:20]}')
+            p=pathlib.Path('work')/f'{year}.xpt'; p.write_bytes(z.read(xs[0]))
+            _,meta=pyreadstat.read_xport(p,metadataonly=True,encoding='latin1'); cols=set(meta.column_names)
+            chosen={k:first(cols,v) for k,v in mapping.items()}
+            chosen_targets={k:first(cols,v) for k,v in targets.items()}
+            use=sorted({v for v in list(chosen.values())+list(chosen_targets.values()) if v})
+            df,_=pyreadstat.read_xport(p,usecols=use,encoding='latin1'); n=len(df); total+=n
+            age=pd.to_numeric(df[chosen['age']],errors='coerce') if chosen['age'] else pd.Series(np.nan,index=df.index)
+            sex=pd.to_numeric(df[chosen['sex']],errors='coerce') if chosen['sex'] else pd.Series(np.nan,index=df.index)
+            bmi=pd.to_numeric(df[chosen['bmi']],errors='coerce')/100 if chosen['bmi'] else pd.Series(np.nan,index=df.index)
+            smoker=pd.to_numeric(df[chosen['smoker']],errors='coerce') if chosen['smoker'] else pd.Series(np.nan,index=df.index)
+            exercise=pd.to_numeric(df[chosen['exercise']],errors='coerce') if chosen['exercise'] else pd.Series(np.nan,index=df.index)
+            weight=pd.to_numeric(df[chosen['weight']],errors='coerce') if chosen['weight'] else pd.Series(1.,index=df.index)
+            age=age.where((age>=18)&(age<=80)); sex=sex.where(sex.isin([1,2])); bmi=bmi.where((bmi>=10)&(bmi<=80)); smoker=smoker.where(smoker.isin([1,2,3,4])); exercise=exercise.where(exercise.isin([1,2])); weight=weight.where(weight>0)
+            base=pd.DataFrame({'age_bin':pd.cut(age,[17,24,34,44,54,64,74,80],labels=['18-24','25-34','35-44','45-54','55-64','65-74','75-80'],include_lowest=True).astype('object'),'sex':sex,'bmi_bin':pd.cut(bmi,[9.99,18.49,24.99,29.99,39.99,80],labels=['under','normal','over','obese1','obese2plus'],include_lowest=True).astype('object'),'smoker':smoker,'exercise':exercise,'w':weight})
+            year_targets={}
+            for target,col in chosen_targets.items():
+              if not col:continue
+              raw=pd.to_numeric(df[col],errors='coerce')
+              y=pd.Series(np.nan,index=df.index)
+              # Diabetes codes 2/3/4 are treated as non-diabetes for the original BRFSS yes/no question;
+              # all other binary chronic-condition questions use 1=yes, 2=no.
+              pos={1}; neg={2,3,4} if target=='diabetes' else {2}
+              y[raw.isin(pos)]=1.;y[raw.isin(neg)]=0.
+              t=base.copy();t['y']=y;t=t[t.y.notna()&t.w.notna()]
+              if t.empty:continue
+              year_targets[target]={'column':col,'valid_n':len(t)}
+              for li,keys in enumerate(levels):
+                groups=t.groupby(keys,dropna=False,observed=False) if keys else [((),t)]
+                for key,g in groups:
+                  if len(g)<50:continue
+                  sw=float(g.w.sum())
+                  if not sw>0:continue
+                  prev=float((g.w*g.y).sum()/sw)
+                  kval=key if isinstance(key,tuple) else (key,)
+                  all_cube.append({'year':year,'target':target,'level':li,'filters':{kk:enc(vv) for kk,vv in zip(keys,kval)},'n':int(len(g)),'weighted_n':sw,'prevalence':prev})
+            annual.append({'year':year,'records':n,'variables':len(meta.column_names),'chosen':chosen,'targets':year_targets,'source_url':url,'source_sha256':sha})
+            source_receipts.append({'year':year,'url':url,'bytes':len(data),'sha256':sha})
+            p.unlink(missing_ok=True); del df,base;gc.collect()
+          payload={'schema':'healthsolver.brfss_multiyear_population_evidence.v1','source':{'provider':'CDC BRFSS','years':[2011,2024],'raw_records_total':total,'annual':annual},'semantics':{'kind':'year-specific weighted population association / prevalence evidence','not_diagnostic':True,'self_reported_targets':True,'survey_weight':'_LLCPWT','years_not_pooled_as_one_survey':True,'unknown_codes_excluded':True},'dimensions':{'age_bin':['18-24','25-34','35-44','45-54','55-64','65-74','75-80'],'sex':{'1':'male registered','2':'female registered'},'bmi_bin':['under','normal','over','obese1','obese2plus'],'smoker':{'1':'current daily','2':'current some days','3':'former','4':'never'},'exercise':{'1':'yes','2':'no'}},'targets':list(targets),'cube':all_cube}
+          raw=json.dumps(payload,separators=(',',':'),ensure_ascii=False).encode()
+          pathlib.Path('out/brfss_2011_2024_population_evidence.json').write_bytes(raw)
+          pathlib.Path('out/source_receipts.json').write_text(json.dumps(source_receipts,indent=2))
+          pathlib.Path('out/report.json').write_text(json.dumps({'years':len(annual),'raw_records_total':total,'cube_cells':len(all_cube),'json_bytes':len(raw),'annual_records':{str(a['year']):a['records'] for a in annual}},indent=2))
+          print(pathlib.Path('out/report.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hs038-brfss-2011-2024-massive-evidence
+          path: out/
+          retention-days: 14
