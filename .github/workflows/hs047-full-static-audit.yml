@@ -1,0 +1,140 @@
+name: HealthSolver 0.47 Full Static Release Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs047-full-static-audit.yml']
+permissions:
+  contents: read
+jobs:
+  static-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Repository integrity and whitespace
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git fsck --full
+          git diff --check HEAD^ HEAD || true
+          test ! -f .env
+          test -f .env.example
+          test -f .gitignore
+          ! git ls-files | grep -E '(^|/)\.env$'
+      - name: Parse Python, JavaScript, JSON and YAML
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m compileall -q backend dashboard tests
+          node --check predictive/integrated-predictive-ui.js
+          node --check predictive/predictive-engine.js
+          node --check predictive/unified-case-router.js
+          python -m pip install --disable-pip-version-check -q pyyaml
+          python - <<'PY'
+          import json,pathlib,yaml
+          for p in pathlib.Path('.').rglob('*.json'):
+              json.loads(p.read_text(encoding='utf-8'))
+          for ext in ('*.yml','*.yaml'):
+              for p in pathlib.Path('.').rglob(ext):
+                  yaml.safe_load(p.read_text(encoding='utf-8'))
+          print('JSON/YAML parse PASS')
+          PY
+          npx --yes esbuild@0.25.10 frontend/src/App.js --bundle --loader:.js=jsx --packages=external --outfile=/tmp/healthsolver-legacy-frontend.js
+      - name: Validate predictive registry and all seven model artifacts
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,math,pathlib
+          root=pathlib.Path('predictive')
+          reg=json.loads((root/'model-registry-v2.json').read_text())
+          assert reg['schema']=='healthsolver.predictive_registry.v2'
+          assert reg['version']=='0.47.0'
+          assert len(reg['models'])==7
+          ids=[e['model_id'] for e in reg['models']]
+          assert len(ids)==len(set(ids))
+          expected={
+            'HS-UCI-HD-001','HS-UCI-CKD-001','HS-UCI-BC-001','HS-UCI-HCV-001',
+            'HS-NHANES-DM-001','HS-NHIS-HYP-001','HS-UCI-DMREADM-001'
+          }
+          assert set(ids)==expected
+          for e in reg['models']:
+              p=root/e['file']; assert p.exists(),p
+              m=json.loads(p.read_text())
+              assert m['model_id']==e['model_id']
+              assert m['schema']=='healthsolver.predictive_model.v1'
+              assert m.get('research_only') is True
+              assert m.get('not_clinically_validated') is True
+              fs=m['features']; assert fs and len(fs)==len(set(fs))
+              for f in fs:
+                  assert f in m['imputation']['values']
+                  assert f in m['standardization']['mean']
+                  assert f in m['standardization']['scale']
+                  assert f in m['logistic']['coefficients']
+                  assert m['standardization']['scale'][f] > 0
+                  for key in ('training_min','training_max','median'):
+                      if key in m.get('field_meta',{}).get(f,{}):
+                          assert math.isfinite(float(m['field_meta'][f][key]))
+              q=m['metrics_test']
+              assert q['n_test']>0
+              if all(k in q for k in ('n_train','n_calibration','n_test','n_total')):
+                  assert q['n_train']+q['n_calibration']+q['n_test']==q['n_total'],(m['model_id'],q)
+              auroc=q.get('auroc',q.get('auroc_weighted'))
+              brier=q.get('brier',q.get('brier_weighted'))
+              assert auroc is not None and 0.5 <= auroc <= 1
+              assert brier is not None and 0 <= brier <= 1
+              assert 0 < float(m.get('threshold',0.5)) < 1
+              x=m['imputation']['values']; score=m['logistic']['intercept']
+              for f in fs:
+                  z=(x[f]-m['standardization']['mean'][f])/m['standardization']['scale'][f]
+                  score+=z*m['logistic']['coefficients'][f]
+              z=m['calibration']['intercept']+m['calibration']['slope']*score
+              prob=1/(1+math.exp(-max(-35,min(35,z))))
+              assert math.isfinite(prob) and 0<prob<1
+              report=root/(e['file'].replace('.json','-report.json'))
+              if report.exists():
+                  assert json.loads(report.read_text())==q,(m['model_id'],'report mismatch')
+              assert e['metrics_test']==q,(m['model_id'],'registry metrics mismatch')
+              print(m['model_id'],'PASS',prob)
+          PY
+      - name: Check internal Python imports and legacy code markers
+        shell: bash
+        run: |
+          python - <<'PY'
+          import ast,pathlib
+          broken=[]
+          pyfiles=list(pathlib.Path('backend').rglob('*.py'))+list(pathlib.Path('dashboard').rglob('*.py'))
+          modules=set()
+          for p in pyfiles:
+              rel=p.with_suffix('')
+              parts=list(rel.parts)
+              if parts[-1]=='__init__': parts=parts[:-1]
+              modules.add('.'.join(parts))
+          for p in pyfiles:
+              tree=ast.parse(p.read_text(),filename=str(p))
+              for n in ast.walk(tree):
+                  if isinstance(n,ast.ImportFrom) and n.module and n.module.startswith('backend.'):
+                      target=n.module
+                      if target not in modules and not any(m.startswith(target+'.') for m in modules):
+                          broken.append((str(p),target))
+          if broken:
+              print('BROKEN_INTERNAL_IMPORTS',broken)
+              raise SystemExit(1)
+          print('Internal import references PASS')
+          PY
+      - name: Check release documentation and Pages repack invariants
+        shell: bash
+        run: |
+          set -euxo pipefail
+          test -f checkpoints/HealthSolver-0.47.0-uci-diabetes-readmission.md
+          grep -q 'HealthSolver 0.47' README.MD
+          grep -q "v\['predictive_models'\]=\[m\['model_id'\] for m in registry\['models'\]\]" .github/workflows/hs041-repack-pages.yml
+          grep -q "shutil.copytree(main/'predictive',public_predictive)" .github/workflows/hs041-repack-pages.yml
+          grep -q '0.47.0' .github/workflows/hs-published-smoke.yml
