@@ -17,7 +17,7 @@ progress{width:100%;height:16px;margin:18px 0}#err{white-space:pre-wrap;color:#f
 <script>
 (async()=>{
  const parts=["part-00.b64", "part-01.b64", "part-02.b64", "part-03.b64", "part-04.b64", "part-05.b64", "part-06.b64"];
- const expected="1ac7802fbd54782adac2bb9ea3a91e1e5f77a734e0ab98d1cd8393de244e4495";
+ const expected="67942d515f13e563e514295dfec69e6525caac370a287bdc7641f5312b432045";
  const status=document.getElementById("status"),p=document.getElementById("p"),err=document.getElementById("err");
  try{
   if(typeof DecompressionStream!=="function") throw new Error("Browser non compatibile con DecompressionStream/gzip.");
@@ -34,7 +34,7 @@ progress{width:100%;height:16px;margin:18px 0}#err{white-space:pre-wrap;color:#f
   const digest=[...new Uint8Array(await crypto.subtle.digest("SHA-256",htmlBytes))].map(x=>x.toString(16).padStart(2,"0")).join("");
   if(digest!==expected) throw new Error("Controllo SHA-256 applicativo non superato.");
   const html=new TextDecoder().decode(htmlBytes);
-  if(!html.includes("HealthSolver")||!html.includes("Clinical Coach")||!html.includes("HS_INTEGRATED_PREDICTIVE_042")) throw new Error("Marcatori applicativi mancanti.");
+  if(!html.includes("HealthSolver")||!html.includes("Clinical Coach")||!html.includes("HS_INTEGRATED_PREDICTIVE_043")) throw new Error("Marcatori applicativi mancanti.");
   document.open();document.write(html);document.close();
  }catch(e){err.textContent="Impossibile avviare HealthSolver.\n"+(e?.message||String(e));status.textContent="Caricamento interrotto.";}
 })();
