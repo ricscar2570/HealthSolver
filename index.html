@@ -10,7 +10,7 @@ h1{margin:0 0 10px;font-size:clamp(26px,5vw,42px)}p{line-height:1.5;color:#b8c5d
 progress{width:100%;height:16px;margin:18px 0}#err{white-space:pre-wrap;color:#ffb4ab}.small{font-size:13px;color:#8fa2bf}
 </style></head><body><main><div class="card">
 <h1>HealthSolver 0.39.0</h1>
-<p>Predictive Engine v1 + Massive Public Data + Clinical Coach Research Edition</p>
+<p>Multi-Outcome Predictive Engine + Massive Public Data + Clinical Coach Research Edition</p>
 <progress id="p" max="6" value="0"></progress>
 <div id="status" class="small">Preparazione applicazione.</div><pre id="err"></pre>
 </div></main>
@@ -28,7 +28,7 @@ progress{width:100%;height:16px;margin:18px 0}#err{white-space:pre-wrap;color:#f
    if(!r.ok) throw new Error("Payload non disponibile: "+parts[i]+" ("+r.status+")");
    b64+=(await r.text()).trim(); p.value=i+1;
   }
-  status.textContent="Verifica e avvio HealthSolver 0.39…";
+  status.textContent="Verifica e avvio HealthSolver 0.40…";
   const bin=atob(b64),bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
   const htmlBytes=new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
   const digest=[...new Uint8Array(await crypto.subtle.digest("SHA-256",htmlBytes))].map(x=>x.toString(16).padStart(2,"0")).join("");
