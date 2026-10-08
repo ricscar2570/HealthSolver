@@ -10,29 +10,43 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Verify live HealthSolver 0.39 assets
+      - name: Verify live HealthSolver 0.40 assets
         shell: bash
         run: |
           set -euxo pipefail
           base='https://ricscar2570.github.io/HealthSolver'
-          curl -L --fail --retry 6 --retry-delay 5 "$base/" -o index.html
-          grep -q 'HealthSolver 0.39.0' index.html
+          curl -L --fail --retry 8 --retry-delay 5 "$base/" -o index.html
+          grep -q 'HealthSolver 0.40.0' index.html
           grep -q 'predictive-engine.js' index.html
-          curl -L --fail --retry 6 --retry-delay 5 "$base/version.json" -o version.json
+          curl -L --fail --retry 8 --retry-delay 5 "$base/version.json" -o version.json
           python - <<'PY'
           import json
           v=json.load(open('version.json'))
-          assert v['version']=='0.39.0',v
-          assert v['predictive_model']=='HS-UCI-HD-001',v
+          assert v['version']=='0.40.0',v
+          assert set(v['predictive_models'])=={'HS-UCI-HD-001','HS-UCI-CKD-001','HS-UCI-BC-001'},v
           print(v)
           PY
-          curl -L --fail --retry 6 --retry-delay 5 "$base/predictive-engine.js" -o predictive-engine.js
-          grep -q 'HS_PREDICTIVE_ENGINE_039' predictive-engine.js
-          curl -L --fail --retry 6 --retry-delay 5 "$base/predictive/model-heart-disease-v1.json" -o model.json
+          curl -L --fail --retry 8 --retry-delay 5 "$base/predictive-engine.js" -o predictive-engine.js
+          grep -q 'HS_PREDICTIVE_ENGINE_040' predictive-engine.js
+          curl -L --fail --retry 8 --retry-delay 5 "$base/predictive/model-registry-v2.json" -o registry.json
           python - <<'PY'
           import json
-          m=json.load(open('model.json'))
-          assert m['model_id']=='HS-UCI-HD-001'
-          assert m['metrics_test']['auroc'] > 0.5
-          print(m['model_id'],m['metrics_test'])
+          r=json.load(open('registry.json'))
+          assert r['version']=='0.40.0'
+          assert len(r['models'])==3
+          print([m['model_id'] for m in r['models']])
+          PY
+          for file in model-heart-disease-v1.json model-ckd-v1.json model-breast-cancer-v1.json; do
+            curl -L --fail --retry 8 --retry-delay 5 "$base/predictive/$file" -o "$file"
+          done
+          python - <<'PY'
+          import json
+          ids=[]
+          for f in ['model-heart-disease-v1.json','model-ckd-v1.json','model-breast-cancer-v1.json']:
+              m=json.load(open(f)); ids.append(m['model_id'])
+              assert m['metrics_test']['auroc']>0.5
+              assert m['research_only'] is True
+              assert m['not_clinically_validated'] is True
+          assert set(ids)=={'HS-UCI-HD-001','HS-UCI-CKD-001','HS-UCI-BC-001'}
+          print(ids)
           PY
