@@ -2,7 +2,7 @@
 <html lang="it"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>HealthSolver 0.41.0 — Predictive Engine + Clinical Coach</title>
+<title>HealthSolver 0.41.0 — Unified Predictive Case Router</title>
 <style>
 html,body{margin:0;min-height:100%;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#0b1220;color:#e6edf7}
 main{max-width:780px;margin:10vh auto;padding:32px}.card{background:#121c2e;border:1px solid #25344e;border-radius:18px;padding:28px;box-shadow:0 16px 50px #0006}
@@ -11,13 +11,13 @@ progress{width:100%;height:16px;margin:18px 0}#err{white-space:pre-wrap;color:#f
 </style></head><body><main><div class="card">
 <h1>HealthSolver 0.41.0</h1>
 <p>Unified Predictive Case Router + Multi-Outcome Predictive Engine + Clinical Coach Research Edition</p>
-<progress id="p" max="6" value="0"></progress>
+<progress id="p" max="7" value="0"></progress>
 <div id="status" class="small">Preparazione applicazione.</div><pre id="err"></pre>
 </div></main>
 <script>
 (async()=>{
- const parts=["part-00.b64","part-01.b64","part-02.b64","part-03.b64","part-04.b64","part-05.b64"];
- const expected="c1bef787551183db369643036e9fc9a7f64ddec515ad804066b9a37279df6b68";
+ const parts=["part-00.b64", "part-01.b64", "part-02.b64", "part-03.b64", "part-04.b64", "part-05.b64", "part-06.b64"];
+ const expected="1430a15710f70c11b1503d442d032f718dd47a3cb21f2510ad13596c0d4bf51a";
  const status=document.getElementById("status"),p=document.getElementById("p"),err=document.getElementById("err");
  try{
   if(typeof DecompressionStream!=="function") throw new Error("Browser non compatibile con DecompressionStream/gzip.");
@@ -26,33 +26,15 @@ progress{width:100%;height:16px;margin:18px 0}#err{white-space:pre-wrap;color:#f
    status.textContent="Caricamento pacchetto "+(i+1)+"/"+parts.length+"…";
    const r=await fetch("./docs/payload/"+parts[i],{cache:"no-store"});
    if(!r.ok) throw new Error("Payload non disponibile: "+parts[i]+" ("+r.status+")");
-   b64+=(await r.text()).trim(); p.value=i+1;
+   b64+=(await r.text()).trim();p.value=i+1;
   }
   status.textContent="Verifica e avvio HealthSolver 0.41…";
-  const bin=atob(b64),bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  const bin=atob(b64),bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
   const htmlBytes=new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
   const digest=[...new Uint8Array(await crypto.subtle.digest("SHA-256",htmlBytes))].map(x=>x.toString(16).padStart(2,"0")).join("");
-  if(digest!==expected) throw new Error("Controllo SHA-256 applicativo base 0.38 non superato.");
-  let html=new TextDecoder().decode(htmlBytes);
-  if(!html.includes("HealthSolver")||!html.includes("Clinical Coach")||!html.includes("Massive Public Data")) throw new Error("Marcatori applicativi mancanti.");
-  status.textContent="Caricamento moduli predittivi…";
-  const [peRes,routerRes]=await Promise.all([
-    fetch("./predictive-engine.js",{cache:"no-store"}),
-    fetch("./unified-case-router.js",{cache:"no-store"})
-  ]);
-  if(!peRes.ok) throw new Error("Predictive Engine non disponibile ("+peRes.status+")");
-  if(!routerRes.ok) throw new Error("Unified Router non disponibile ("+routerRes.status+")");
-  const [peCode,routerCode]=await Promise.all([peRes.text(),routerRes.text()]);
-  const toB64=(s)=>{
-    const bytes=new TextEncoder().encode(s);
-    let binary="";
-    for(let i=0;i<bytes.length;i++) binary+=String.fromCharCode(bytes[i]);
-    return btoa(binary);
-  };
-  const pe64=toB64(peCode),router64=toB64(routerCode);
-  const inject="<script>eval(new TextDecoder().decode(Uint8Array.from(atob('"+pe64+"'),c=>c.charCodeAt(0))))<\\/script>"+
-               "<script>eval(new TextDecoder().decode(Uint8Array.from(atob('"+router64+"'),c=>c.charCodeAt(0))))<\\/script>";
-  html=html.replace("</body>",inject+"</body>");
+  if(digest!==expected) throw new Error("Controllo SHA-256 applicativo non superato.");
+  const html=new TextDecoder().decode(htmlBytes);
+  if(!html.includes("HealthSolver")||!html.includes("Clinical Coach")||!html.includes("HS_UNIFIED_ROUTER_041")) throw new Error("Marcatori applicativi mancanti.");
   document.open();document.write(html);document.close();
  }catch(e){err.textContent="Impossibile avviare HealthSolver.\n"+(e?.message||String(e));status.textContent="Caricamento interrotto.";}
 })();

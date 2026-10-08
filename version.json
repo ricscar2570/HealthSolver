@@ -11,5 +11,7 @@
     "HS-UCI-BC-001"
   ],
   "unified_router": "unified-case-router.js",
-  "payload_parts": 6
+  "payload_parts": 7,
+  "source_sha256": "1430a15710f70c11b1503d442d032f718dd47a3cb21f2510ad13596c0d4bf51a",
+  "predictive_modules_embedded": true
 }
