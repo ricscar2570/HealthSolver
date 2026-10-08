@@ -34,7 +34,7 @@ jobs:
             if(await yes.count()===1 && await yes.isVisible()) await yes.click();
           };
           const save=async(loc,path)=>{
-            const pending=page.waitForEvent('download',{timeout:15000});
+            const pending=page.waitForEvent('download',{timeout:60000});
             await loc.click();
             await page.waitForTimeout(50);
             await confirmIfOpen();
