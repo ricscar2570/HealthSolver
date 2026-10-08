@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.__HS_INTEGRATED_PREDICTIVE_044__) return;
-window.__HS_INTEGRATED_PREDICTIVE_044__=true;
+if(window.__HS_INTEGRATED_PREDICTIVE_045__) return;
+window.__HS_INTEGRATED_PREDICTIVE_045__=true;
 
 const BUNDLE=window.__HS_PREDICTIVE_BUNDLE__||null;
 if(!BUNDLE?.registry||!BUNDLE?.models) return;
@@ -15,9 +15,9 @@ document.getElementById('hs-router041')?.remove();
 // while updating only visible application-release branding.
 (function reconcileReleaseBranding(){
   const replacements=[
-    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.44'],
+    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.45'],
     [/^HealthSolver\s+0\.38\.0\s*·\s*Massive Public Data \+ Clinical Coach Research Edition\s*·\s*Riccardo Scaringi\s*·\s*Non uso clinico\.?$/i,
-     'HealthSolver 0.44.0 · UCI HCV Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
+     'HealthSolver 0.45.0 · NHANES Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
   ];
   const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
   const nodes=[];
@@ -103,11 +103,11 @@ wrap.className='card';
 wrap.innerHTML=`
   <div class="hs43-hero">
     <div>
-      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.44</div>
+      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.45</div>
       <h2 class="hs43-title">Predizioni cliniche di ricerca</h2>
-      <p class="hs43-sub">HealthSolver usa lo stesso dossier che hai già compilato per verificare quali modelli sono applicabili e calcolare le stime disponibili. Le funzioni predittive sono qui, in primo piano.</p>
+      <p class="hs43-sub">HealthSolver usa lo stesso dossier che hai già compilato per verificare quali modelli sono applicabili e calcolare le stime disponibili. Le funzioni predittive sono qui, in primo piano. Ogni nuovo database entra nello stesso registry e nello stesso dossier.</p>
     </div>
-    <div class="hs43-badge">4 MODELLI SUPERVISIONATI</div>
+    <div class="hs43-badge">5 MODELLI SUPERVISIONATI</div>
   </div>
   <div id="hs42Coverage" class="metrics"></div>
   <div class="actions" style="margin-top:8px">
@@ -135,6 +135,18 @@ wrap.innerHTML=`
     <summary><b>Dati specialistici epatici / HCV</b> · apri per il modello epatico</summary>
     <p class="hint">Età e sesso vengono riutilizzati dal dossier. Inserisci qui soltanto il pannello biochimico nelle unità UCI indicate, evitando conversioni implicite da altri campi con unità diverse.</p>
     <div id="hs44HcvGrid" class="grid"></div>
+  </details>
+  <details id="hs45NhanesDetails">
+    <summary><b>Dati NHANES · diabete riferito diagnosticato</b> · completa solo ciò che manca</summary>
+    <p class="hint">Età e sesso vengono riutilizzati dal dossier. BMI, circonferenza vita, pressione sistolica, colesterolo totale e HDL vengono riusati se disponibili nelle stesse unità; in alternativa puoi inserirli qui.</p>
+    <div class="grid">
+      <label>BMI (kg/m²)<input id="hs45_bmi" type="number" step="any"></label>
+      <label>Circonferenza vita (cm)<input id="hs45_waist" type="number" step="any"></label>
+      <label>Pressione sistolica media (mmHg)<input id="hs45_sbp" type="number" step="any"></label>
+      <label>Colesterolo totale (mg/dL)<input id="hs45_tc" type="number" step="any"></label>
+      <label>Colesterolo HDL (mg/dL)<input id="hs45_hdl" type="number" step="any"></label>
+    </div>
+    <div class="notice" style="margin-top:10px"><b>Target del modello:</b> probabilità di appartenere al gruppo NHANES che riferisce una diagnosi medica di diabete. Non equivale a una diagnosi clinica di diabete.</div>
   </details>
   <h3 style="margin:24px 0 10px;font-size:1.25rem">Risultati predittivi</h3>
   <div id="hs42Results" class="grid"></div>
@@ -200,11 +212,21 @@ function dossierCase(){
   for(const [id] of FNA) fna[id]=num('hs42_'+id);
   const hcv={age,sex:sexVal()};
   for(const [id] of HCV) hcv[id]=num('hs44_'+id);
+  const nhanes={
+    age,
+    sex:sexVal(),
+    bmi:first(num('ci_bmi'),num('hs45_bmi')),
+    waist:first(num('ci_waist'),num('hs45_waist')),
+    sbp:first(num('ci_systolic'),num('ci_bp'),num('hs45_sbp')),
+    tc:first(num('ci_total_chol'),num('hs45_tc')),
+    hdl:first(num('ci_hdl'),num('hs45_hdl'))
+  };
   return {
     'HS-UCI-HD-001':heart,
     'HS-UCI-CKD-001':ckd,
     'HS-UCI-BC-001':fna,
-    'HS-UCI-HCV-001':hcv
+    'HS-UCI-HCV-001':hcv,
+    'HS-NHANES-DM-001':nhanes
   };
 }
 function readiness(model,values){
@@ -254,7 +276,7 @@ function renderResult(entry,model,res){
     ${res.imputed.length?`<p class="hint">Imputati con mediana training: ${res.imputed.join(', ')}</p>`:''}
     ${res.ood.length?`<div class="notice">Fuori dal range osservato nel training: ${res.ood.join(', ')}</div>`:''}
     <p class="hint"><b>Contributi principali</b></p><ul>${contrib}</ul>
-    <p class="hint">Test interno: AUROC ${model.metrics_test.auroc.toFixed(3)} · Brier ${model.metrics_test.brier.toFixed(3)}. Nessuna validazione clinica esterna/prospettica.</p>
+    <p class="hint">Test interno: AUROC ${Number(first(model.metrics_test.auroc,model.metrics_test.auroc_weighted)).toFixed(3)} · Brier ${Number(first(model.metrics_test.brier,model.metrics_test.brier_weighted)).toFixed(3)}. Nessuna validazione clinica esterna/prospettica.</p>
   `;
   return d;
 }
