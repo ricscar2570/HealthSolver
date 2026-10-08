@@ -29,9 +29,18 @@ jobs:
           const page=await browser.newPage({viewport:{width:1440,height:1700},acceptDownloads:true});
           const errors=[];page.on('pageerror',e=>errors.push('PAGE '+e.message));page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
           const must=(v,m)=>{if(!v)throw new Error(m)};
+          const confirmIfOpen=async()=>{
+            const yes=frame.locator('#confirmYes');
+            if(await yes.count()===1 && await yes.isVisible()) await yes.click();
+          };
           const save=async(loc,path)=>{
-            const [d]=await Promise.all([page.waitForEvent('download',{timeout:15000}),loc.click()]);
-            await d.saveAs(path);must(fs.existsSync(path)&&fs.statSync(path).size>20,'empty download '+path);
+            const pending=page.waitForEvent('download',{timeout:15000});
+            await loc.click();
+            await page.waitForTimeout(50);
+            await confirmIfOpen();
+            const d=await pending;
+            await d.saveAs(path);
+            must(fs.existsSync(path)&&fs.statSync(path).size>20,'empty download '+path);
           };
           await page.goto('https://ricscar2570.github.io/HealthSolver/?audit=previous-full-e2e',{waitUntil:'networkidle',timeout:120000});
           await page.waitForFunction(()=>document.body.innerText.includes('Visita e laboratori precedenti'),{timeout:30000});
