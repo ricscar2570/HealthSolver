@@ -109,6 +109,9 @@ jobs:
           v['integrated_predictive_ui']=True
           v['predictive_first_ui']=True
           v['uci_hcv_integrated']=True
+          v['predictive_models']=[m['model_id'] for m in registry['models']]
+          v['predictive_model_count']=len(registry['models'])
+          v.pop('unified_router',None)
           (pages/'version.json').write_text(json.dumps(v,indent=2)+'\n')
           print(json.dumps({'source_sha256':sha,'gzip_bytes':len(gz),'payload_parts':len(chunks),'html_bytes':len(data)},indent=2))
           PY
