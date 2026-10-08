@@ -1,0 +1,109 @@
+name: HealthSolver 0.41 Repack Pages Payload
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs041-repack-pages.yml']
+permissions:
+  contents: write
+jobs:
+  repack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Rebuild standalone payload with predictive modules embedded
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git fetch origin gh-pages
+          git worktree add /tmp/hs-pages origin/gh-pages
+          python - <<'PY'
+          import base64,gzip,hashlib,json,pathlib,re
+          main=pathlib.Path('.')
+          pages=pathlib.Path('/tmp/hs-pages')
+          payload_dir=pages/'docs'/'payload'
+          parts=sorted(payload_dir.glob('part-*.b64'))
+          assert parts, 'no payload parts'
+          b64=''.join(p.read_text().strip() for p in parts)
+          html=gzip.decompress(base64.b64decode(b64)).decode('utf-8')
+          pe=(main/'predictive'/'predictive-engine.js').read_text()
+          router=(main/'predictive'/'unified-case-router.js').read_text()
+          assert '</script>' not in pe.lower()
+          assert '</script>' not in router.lower()
+          # Remove any prior embedded 0.39/0.40/0.41 overlay block if this workflow is rerun.
+          html=re.sub(r'\n<!-- HS_PREDICTIVE_OVERLAY_BEGIN -->.*?<!-- HS_PREDICTIVE_OVERLAY_END -->\n',
+                      '\n',html,flags=re.S)
+          overlay='\n<!-- HS_PREDICTIVE_OVERLAY_BEGIN -->\n<script>\n'+pe+'\n</script>\n<script>\n'+router+'\n</script>\n<!-- HS_PREDICTIVE_OVERLAY_END -->\n'
+          assert '</body>' in html.lower()
+          pos=html.lower().rfind('</body>')
+          html=html[:pos]+overlay+html[pos:]
+          data=html.encode('utf-8')
+          sha=hashlib.sha256(data).hexdigest()
+          gz=gzip.compress(data,compresslevel=9,mtime=0)
+          enc=base64.b64encode(gz).decode('ascii')
+          chunks=[enc[i:i+400000] for i in range(0,len(enc),400000)]
+          for p in payload_dir.glob('part-*.b64'): p.unlink()
+          for i,ch in enumerate(chunks):
+              (payload_dir/f'part-{i:02d}.b64').write_text(ch+'\n')
+          # Build a clean loader that only verifies and launches the now self-contained app.
+          part_names=[f'part-{i:02d}.b64' for i in range(len(chunks))]
+          loader=f'''<!doctype html>
+          <html lang="it"><head>
+          <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+          <meta name="robots" content="noindex,nofollow">
+          <title>HealthSolver 0.41.0 — Unified Predictive Case Router</title>
+          <style>
+          html,body{{margin:0;min-height:100%;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#0b1220;color:#e6edf7}}
+          main{{max-width:780px;margin:10vh auto;padding:32px}}.card{{background:#121c2e;border:1px solid #25344e;border-radius:18px;padding:28px;box-shadow:0 16px 50px #0006}}
+          h1{{margin:0 0 10px;font-size:clamp(26px,5vw,42px)}}p{{line-height:1.5;color:#b8c5d9}}
+          progress{{width:100%;height:16px;margin:18px 0}}#err{{white-space:pre-wrap;color:#ffb4ab}}.small{{font-size:13px;color:#8fa2bf}}
+          </style></head><body><main><div class="card">
+          <h1>HealthSolver 0.41.0</h1>
+          <p>Unified Predictive Case Router + Multi-Outcome Predictive Engine + Clinical Coach Research Edition</p>
+          <progress id="p" max="{len(chunks)}" value="0"></progress>
+          <div id="status" class="small">Preparazione applicazione.</div><pre id="err"></pre>
+          </div></main>
+          <script>
+          (async()=>{{
+           const parts={json.dumps(part_names)};
+           const expected="{sha}";
+           const status=document.getElementById("status"),p=document.getElementById("p"),err=document.getElementById("err");
+           try{{
+            if(typeof DecompressionStream!=="function") throw new Error("Browser non compatibile con DecompressionStream/gzip.");
+            let b64="";
+            for(let i=0;i<parts.length;i++){{
+             status.textContent="Caricamento pacchetto "+(i+1)+"/"+parts.length+"…";
+             const r=await fetch("./docs/payload/"+parts[i],{{cache:"no-store"}});
+             if(!r.ok) throw new Error("Payload non disponibile: "+parts[i]+" ("+r.status+")");
+             b64+=(await r.text()).trim();p.value=i+1;
+            }}
+            status.textContent="Verifica e avvio HealthSolver 0.41…";
+            const bin=atob(b64),bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+            const htmlBytes=new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
+            const digest=[...new Uint8Array(await crypto.subtle.digest("SHA-256",htmlBytes))].map(x=>x.toString(16).padStart(2,"0")).join("");
+            if(digest!==expected) throw new Error("Controllo SHA-256 applicativo non superato.");
+            const html=new TextDecoder().decode(htmlBytes);
+            if(!html.includes("HealthSolver")||!html.includes("Clinical Coach")||!html.includes("HS_UNIFIED_ROUTER_041")) throw new Error("Marcatori applicativi mancanti.");
+            document.open();document.write(html);document.close();
+           }}catch(e){{err.textContent="Impossibile avviare HealthSolver.\\n"+(e?.message||String(e));status.textContent="Caricamento interrotto.";}}
+          }})();
+          </script></body></html>'''
+          (pages/'index.html').write_text(loader)
+          v=json.loads((pages/'version.json').read_text())
+          v['version']='0.41.0'
+          v['release']='Unified Predictive Case Router + Multi-Outcome Predictive Engine + Clinical Coach Research Edition'
+          v['source_sha256']=sha
+          v['payload_parts']=len(chunks)
+          v['predictive_modules_embedded']=True
+          (pages/'version.json').write_text(json.dumps(v,indent=2)+'\n')
+          print(json.dumps({'source_sha256':sha,'gzip_bytes':len(gz),'payload_parts':len(chunks),'html_bytes':len(data)},indent=2))
+          PY
+          cd /tmp/hs-pages
+          git config user.name "healthsolver-bot"
+          git config user.email "healthsolver-bot@users.noreply.github.com"
+          git add index.html version.json docs/payload
+          git diff --cached --stat
+          git commit -m "pages: embed HealthSolver 0.41 predictive modules in standalone payload"
+          git push origin HEAD:gh-pages
