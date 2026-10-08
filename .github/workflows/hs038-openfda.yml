@@ -1,0 +1,38 @@
+name: HealthSolver 0.38 openFDA live integration smoke
+on:
+  push:
+    branches: ['macrostep/v0.38.0-massive-public-data']
+    paths: ['.github/workflows/hs038-openfda.yml']
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Query public FAERS endpoint with browser-like Origin
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p out
+          url='https://api.fda.gov/drug/event.json?search=patient.drug.medicinalproduct%3A%22METFORMIN%22&count=patient.reaction.reactionmeddrapt.exact&limit=5'
+          curl -sS --fail --retry 3 -D out/headers.txt -H 'Origin: https://ricscar2570.github.io' "$url" -o out/metformin.json
+          python - <<'PY'
+          import json,pathlib
+          data=json.loads(pathlib.Path('out/metformin.json').read_text())
+          assert isinstance(data.get('results'),list) and len(data['results'])==5
+          assert all('term' in x and 'count' in x for x in data['results'])
+          headers=pathlib.Path('out/headers.txt').read_text().lower()
+          pathlib.Path('out/report.json').write_text(json.dumps({
+            'results':data['results'],
+            'access_control_allow_origin_present':'access-control-allow-origin:' in headers,
+            'endpoint':'drug/event count reactionmeddrapt',
+            'term':'METFORMIN'
+          },indent=2))
+          print(pathlib.Path('out/report.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hs038-openfda-live-smoke
+          path: out/
+          retention-days: 14
