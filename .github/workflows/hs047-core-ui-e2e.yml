@@ -85,7 +85,12 @@ jobs:
             const {p,errors}=await open('coach');
             await nav(p,'coach');
             await p.locator('#coachStartExample').click();await sleep(200);
-            ok(Number(await p.locator('#coachAge').inputValue())>0,'Coach example loads');
+            const exampleText=await p.locator('#page-coach').innerText();
+            ok(/\d+\s*anni/.test(exampleText),'Coach example loads structured age');
+            const casePhase=p.locator('.coach-phase').filter({hasText:'Caso'}).first();
+            ok(await casePhase.count()===1,'Coach Case phase exists');
+            await casePhase.click();await sleep(100);
+            ok(await p.locator('#coachAge').count()===1,'Coach age field available in Case phase');
             await set(p,'coachAge',63);
             await p.locator('#coachContinue').click();await sleep(120);
             ok((await p.locator('.coach-phase.current').innerText()).includes('Sintomi'),'Coach advances');
