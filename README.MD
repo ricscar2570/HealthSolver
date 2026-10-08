@@ -1,240 +1,308 @@
-# 🧠 HealthSolver - AI Medical Decision Support System
+# HealthSolver 0.38 — Clinical Coach Research Edition
 
-![HealthSolver Banner](https://img.shields.io/badge/AI--Powered-Medical%20App-blue?style=flat-square)
-![Docker](https://img.shields.io/badge/Docker-Ready-informational?style=flat-square)
-![FastAPI](https://img.shields.io/badge/FastAPI-%E2%9C%85-green?style=flat-square)
-![React](https://img.shields.io/badge/React-Frontend-blue?style=flat-square)
-![Streamlit](https://img.shields.io/badge/Dashboard-Streamlit-orange?style=flat-square)
+**HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
+
+> **Research software only.** HealthSolver is not a medical device, does not provide a clinical diagnosis, does not prescribe treatment, and must not be used as a substitute for qualified medical judgement.
+
+## Live application
+
+**GitHub Pages:**  
+https://ricscar2570.github.io/HealthSolver/
+
+The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.38 line.
+
+## What HealthSolver does
+
+HealthSolver guides the user through the construction of a structured clinical case and helps organise the information that may affect interpretation.
+
+The Clinical Coach can progressively collect and reason over:
+
+- symptoms and symptom characteristics;
+- medical history and risk factors;
+- vital signs;
+- laboratory results;
+- clinical findings and observations;
+- medications and relevant drug information;
+- missing information that could materially change interpretation;
+- longitudinal visit information;
+- structured evidence from supported public datasets.
+
+The application then produces a structured research-oriented analysis of the case, including differential considerations, evidence summaries, uncertainty, missing-data prompts and provenance-aware supporting information.
+
+HealthSolver is designed to make its reasoning inputs visible rather than presenting an unexplained black-box answer.
+
+## Browser-based architecture
+
+The current Research Edition is designed to run directly in the browser.
+
+For the deployed GitHub Pages build:
+
+- no AWS backend is required;
+- no local server is required;
+- no Docker installation is required;
+- the main application can be opened directly from the public web page;
+- core application state, backup and recovery workflows are handled client-side;
+- large static resources are packaged for browser delivery.
+
+The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.38 application.
+
+## Clinical Coach
+
+The Clinical Coach is the guided case-entry layer of HealthSolver.
+
+Instead of forcing the user to complete a large form all at once, it accompanies the user through the case and helps identify clinically relevant gaps.
+
+Current capabilities include structured collection of:
+
+- demographics and context;
+- chief complaint;
+- symptom onset, duration and evolution;
+- associated symptoms;
+- past medical history;
+- family and social history;
+- risk factors;
+- vital signs;
+- laboratory values;
+- physical or observational findings;
+- medications;
+- additional information still needed.
+
+The Coach is intended to improve completeness and consistency of the case representation before downstream analysis.
+
+## Clinical Intelligence
+
+HealthSolver includes a Clinical Intelligence layer that combines structured case data with local clinical knowledge and supported external/public evidence sources.
+
+The goal is not to output a definitive diagnosis. The system is designed to help answer questions such as:
+
+- Which findings support or weaken a diagnostic hypothesis?
+- Which clinically relevant data are missing?
+- Which alternative explanations should still be considered?
+- Which evidence comes from the current case and which comes from population-level datasets?
+- How strong or weak is the available evidence?
+- Where is uncertainty still high?
+
+## Massive Public Data layer
+
+HealthSolver 0.38 expands the research evidence layer with large, freely available healthcare datasets.
+
+### CDC BRFSS
+
+The 2024 Behavioral Risk Factor Surveillance System public-use dataset is processed as population-level evidence.
+
+Current pipeline:
+
+- **457,670 real survey interviews processed**
+- weighted prevalence/association evidence
+- stratification by age, sex, BMI, smoking and exercise
+- nine supported self-reported/history targets
+- **10,579 embedded weighted evidence cells**
+
+BRFSS data are used strictly as population survey evidence.
+
+They are **not individual diagnostic probabilities**.
+
+### CMS DE-SynPUF
+
+HealthSolver includes support for the CMS DE-SynPUF synthetic Medicare dataset.
+
+Current compact research pack includes:
+
+- **116,352 synthetic beneficiaries**
+- **66,773 inpatient claims**
+- **790,790 outpatient claims**
+- **5,552,421 prescription drug events**
+
+These records are synthetic and must not be interpreted as observations from real identifiable patients.
+
+### openFDA / FAERS
+
+HealthSolver can optionally query openFDA for drug-related evidence.
+
+Privacy design:
+
+- the query is optional;
+- only an explicitly entered drug name is transmitted;
+- the endpoint is restricted to `https://api.fda.gov`;
+- the clinical case itself is not uploaded as part of that query.
+
+FAERS reports do **not** establish causality, incidence or personal risk.
+
+### Synthea / FHIR
+
+HealthSolver supports bounded local import of compatible Synthea/FHIR Bundle data.
+
+Imported information is mapped into the application only after explicit user action.
+
+### Additional public-data pipelines
+
+The repository also contains research workflows for additional freely available sources and extraction experiments, including:
+
+- NHANES;
+- UCI datasets;
+- chronic kidney disease datasets;
+- eICU-related research preparation;
+- CMS synthetic claims pipelines;
+- multi-year BRFSS processing.
+
+Availability of a workflow in the repository does not imply that every source is embedded in the public browser build.
+
+## Machine learning and predictive research
+
+HealthSolver is being developed toward a broader machine-learning research architecture in which structured symptoms, history, vital signs, laboratory data and observations can be used as model inputs.
+
+A strict distinction is maintained between:
+
+1. deterministic clinical logic;
+2. population-level evidence;
+3. synthetic data;
+4. experimentally trained models;
+5. clinically validated predictive models.
+
+HealthSolver must not describe an experimental or population-derived score as a validated individual medical prediction.
+
+Clinical validation remains a separate future milestone.
+
+## Data provenance
+
+A central design principle is provenance.
+
+HealthSolver attempts to preserve the distinction between:
+
+- information entered by the user;
+- locally stored reference knowledge;
+- population evidence;
+- synthetic datasets;
+- live external evidence queries;
+- model-derived output;
+- inferred or missing information.
+
+This separation is important because these sources have very different evidential meanings.
+
+## Privacy model
+
+The public Research Edition is primarily browser-based.
+
+The architecture is designed to minimise unnecessary transmission of case data.
+
+External requests are restricted to explicitly supported operations. For example, the optional openFDA integration transmits the explicitly requested drug term rather than the complete clinical case.
+
+Users should nevertheless avoid entering personally identifiable health information into experimental research software unless they have independently assessed the privacy implications for their use case.
+
+## Backup and recovery
+
+HealthSolver includes application-state backup and recovery functionality.
+
+The recovery path is part of the automated qualification suite so that a structured case or research session can be exported and subsequently restored.
+
+## Quality and qualification status
+
+The HealthSolver 0.38 checkpoint records the following successful qualification results:
+
+- **321 Python checks PASS**
+- **30 recovery checks PASS**
+- **369 JavaScript TAP checks PASS**
+- browser differential suite: **64 PASS**
+- Clinical Intelligence browser suite: **24 PASS**
+- Clinical Coach browser suite: **32 PASS**
+- visit workflow browser suite: **50 PASS**
+- real-lab browser suite: **43 PASS**
+- web-lab browser suite: **34 PASS**
+- massive-public-data browser suite: **20 PASS**
+- installed-wheel checks: **44 PASS**
+- HTTP/SQLite checks: **26 PASS**
+- static sanity: **PASS**
+- release verifier: **PASS**
+- `git fsck`: **PASS**
+- packaged working tree: **CLEAN**
+
+The standalone HTML recorded for the 0.38 checkpoint has SHA-256:
+
+`c1bef787551183db369643036e9fc9a7f64ddec515ad804066b9a37279df6b68`
+
+These are software qualification results. They are **not clinical validation**.
+
+## GitHub Pages deployment
+
+The public application is deployed at:
+
+https://ricscar2570.github.io/HealthSolver/
+
+The 0.38 deployment uses the native GitHub Pages pipeline and a chunked static payload.
+
+The loader verifies the reconstructed standalone application against its expected SHA-256 before launch.
+
+## Repository structure
+
+This repository contains several generations of HealthSolver.
+
+Important areas include:
+
+- `checkpoints/` — release and verification records;
+- `.github/workflows/` — public-data acquisition and processing workflows;
+- `gh-pages` branch — deployed browser application;
+- historical backend/frontend/Docker components — retained for project history and experimentation.
+
+For the current public Research Edition, the release checkpoints and the `gh-pages` deployment are the authoritative references.
+
+## Current release
+
+**HealthSolver 0.38 — Massive Public Data / Clinical Coach Research Edition**
+
+Current consolidated checkpoint:
+
+`406526e5e70ca8739f953f50f67a8f7c3351fead`
+
+Development branch:
+
+`macrostep/v0.38.0-massive-public-data`
+
+The branch has been fast-forwarded into `main`; both currently point to the same development state.
+
+## Safety and research boundary
+
+HealthSolver currently makes **no claim of**:
+
+- clinical validation;
+- regulatory approval;
+- medical-device certification;
+- autonomous diagnosis;
+- treatment recommendation authority;
+- triage authorization;
+- validated individual disease-risk prediction.
+
+Population associations must not be converted into patient-specific probabilities without an appropriate validated model.
+
+Synthetic records must not be represented as real-world patient observations.
+
+Adverse-event reports must not be interpreted as proof of drug causality.
+
+The application is intended for software research, education, structured reasoning experiments and development of future clinical decision-support methods.
+
+## Roadmap
+
+Major next-stage work includes:
+
+- expansion and normalization of public clinical datasets;
+- larger supervised-learning research datasets;
+- reproducible feature engineering;
+- model training and benchmarking;
+- calibration and uncertainty analysis;
+- external validation datasets;
+- prospective validation methodology;
+- stronger explainability and provenance reporting;
+- formal privacy/security review;
+- clinical expert evaluation;
+- regulatory assessment if the project is ever moved toward real clinical use.
+
+## Project status
+
+HealthSolver is under active development.
+
+The current goal is to explore how far a fully browser-based application can go in combining structured clinical case collection, transparent reasoning, population evidence and machine-learning research while keeping the distinction between **research output** and **validated clinical decision support** explicit.
 
 ---
 
-Benvenuto/a in **HealthSolver**! Questo progetto non è il solito software medico noioso. È un ecosistema completo basato su AI, progettato per supportare i professionisti sanitari nell'analisi dei dati dei pazienti, nella raccomandazione di terapie e molto altro. Il tutto condito con un pizzico di tecnologia moderna e monitoraggio avanzato!
-
----
-
-## 🚀 Funzionalità Principali
-
-* **🧠 Backend Intelligente (FastAPI):** API robuste per predizioni ML, analisi dati, gestione alert e integrazioni (potenziali) con PACS/EHR.
-* **🎨 Frontend Interattivo (React):** Interfaccia utente per inserire dati, visualizzare risultati, analizzare immagini e ricevere raccomandazioni.
-* **📊 Dashboard Dinamica (Streamlit):** Visualizzazione aggregata dei dati dei pazienti e delle previsioni AI.
-* **🤖 Modelli Machine Learning:**
-    * Predizione di terapie raccomandate basate sui dati del paziente.
-    * (Potenziale) Analisi di immagini mediche (DICOM) tramite CNN.
-* **⚙️ Pipeline Dati & Training:** Script per ri-addestrare i modelli ML.
-* **🔔 Monitoraggio & Alerting (Prometheus, Grafana, Alertmanager):** Teniamo d'occhio le performance dell'API e del modello, con alert via email per eventi critici (come inferenze lente!).
-* **🐳 Containerizzazione Completa (Docker):** Tutto l'ambiente (backend, frontend, DB, monitoring) è gestito tramite Docker Compose per un setup facile e replicabile.
-* **🧪 Test:** Include unit test e integration test (basati su Pytest) per garantire l'affidabilità.
-
----
-
-## 🛠️ Stack Tecnologico
-
-Questo progetto è un cocktail di tecnologie moderne:
-
-* **Backend:** Python, FastAPI, SQLAlchemy, Uvicorn, Joblib, Scikit-learn, MLflow, Pandas, Pydantic, Pytest
-* **Frontend:** JavaScript, React, Chart.js, i18next
-* **Dashboard:** Streamlit, Plotly
-* **Database/Cache:** SQLite (default), Redis
-* **Monitoraggio:** Prometheus, Grafana, Alertmanager
-* **Containerizzazione:** Docker, Docker Compose
-* **(Potenziale Integrazione):** PyTorch (per CNN), Pydicom, FHIRpy
-* **CI/CD & Deployment (Esempi):** Kubernetes (manifests in `deployments/`)
-
----
-
-## ⚙️ Setup & Configurazione: Pronti, Partenza... Via!
-
-Mettere in moto HealthSolver è facile come bere un bicchier d'acqua (filtrata, ovviamente 😉).
-
-### Prerequisiti
-
-Assicurati di avere installato:
-
-1.  **Docker:** [Installa Docker](https://docs.docker.com/get-docker/)
-2.  **Docker Compose:** Di solito incluso con Docker Desktop, altrimenti [Installa Docker Compose](https://docs.docker.com/compose/install/)
-
-### 🔑 Variabili d'Ambiente: La Chiave di Tutto!
-
-Alcune configurazioni sensibili o specifiche dell'ambiente sono gestite tramite variabili d'ambiente. Il modo più semplice è creare un file `.env` nella directory principale del progetto.
-
-**1. Crea il file `.env`:**
-
-```bash
-touch .env
-
-2. Aggiungi le seguenti variabili al file .env:
-
-Copia e incolla il blocco sottostante nel tuo file .env e sostituisci i valori placeholder con i tuoi dati reali (specialmente per la chiave segreta e le credenziali SMTP!).
-Snippet di codice
-
-# .env file (NON committare questo file se contiene secrets reali!)
-
-# --- Backend Settings ---
-# Genera questa chiave UNA SOLA VOLTA e conservala al sicuro!
-# Puoi usare: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'
-APP_SECRET_KEY=LA_TUA_CHIAVE_SEGRETA_FERNET_QUI
-
-LOG_LEVEL=INFO # Livello di logging per il backend (DEBUG, INFO, WARNING, ERROR)
-
-# --- Alertmanager Email Settings (per ricevere gli alert) ---
-ALERTMANAGER_EMAIL_FROM=alertmanager@tuo-dominio.com # Mittente email
-SMTP_SMARTHOST=smtp.tuo-provider-email.com:587 # Host e porta del tuo server SMTP
-SMTP_AUTH_USERNAME=la-tua-username-smtp # Username per autenticazione SMTP
-SMTP_AUTH_IDENTITY=la-tua-username-smtp # Spesso uguale a username
-SMTP_AUTH_PASSWORD=la-tua-password-smtp # Password per autenticazione SMTP
-ALERTMANAGER_EMAIL_TO=destinatario.alert@tuo-dominio.com # Email dove ricevere gli alert
-
-# --- Grafana Admin Settings (Opzionale, cambia la password!) ---
-GRAFANA_ADMIN_USER=admin
-GRAFANA_ADMIN_PASSWORD=mettiUnaPasswordForteQui!
-```
-
-
-    ⚠️ Sicurezza Importante:
-
-        La APP_SECRET_KEY è usata per la cifratura (se implementata). DEVE essere mantenuta segreta e consistente tra i riavvii. Generala una volta e conservala!
-        Non mettere mai password o chiavi reali direttamente nel codice o in file committati su Git. Il file .env è un buon compromesso per lo sviluppo locale, ma non committarlo. Per produzione, usa sistemi di gestione dei secret più robusti (Docker secrets, K8s secrets, Vault, ecc.).
-
-▶️ Avvio Rapido: Accendiamo i Motori!
-
-Una volta configurato il file .env, avviare tutti i servizi è un gioco da ragazzi:
-
-
-Dalla directory principale del progetto (HealthSolver-main)
-
-1. Build (se è la prima volta o hai cambiato i Dockerfile) e Start dei container in background (-d)
-```
-docker-compose up -d --build
-```
-2. Per fermare i container:
-```
-docker-compose down
-```
-3. Per fermare e rimuovere i volumi (ATTENZIONE: perdi i dati persistenti!):
-```
-docker-compose down -v
-```
-🎉 Fatto! Ora i servizi dovrebbero essere attivi e accessibili:
-Servizio	URL Locale	Credenziali Default (se applicabile)	Note
-Frontend	http://localhost:3000	-	Interfaccia React
-Backend API	http://localhost:8000	-	API FastAPI (Docs: /docs o /redoc)
-Dashboard	http://localhost:8501	-	Dashboard Streamlit
-Grafana	http://localhost:3001	admin / (password nel .env)	Dashboard per monitoraggio (importa .json)
-Prometheus	http://localhost:9090	-	Raccolta metriche (esplora: /graph)
-Alertmanager	http://localhost:9093	-	Gestione Alert
-Redis Commander	http://localhost:8081 (Se aggiunto)	-	GUI per Redis (Aggiungere a docker-compose)
-
-(Nota: La porta di Grafana è 3001 per evitare conflitti con la 3000 usata spesso dallo sviluppo frontend)
-🧑‍🔬 Task Comuni: Il Lavoro dello Scienziato Pazzo (ma Organizzato)
-
-Ecco alcuni comandi utili da eseguire dopo aver avviato i container con docker-compose up -d:
-
-    🤖 Eseguire il Training del Modello ML:
-    
-```
-docker-compose exec backend python backend/models/data_training.py
-```
-Questo comando esegue lo script di training all'interno del container backend. Monitora l'output per vedere i log di MLflow e l'esito.
-
-🧪 Eseguire i Test (Pytest):
-
-Opzione 1: Dentro il container (consigliato)
-Installa dipendenze di sviluppo se non sono già nell'immagine Docker
-```
-docker-compose exec backend pip install -r requirements-dev.txt
-```
-Esegui i test
-
-```
-docker-compose exec backend pytest -v tests/backend/
-```
-Opzione 2: Localmente (richiede ambiente Python configurato)
-
-
-    Installa dipendenze di sviluppo
-    ```
-    pip install -r requirements-dev.txt
-    ```
-    Esegui i test (dalla root del progetto)
-    
-    ```
-    pytest -v
-    ```
-
-📄 Visualizzare i Log dei Servizi:
-
-
-Visualizza log di tutti i servizi (seguendo l'output con -f)
-```
-docker-compose logs -f
-```
-Visualizza log solo del backend
-```
-docker-compose logs -f backend
-```
-Visualizza log solo del frontend
-```
-docker-compose logs -f frontend
-```
-🔄 Ricaricare la Configurazione di Prometheus (senza riavvio):
-
-
-    Assicurati che '--web.enable-lifecycle' sia nei command di Prometheus
-```    
-curl -X POST http://localhost:9090/-/reload
-
-
-
-🗺️ Struttura del Progetto: Una Mappa per l'Esploratore
-
-.
-├── backend/         # Codice sorgente del backend FastAPI (API, Modelli, DB, Utils)
-│   ├── models/      # Logica ML, Training, Definizione DB (SQLAlchemy)
-│   ├── routes/      # Definizione degli endpoint API FastAPI
-│   ├── utils/       # Funzioni di utilità (logging, cache, crypto)
-│   ├── Dockerfile   # Istruzioni per buildare l'immagine Docker del backend
-│   └── main.py      # Entry point dell'applicazione FastAPI
-├── dashboard/       # Codice sorgente del dashboard Streamlit
-│   ├── Dockerfile   # Istruzioni per buildare l'immagine Docker del dashboard
-│   └── dashboard.py # Script del dashboard
-├── frontend/src/    # Codice sorgente del frontend React (usare questo!)
-│   ├── components/  # Componenti React riutilizzabili
-│   ├── Dockerfile   # Istruzioni per buildare l'immagine Docker del frontend
-│   ├── App.js       # Componente principale React
-│   └── index.js     # Entry point React
-├── tests/           # Test automatici (unit e integration)
-│   └── backend/     # Test specifici per il backend
-├── deployments/     # Esempi di configurazione per deployment (es. K8s)
-├── logs/            # Directory per i file di log (generata automaticamente)
-├── models/          # (Potenziale) Directory per modelli ML salvati (.pkl, .pth) - dipende dalla config
-├── .env             # File per le variabili d'ambiente (DA CREARE, NON COMMETTERE!)
-├── .gitignore       # File e directory ignorati da Git
-├── alert_rules.yml  # Regole per gli alert di Prometheus
-├── alertmanager.yml # Configurazione di Alertmanager
-├── docker-compose.yml # File principale per orchestrare i container Docker
-├── grafana_dashboard.json # Esempio di dashboard Grafana da importare
-├── prometheus.yml   # Configurazione di Prometheus (targets, scrape config)
-├── README.md        # Questo fantastico file! :)
-├── requirements.txt # Dipendenze Python del backend (per produzione)
-└── requirements-dev.txt # Dipendenze Python aggiuntive per sviluppo/test
-
-```
-
-🤔 Troubleshooting & Note
-
-    Errori docker-compose up: Controlla i log (docker-compose logs [nome_servizio]) per capire quale servizio sta fallendo. Spesso sono problemi di build (Dockerfile mancante/errato), porte già in uso, o variabili d'ambiente mancanti.
-    Permessi File (Linux/MacOS): Potresti avere problemi di permessi sui volumi montati (es. logs/, mlflow_data/). Assicurati che l'utente Docker abbia i permessi di scrittura o usa tecniche di gestione UID/GID nei Dockerfile.
-    Connessione Redis/DB: Assicurati che i nomi dei servizi nel docker-compose.yml (redis, backend) corrispondano agli host usati nelle configurazioni (es. REDIS_HOST: "redis" nel .env per il backend).
-    Frontend non si connette al Backend: Verifica che l'URL dell'API nel codice frontend sia corretto (http://localhost:8000/...). Controlla la console del browser per errori CORS (Cross-Origin Resource Sharing). Potrebbe essere necessario configurare CORS nel backend FastAPI se frontend e backend girano su porte diverse (anche se Docker Compose dovrebbe metterli sulla stessa rete "virtuale"). Il command per Streamlit include --server.enableCORS=false come esempio.
-    Alert non arrivano: Verifica la configurazione SMTP in alertmanager.yml e nel .env. Controlla i log di Alertmanager (docker-compose logs alertmanager). Assicurati che Prometheus invii alert ad Alertmanager (controlla la sezione 'Alerts' in Prometheus UI).
-
-❤️ Contribuire & Licenza
-
-Al momento questo è un progetto dimostrativo. Se vuoi contribuire, sentiti libero/a di aprire una Issue o una Pull Request!
-
-✨ Buon divertimento con HealthSolver! ✨Pull request e segnalazioni sono benvenute.
-📬 Contattami su GitHub o email per collaborazioni professionali.
-🧪 Licenza
-
-Distribuito con licenza MIT.
-© 2024 – Progetto HealthSolver
+**Author:** Riccardo Scaringi  
+**Repository:** https://github.com/ricscar2570/HealthSolver  
+**Live application:** https://ricscar2570.github.io/HealthSolver/
