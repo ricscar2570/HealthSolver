@@ -47,6 +47,8 @@ jobs:
           console.log('\nNAVBUTTONS',await page.locator('aside .nav').evaluateAll(els=>els.map((el,i)=>({i,text:el.innerText,dataPage:el.getAttribute('data-page'),cls:el.className}))));
           console.log('\nINTELLIGENCE_CURRENT',await page.evaluate(()=>{try{return window.HSIntelligence?.current?.()||null}catch(e){return {error:String(e)}}}));
           console.log('\nCOACH_GLOBALS',await page.evaluate(()=>({coachKeys:Object.keys(window.HSClinicalCoach||{}), intelligenceKeys:Object.keys(window.HSIntelligence||{})})));
+          console.log('\nINTELLIGENCE_FIELDS',await page.locator('#page-intelligence input, #page-intelligence select, #page-intelligence textarea').evaluateAll(els=>els.map(el=>({tag:el.tagName,id:el.id,name:el.name,type:el.type,value:el.value,placeholder:el.placeholder,aria:el.getAttribute('aria-label')}))));
+          console.log('\nCOACH_FIELDS',await page.locator('#page-coach input, #page-coach select, #page-coach textarea').evaluateAll(els=>els.map(el=>({tag:el.tagName,id:el.id,name:el.name,type:el.type,value:el.value,placeholder:el.placeholder,aria:el.getAttribute('aria-label')}))));
           await browser.close();
           JS
           node audit.mjs > dom-audit.txt
