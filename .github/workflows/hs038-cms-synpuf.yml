@@ -1,0 +1,172 @@
+name: HealthSolver 0.38 CMS DE-SynPUF sample1 longitudinal pack
+on:
+  push:
+    branches: ['macrostep/v0.38.0-massive-public-data']
+    paths: ['.github/workflows/hs038-cms-synpuf.yml']
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Acquire CMS DE-SynPUF Sample 1 public synthetic files
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p src out
+          python - <<'PY'
+          import urllib.request,pathlib,json,hashlib,time
+          urls={
+            'beneficiary_2008.zip':'https://www.cms.gov/research-statistics-data-and-systems/downloadable-public-use-files/synpufs/downloads/de1_0_2008_beneficiary_summary_file_sample_1.zip',
+            'beneficiary_2009.zip':'https://www.cms.gov/research-statistics-data-and-systems/downloadable-public-use-files/synpufs/downloads/de1_0_2009_beneficiary_summary_file_sample_1.zip',
+            'beneficiary_2010.zip':'https://www.cms.gov/research-statistics-data-and-systems/downloadable-public-use-files/synpufs/downloads/de1_0_2010_beneficiary_summary_file_sample_1.zip',
+            'inpatient.zip':'https://www.cms.gov/research-statistics-data-and-systems/downloadable-public-use-files/synpufs/downloads/de1_0_2008_to_2010_inpatient_claims_sample_1.zip',
+            'outpatient.zip':'https://www.cms.gov/research-statistics-data-and-systems/downloadable-public-use-files/synpufs/downloads/de1_0_2008_to_2010_outpatient_claims_sample_1.zip',
+            'pde.zip':'https://downloads.cms.gov/files/DE1_0_2008_to_2010_Prescription_Drug_Events_Sample_1.zip',
+          }
+          rows=[]
+          for fn,url in urls.items():
+            p=pathlib.Path('src')/fn
+            req=urllib.request.Request(url,headers={'User-Agent':'HealthSolver research public-data acquisition'})
+            try:
+              with urllib.request.urlopen(req,timeout=120) as r, p.open('wb') as w:
+                while True:
+                  b=r.read(1024*1024)
+                  if not b: break
+                  w.write(b)
+              rows.append({'file':fn,'url':url,'status':'downloaded','bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()})
+              print(fn,p.stat().st_size)
+            except Exception as e:
+              rows.append({'file':fn,'url':url,'status':'failed','error':str(e)})
+              print(fn,'FAILED',e)
+          pathlib.Path('out/acquisition.json').write_text(json.dumps({'retrieved_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'sources':rows},indent=2))
+          if sum(x['status']=='downloaded' for x in rows)<5:
+            raise SystemExit('too many CMS files failed')
+          PY
+      - name: Build compact longitudinal synthetic evidence pack
+        shell: bash
+        run: |
+          python - <<'PY'
+          import zipfile,csv,pathlib,json,collections,hashlib,datetime,math
+          src=pathlib.Path('src'); out=pathlib.Path('out')
+          def open_one(zipname):
+            z=zipfile.ZipFile(src/zipname)
+            names=[n for n in z.namelist() if not n.endswith('/')]
+            csvs=[n for n in names if n.lower().endswith('.csv')]
+            if not csvs: raise SystemExit(f'no csv in {zipname}: {names}')
+            return z,csvs[0]
+          # Beneficiary summary 2008/2009/2010.
+          ben_by_year={}
+          chronic_cols=None
+          for year in (2008,2009,2010):
+            z,n=open_one(f'beneficiary_{year}.zip')
+            with z.open(n) as raw:
+              import io
+              r=csv.DictReader(io.TextIOWrapper(raw,encoding='utf-8-sig',errors='replace'))
+              rows=[]; ids=set()
+              for rec in r:
+                bid=rec.get('DESYNPUF_ID')
+                if not bid: continue
+                ids.add(bid)
+                rows.append(rec)
+              ben_by_year[year]=rows
+              if chronic_cols is None and rows:
+                keys=rows[0].keys()
+                chronic_cols=[k for k in keys if k.startswith('SP_') and k not in ('SP_STATE_CODE','SP_ALZHDMTA','SP_CHF','SP_CHRNKIDN','SP_CNCR','SP_COPD','SP_DEPRESSN','SP_DIABETES','SP_ISCHMCHT','SP_OSTEOPRS','SP_RA_OA','SP_STRKETIA')]
+                # explicit canonical order from CMS public file names if present.
+                preferred=['SP_ALZHDMTA','SP_CHF','SP_CHRNKIDN','SP_CNCR','SP_COPD','SP_DEPRESSN','SP_DIABETES','SP_ISCHMCHT','SP_OSTEOPRS','SP_RA_OA','SP_STRKETIA']
+                chronic_cols=[k for k in preferred if k in keys]
+          # Event counts and temporal coverage.
+          event_tables={}
+          per_ben=collections.defaultdict(lambda:collections.Counter())
+          date_min=date_max=None
+          top_diag=collections.Counter()
+          for kind,zipname in [('inpatient','inpatient.zip'),('outpatient','outpatient.zip'),('pde','pde.zip')]:
+            if not (src/zipname).exists(): continue
+            z,n=open_one(zipname)
+            count=0; ids=set()
+            with z.open(n) as raw:
+              import io
+              r=csv.DictReader(io.TextIOWrapper(raw,encoding='utf-8-sig',errors='replace'))
+              fields=r.fieldnames or []
+              for rec in r:
+                count+=1
+                bid=rec.get('DESYNPUF_ID')
+                if bid:
+                  ids.add(bid); per_ben[bid][kind]+=1
+                for dk in ('CLM_FROM_DT','CLM_THRU_DT','SRVC_DT'):
+                  v=(rec.get(dk) or '').strip()
+                  if len(v)==8 and v.isdigit():
+                    try:d=datetime.datetime.strptime(v,'%Y%m%d').date()
+                    except:continue
+                    date_min=d if date_min is None or d<date_min else date_min
+                    date_max=d if date_max is None or d>date_max else date_max
+                if kind in ('inpatient','outpatient'):
+                  for k,v in rec.items():
+                    if k.startswith('ICD9_DGNS_CD_') and v and v.strip():
+                      top_diag[v.strip()]+=1
+            event_tables[kind]={'rows':count,'beneficiaries_with_events':len(ids),'columns':fields}
+          # Build 2008 chronic profile -> later inpatient/outpatient/PDE use associations.
+          rows08=ben_by_year.get(2008,[])
+          cube=[]
+          targets=['inpatient','outpatient','pde']
+          for c in chronic_cols or []:
+            pos=[]; neg=[]
+            for rec in rows08:
+              bid=rec['DESYNPUF_ID']; v=(rec.get(c) or '').strip()
+              # CMS SynPUF flags convention: 1=condition, 2=no condition in these SP variables.
+              if v=='1': pos.append(bid)
+              elif v=='2': neg.append(bid)
+            for target in targets:
+              for label,group in [('condition',pos),('no_condition',neg)]:
+                if not group: continue
+                vals=[1 if per_ben[bid][target]>0 else 0 for bid in group]
+                counts=[per_ben[bid][target] for bid in group]
+                cube.append({'feature':c,'group':label,'target':target,'n':len(group),'any_event_prevalence':sum(vals)/len(vals),'mean_event_count':sum(counts)/len(counts)})
+          # Global distribution of event counts for sample.
+          dist={}
+          all_ids={r['DESYNPUF_ID'] for r in rows08}
+          for t in targets:
+            vals=[per_ben[i][t] for i in all_ids]
+            vals_sorted=sorted(vals)
+            def q(p):
+              if not vals_sorted:return 0
+              return vals_sorted[min(len(vals_sorted)-1,round(p*(len(vals_sorted)-1)))]
+            dist[t]={'n':len(vals),'mean':sum(vals)/len(vals) if vals else 0,'median':q(.5),'p90':q(.9),'p99':q(.99),'any_event_prevalence':sum(v>0 for v in vals)/len(vals) if vals else 0}
+          payload={
+            'schema':'healthsolver.cms_synpuf_sample1_longitudinal.v1',
+            'source':{
+              'provider':'CMS','dataset':'2008-2010 Data Entrepreneurs Synthetic Public Use File (DE-SynPUF)','sample':1,
+              'synthetic':True,'public_download':True,
+              'source_page':'https://www.cms.gov/data-research/statistics-trends-and-reports/medicare-claims-synthetic-public-use-files/cms-2008-2010-data-entrepreneurs-synthetic-public-use-file-de-synpuf/de10-sample-1'
+            },
+            'semantics':{
+              'kind':'synthetic longitudinal claims evidence',
+              'not_real_patients':True,
+              'limited_inferential_value':True,
+              'not_diagnostic':True
+            },
+            'beneficiary_rows':{str(y):len(v) for y,v in ben_by_year.items()},
+            'unique_beneficiaries_2008':len(all_ids),
+            'event_tables':event_tables,
+            'date_range':[str(date_min) if date_min else None,str(date_max) if date_max else None],
+            'chronic_columns':chronic_cols,
+            'association_cube':cube,
+            'event_count_distribution':dist,
+            'top_icd9_diagnosis_codes':[{'code':k,'count':v} for k,v in top_diag.most_common(100)]
+          }
+          raw=json.dumps(payload,separators=(',',':')).encode()
+          (out/'cms_synpuf_sample1_longitudinal.json').write_bytes(raw)
+          receipt={'beneficiary_rows':payload['beneficiary_rows'],'unique_beneficiaries_2008':len(all_ids),'event_tables':{k:{'rows':v['rows'],'beneficiaries_with_events':v['beneficiaries_with_events']} for k,v in event_tables.items()},'association_cells':len(cube),'json_bytes':len(raw)}
+          (out/'report.json').write_text(json.dumps(receipt,indent=2))
+          print(json.dumps(receipt,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hs038-cms-synpuf-sample1-longitudinal
+          path: out/
+          retention-days: 14
