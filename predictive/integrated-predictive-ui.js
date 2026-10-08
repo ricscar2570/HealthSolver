@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.__HS_INTEGRATED_PREDICTIVE_045__) return;
-window.__HS_INTEGRATED_PREDICTIVE_045__=true;
+if(window.__HS_INTEGRATED_PREDICTIVE_046__) return;
+window.__HS_INTEGRATED_PREDICTIVE_046__=true;
 
 const BUNDLE=window.__HS_PREDICTIVE_BUNDLE__||null;
 if(!BUNDLE?.registry||!BUNDLE?.models) return;
@@ -15,9 +15,9 @@ document.getElementById('hs-router041')?.remove();
 // while updating only visible application-release branding.
 (function reconcileReleaseBranding(){
   const replacements=[
-    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.45'],
+    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.46'],
     [/^HealthSolver\s+0\.38\.0\s*·\s*Massive Public Data \+ Clinical Coach Research Edition\s*·\s*Riccardo Scaringi\s*·\s*Non uso clinico\.?$/i,
-     'HealthSolver 0.45.0 · NHANES Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
+     'HealthSolver 0.46.0 · NHIS Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
   ];
   const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
   const nodes=[];
@@ -103,11 +103,11 @@ wrap.className='card';
 wrap.innerHTML=`
   <div class="hs43-hero">
     <div>
-      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.45</div>
+      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.46</div>
       <h2 class="hs43-title">Predizioni cliniche di ricerca</h2>
       <p class="hs43-sub">HealthSolver usa lo stesso dossier che hai già compilato per verificare quali modelli sono applicabili e calcolare le stime disponibili. Le funzioni predittive sono qui, in primo piano. Ogni nuovo database entra nello stesso registry e nello stesso dossier.</p>
     </div>
-    <div class="hs43-badge">5 MODELLI SUPERVISIONATI</div>
+    <div class="hs43-badge">6 MODELLI SUPERVISIONATI</div>
   </div>
   <div id="hs42Coverage" class="metrics"></div>
   <div class="actions" style="margin-top:8px">
@@ -147,6 +147,22 @@ wrap.innerHTML=`
       <label>Colesterolo HDL (mg/dL)<input id="hs45_hdl" type="number" step="any"></label>
     </div>
     <div class="notice" style="margin-top:10px"><b>Target del modello:</b> probabilità di appartenere al gruppo NHANES che riferisce una diagnosi medica di diabete. Non equivale a una diagnosi clinica di diabete.</div>
+  </details>
+  <details id="hs46NhisDetails">
+    <summary><b>Dati NHIS · ipertensione riferita</b> · completa solo ciò che manca</summary>
+    <p class="hint">Età e sesso vengono riutilizzati dal dossier. Il modello NHIS usa inoltre obesità, fumo attuale e stato di salute generale riferito.</p>
+    <div class="grid">
+      <label>Obesità (BMI ≥30)
+        <select id="hs46_obese"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select>
+      </label>
+      <label>Fumatore attuale
+        <select id="hs46_current_smoker"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select>
+      </label>
+      <label>Salute generale discreta/scarsa
+        <select id="hs46_fair_poor_health"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select>
+      </label>
+    </div>
+    <div class="notice" style="margin-top:10px"><b>Target del modello:</b> probabilità di appartenere al gruppo NHIS che riferisce di essere stato informato di avere ipertensione. Non è una misurazione della pressione né una diagnosi clinica.</div>
   </details>
   <h3 style="margin:24px 0 10px;font-size:1.25rem">Risultati predittivi</h3>
   <div id="hs42Results" class="grid"></div>
@@ -221,12 +237,21 @@ function dossierCase(){
     tc:first(num('ci_total_chol'),num('hs45_tc')),
     hdl:first(num('ci_hdl'),num('hs45_hdl'))
   };
+  const bmiForNhis=first(num('ci_bmi'),num('hs45_bmi'));
+  const nhis={
+    age,
+    sex:sexVal(),
+    obese:bmiForNhis===null?num('hs46_obese'):(bmiForNhis>=30?1:0),
+    current_smoker:num('hs46_current_smoker'),
+    fair_poor_general_health:num('hs46_fair_poor_health')
+  };
   return {
     'HS-UCI-HD-001':heart,
     'HS-UCI-CKD-001':ckd,
     'HS-UCI-BC-001':fna,
     'HS-UCI-HCV-001':hcv,
-    'HS-NHANES-DM-001':nhanes
+    'HS-NHANES-DM-001':nhanes,
+    'HS-NHIS-HYP-001':nhis
   };
 }
 function readiness(model,values){
