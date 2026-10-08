@@ -1,0 +1,165 @@
+name: HealthSolver 0.45 NHANES Diabetes Predictive Model
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs045-nhanes-diabetes.yml']
+permissions:
+  contents: write
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Build NHANES 2017-2018 supervised cohort and train model
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install --disable-pip-version-check -q numpy pandas scikit-learn requests
+          python - <<'PY'
+          import io,json,pathlib,requests
+          import numpy as np,pandas as pd
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import accuracy_score,roc_auc_score,average_precision_score,brier_score_loss,confusion_matrix
+          from sklearn.model_selection import train_test_split
+
+          BASE='https://wwwn.cdc.gov/Nchs/Nhanes/2017-2018/'
+          files=['DEMO_J.XPT','BMX_J.XPT','BPX_J.XPT','TCHOL_J.XPT','HDL_J.XPT','DIQ_J.XPT']
+          frames={}
+          for fn in files:
+              r=requests.get(BASE+fn,timeout=120)
+              r.raise_for_status()
+              frames[fn]=pd.read_sas(io.BytesIO(r.content),format='xport')
+              print(fn,len(frames[fn]),list(frames[fn].columns)[:20])
+
+          df=frames['DEMO_J.XPT'][['SEQN','RIAGENDR','RIDAGEYR','WTMEC2YR']].copy()
+          df=df.merge(frames['BMX_J.XPT'][['SEQN','BMXBMI','BMXWAIST']],on='SEQN',how='left')
+          bpx=frames['BPX_J.XPT'].copy()
+          sy=[c for c in ['BPXSY1','BPXSY2','BPXSY3','BPXSY4'] if c in bpx.columns]
+          bpx['SBP_MEAN']=bpx[sy].replace({0:np.nan}).mean(axis=1,skipna=True)
+          df=df.merge(bpx[['SEQN','SBP_MEAN']],on='SEQN',how='left')
+          df=df.merge(frames['TCHOL_J.XPT'][['SEQN','LBXTC']],on='SEQN',how='left')
+          df=df.merge(frames['HDL_J.XPT'][['SEQN','LBDHDD']],on='SEQN',how='left')
+          df=df.merge(frames['DIQ_J.XPT'][['SEQN','DIQ010']],on='SEQN',how='left')
+
+          # Adults with unambiguous self-reported doctor-diagnosed diabetes status.
+          df=df[df['RIDAGEYR']>=20].copy()
+          df=df[df['DIQ010'].isin([1,2])].copy()
+          df=df[df['WTMEC2YR'].notna() & (df['WTMEC2YR']>0)].copy()
+
+          X=pd.DataFrame({
+              'age':pd.to_numeric(df['RIDAGEYR'],errors='coerce'),
+              'sex':pd.to_numeric(df['RIAGENDR'],errors='coerce').map({1:1,2:0}),
+              'bmi':pd.to_numeric(df['BMXBMI'],errors='coerce'),
+              'waist':pd.to_numeric(df['BMXWAIST'],errors='coerce'),
+              'sbp':pd.to_numeric(df['SBP_MEAN'],errors='coerce'),
+              'tc':pd.to_numeric(df['LBXTC'],errors='coerce'),
+              'hdl':pd.to_numeric(df['LBDHDD'],errors='coerce')
+          }).reset_index(drop=True)
+          y=(df['DIQ010'].reset_index(drop=True)==1).astype(int)
+          w=pd.to_numeric(df['WTMEC2YR'],errors='coerce').reset_index(drop=True).to_numpy()
+
+          features=list(X.columns)
+          idx=np.arange(len(y))
+          tr,tmp=train_test_split(idx,test_size=.40,random_state=4501,stratify=y)
+          cal,te=train_test_split(tmp,test_size=.50,random_state=4502,stratify=y.iloc[tmp])
+          Xtr,Xca,Xte=X.iloc[tr].copy(),X.iloc[cal].copy(),X.iloc[te].copy()
+          ytr,yca,yte=y.iloc[tr].to_numpy(),y.iloc[cal].to_numpy(),y.iloc[te].to_numpy()
+          wtr,wca,wte=w[tr],w[cal],w[te]
+
+          med=Xtr.median(numeric_only=True).reindex(features)
+          Xtr=Xtr.fillna(med);Xca=Xca.fillna(med);Xte=Xte.fillna(med)
+          mu=Xtr.mean().reindex(features);sd=Xtr.std(ddof=0).replace(0,1).reindex(features)
+          lo=Xtr.min().reindex(features);hi=Xtr.max().reindex(features)
+          Ztr=(Xtr-mu)/sd;Zca=(Xca-mu)/sd;Zte=(Xte-mu)/sd
+
+          base=LogisticRegression(max_iter=5000,C=1.0,solver='lbfgs',class_weight='balanced',random_state=4503)
+          base.fit(Ztr,ytr,sample_weight=wtr)
+          cal_scores=base.decision_function(Zca).reshape(-1,1)
+          platt=LogisticRegression(max_iter=5000,C=1e6,solver='lbfgs',random_state=4504)
+          platt.fit(cal_scores,yca,sample_weight=wca)
+          p=platt.predict_proba(base.decision_function(Zte).reshape(-1,1))[:,1]
+          pred=(p>=.5).astype(int)
+          tn,fp,fn,tp=confusion_matrix(yte,pred,labels=[0,1]).ravel()
+
+          metrics={
+            'n_total':int(len(y)),'n_train':int(len(tr)),'n_calibration':int(len(cal)),'n_test':int(len(te)),
+            'positive_prevalence_unweighted':float(y.mean()),
+            'auroc_weighted':float(roc_auc_score(yte,p,sample_weight=wte)),
+            'auprc_weighted':float(average_precision_score(yte,p,sample_weight=wte)),
+            'accuracy_unweighted':float(accuracy_score(yte,pred)),
+            'brier_weighted':float(brier_score_loss(yte,p,sample_weight=wte)),
+            'sensitivity_unweighted':float(tp/(tp+fn)) if tp+fn else None,
+            'specificity_unweighted':float(tn/(tn+fp)) if tn+fp else None,
+            'confusion_matrix_unweighted':{'tn':int(tn),'fp':int(fp),'fn':int(fn),'tp':int(tp)}
+          }
+
+          meta={
+            'age':{'label':'Età','unit':'anni'},
+            'sex':{'label':'Sesso','encoding':'0=female, 1=male'},
+            'bmi':{'label':'BMI','unit':'kg/m²'},
+            'waist':{'label':'Circonferenza vita','unit':'cm'},
+            'sbp':{'label':'Pressione sistolica media','unit':'mmHg'},
+            'tc':{'label':'Colesterolo totale','unit':'mg/dL'},
+            'hdl':{'label':'Colesterolo HDL','unit':'mg/dL'}
+          }
+          for f in features:
+              meta[f]['training_min']=float(lo[f]);meta[f]['training_max']=float(hi[f]);meta[f]['median']=float(med[f])
+
+          model={
+            'schema':'healthsolver.predictive_model.v1',
+            'model_id':'HS-NHANES-DM-001','version':'1.0.0',
+            'release':'HealthSolver 0.45 NHANES 2017-2018 Integration',
+            'task':'Binary research prediction of self-reported doctor-diagnosed diabetes versus no diabetes among adults in NHANES 2017-2018.',
+            'research_only':True,'not_clinically_validated':True,
+            'dataset':{
+              'name':'NHANES 2017-2018 public-use files','source':'CDC/NCHS NHANES',
+              'public_use':True,'survey_cycle':'2017-2018',
+              'files':files,
+              'target_variable':'DIQ010',
+              'weight_variable':'WTMEC2YR'
+            },
+            'features':features,'field_meta':meta,
+            'imputation':{'strategy':'training median','values':{f:float(med[f]) for f in features}},
+            'standardization':{'mean':{f:float(mu[f]) for f in features},'scale':{f:float(sd[f]) for f in features}},
+            'logistic':{'intercept':float(base.intercept_[0]),'coefficients':{f:float(v) for f,v in zip(features,base.coef_[0])}},
+            'calibration':{'method':'Platt scaling on held-out calibration split using NHANES MEC sample weights','intercept':float(platt.intercept_[0]),'slope':float(platt.coef_[0,0])},
+            'threshold':0.5,'metrics_test':metrics,
+            'abstention':{'max_missing_features':1,'message':'Prediction withheld when more than one required feature is missing.'},
+            'target_definition':{
+              'positive':'DIQ010=1, respondent reports a doctor told them they have diabetes',
+              'negative':'DIQ010=2, respondent reports no doctor-diagnosed diabetes',
+              'excluded':'borderline, refused, do not know, age <20, invalid survey weight'
+            },
+            'survey_design_note':'MEC examination weights are used as sample weights; this does not reproduce the full complex-survey variance design.'
+          }
+
+          out=pathlib.Path('predictive')
+          (out/'model-nhanes-diabetes-v1.json').write_text(json.dumps(model,indent=2,sort_keys=True))
+          (out/'model-nhanes-diabetes-v1-report.json').write_text(json.dumps(metrics,indent=2,sort_keys=True))
+          reg=json.loads((out/'model-registry-v2.json').read_text())
+          reg['version']='0.45.0'
+          reg['models']=[m for m in reg['models'] if m['model_id']!='HS-NHANES-DM-001']
+          reg['models'].append({
+            'model_id':model['model_id'],
+            'title':'Diabete riferito diagnosticato (NHANES)',
+            'file':'model-nhanes-diabetes-v1.json',
+            'task':model['task'],
+            'metrics_test':metrics
+          })
+          (out/'model-registry-v2.json').write_text(json.dumps(reg,indent=2,sort_keys=True))
+          print(json.dumps(metrics,indent=2))
+          PY
+      - name: Commit NHANES model and registry
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name "healthsolver-bot"
+          git config user.email "healthsolver-bot@users.noreply.github.com"
+          git add predictive/model-nhanes-diabetes-v1.json predictive/model-nhanes-diabetes-v1-report.json predictive/model-registry-v2.json
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: add NHANES diabetes predictive model HS-NHANES-DM-001"
+          git push
