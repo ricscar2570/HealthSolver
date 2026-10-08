@@ -24,7 +24,7 @@ jobs:
           git fetch origin gh-pages
           git worktree add /tmp/hs-pages origin/gh-pages
           python - <<'PY'
-          import base64,gzip,hashlib,json,pathlib,re
+          import base64,gzip,hashlib,json,pathlib,re,shutil
           main=pathlib.Path('.')
           pages=pathlib.Path('/tmp/hs-pages')
           payload_dir=pages/'docs'/'payload'
@@ -116,12 +116,18 @@ jobs:
           v['predictive_model_count']=len(registry['models'])
           v.pop('unified_router',None)
           (pages/'version.json').write_text(json.dumps(v,indent=2)+'\n')
+          # Keep the separately addressable predictive assets synchronized with
+          # the exact registry/models embedded into the standalone payload.
+          public_predictive=pages/'predictive'
+          if public_predictive.exists():
+              shutil.rmtree(public_predictive)
+          shutil.copytree(main/'predictive',public_predictive)
           print(json.dumps({'source_sha256':sha,'gzip_bytes':len(gz),'payload_parts':len(chunks),'html_bytes':len(data)},indent=2))
           PY
           cd /tmp/hs-pages
           git config user.name "healthsolver-bot"
           git config user.email "healthsolver-bot@users.noreply.github.com"
-          git add index.html version.json docs/payload
+          git add index.html version.json docs/payload predictive
           git diff --cached --stat
           git commit -m "pages: release HealthSolver 0.46 NHIS integration"
           git push origin HEAD:gh-pages
