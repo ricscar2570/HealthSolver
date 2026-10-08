@@ -37,9 +37,12 @@ jobs:
               assert m['model_id']==e['model_id']
               assert m['schema']=='healthsolver.predictive_model.v1'
               assert len(m['features'])>=5
-              assert m['metrics_test']['n_test']>0
-              assert 0.5 <= m['metrics_test']['auroc'] <= 1
-              assert 0 <= m['metrics_test']['brier'] <= 1
+              q=m['metrics_test']
+              assert q['n_test']>0
+              auroc=q.get('auroc',q.get('auroc_weighted'))
+              brier=q.get('brier',q.get('brier_weighted'))
+              assert auroc is not None and 0.5 <= auroc <= 1
+              assert brier is not None and 0 <= brier <= 1
               x={f:m['imputation']['values'][f] for f in m['features']}
               score=m['logistic']['intercept']
               for f in m['features']:
