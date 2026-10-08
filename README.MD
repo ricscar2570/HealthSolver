@@ -1,4 +1,4 @@
-# HealthSolver 0.45 — NHANES Integration + Predictive-First UI
+# HealthSolver 0.46 — NHIS Integration + Predictive-First UI
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.45 line.
+The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.46 line.
 
 ## What HealthSolver does
 
@@ -44,7 +44,7 @@ For the deployed GitHub Pages build:
 - core application state, backup and recovery workflows are handled client-side;
 - large static resources are packaged for browser delivery.
 
-The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.45 application.
+The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.46 application.
 
 ## Clinical Coach
 
@@ -382,6 +382,62 @@ The NHANES model reuses age and sex from the existing dossier and can reuse comp
 
 The live GitHub Pages browser audit verifies that `HS-NHANES-DM-001` executes from Expert Mode with complete input and renders a numeric probability without abstention.
 
+## NHIS 2023 integration 0.46
+
+HealthSolver 0.46 adds a third complete database macrostep: **CDC/NCHS NHIS 2023 Sample Adult public-use data**.
+
+### New predictive model
+
+**HS-NHIS-HYP-001 — Ipertensione riferita**
+
+Research task:
+
+- positive class: respondent reports ever being told they had hypertension;
+- negative class: respondent reports no such hypertension history;
+- ambiguous / refused / not ascertained responses are excluded;
+- public-use annual sample weights are used during fitting, calibration and weighted performance metrics.
+
+Model inputs:
+
+- age;
+- sex;
+- obesity category;
+- current smoking;
+- self-reported fair/poor general health.
+
+Training cohort:
+
+- total usable adults: **29,471**
+- training: **17,682**
+- calibration: **5,894**
+- held-out test: **5,895**
+
+Held-out test metrics:
+
+- weighted AUROC: **0.810**
+- weighted AUPRC: **0.657**
+- weighted Brier score: **0.162**
+- unweighted sensitivity: **0.818**
+- unweighted specificity: **0.632**
+- decision threshold: **0.298**, chosen only on the held-out calibration split using the weighted Youden J criterion.
+
+The model predicts membership in the NHIS self-reported hypertension-history group. It does **not** diagnose hypertension from blood pressure measurements.
+
+### Browser integration
+
+HealthSolver 0.46 now exposes **6 supervised predictive models**:
+
+1. HS-UCI-HD-001 — angiographic heart disease;
+2. HS-UCI-CKD-001 — chronic kidney disease;
+3. HS-UCI-BC-001 — breast FNA malignant/benign pattern;
+4. HS-UCI-HCV-001 — liver disease/HCV dataset pattern;
+5. HS-NHANES-DM-001 — self-reported doctor-diagnosed diabetes;
+6. HS-NHIS-HYP-001 — self-reported hypertension history.
+
+The NHIS inputs are integrated in a collapsible specialist panel inside the same predictive-first Expert Mode. Age and sex are reused from the existing dossier.
+
+A live Playwright test on GitHub Pages verifies published version metadata, six-model availability, NHIS inputs, model execution and numeric probability rendering.
+
 ## Machine learning and predictive research
 
 HealthSolver is being developed toward a broader machine-learning research architecture in which structured symptoms, history, vital signs, laboratory data and observations can be used as model inputs.
@@ -482,9 +538,9 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.45 — NHANES Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
+**HealthSolver 0.46 — NHIS Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
 
-Current predictive release is represented by the 0.45 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and five supervised model artifacts under `predictive/`.
+Current predictive release is represented by the 0.46 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and six supervised model artifacts under `predictive/`.
 
 The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
