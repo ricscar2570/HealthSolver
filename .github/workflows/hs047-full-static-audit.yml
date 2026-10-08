@@ -141,7 +141,7 @@ jobs:
               if k.startswith('ENABLE_LEGACY_'):
                   os.environ.pop(k,None)
           import backend.main as m
-          paths={r.path for r in m.app.routes}
+          paths={r.path for r in m.app.routes if hasattr(r,'path')}
           assert '/' in paths
           assert '/predict/predict' in paths
           assert '/admin/train' not in paths
