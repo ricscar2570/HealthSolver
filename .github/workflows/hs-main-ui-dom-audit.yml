@@ -43,7 +43,7 @@ jobs:
               })));
             }
           }
-          console.log('\nMAIN',await page.locator('main').evaluate(el=>({id:el.id,cls:el.className,html:el.outerHTML.slice(0,15000)})));
+          console.log('\nBODYROOTS',await page.locator('body > *').evaluateAll(els=>els.map(el=>({tag:el.tagName,id:el.id,cls:el.className,html:el.outerHTML.slice(0,4000)}))));
           await browser.close();
           JS
           node audit.mjs > dom-audit.txt
