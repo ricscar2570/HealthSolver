@@ -36,7 +36,7 @@ jobs:
           _,meta=pyreadstat.read_xport(path,metadataonly=True,encoding='latin1')
           cols=set(meta.column_names)
           candidates=[
-            '_AGE80','SEXVAR','_BMI5','_SMOKER3','EXERANY2','SLEPTIM1','GENHLTH',
+            '_AGE80','SEXVAR','_BMI5','_SMOKER3','EXERANY2','GENHLTH',
             'CVDINFR4','CVDCRHD4','CVDSTRK3','ASTHMA3','CHCCOPD3','DIABETE4',
             'CHCKDNY2','ADDEPEV3','HAVARTH4','_LLCPWT'
           ]
@@ -53,7 +53,6 @@ jobs:
           bmi=pd.to_numeric(df.get('_BMI5'),errors='coerce')/100.0
           smoker=pd.to_numeric(df.get('_SMOKER3'),errors='coerce')
           exercise=pd.to_numeric(df.get('EXERANY2'),errors='coerce')
-          sleep=pd.to_numeric(df.get('SLEPTIM1'),errors='coerce')
           weight=pd.to_numeric(df.get('_LLCPWT'),errors='coerce')
           # CDC special codes are excluded, not interpreted as real values.
           age=age.where((age>=18)&(age<=80))
@@ -61,14 +60,12 @@ jobs:
           bmi=bmi.where((bmi>=10)&(bmi<=80))
           smoker=smoker.where(smoker.isin([1,2,3,4]))
           exercise=exercise.where(exercise.isin([1,2]))
-          sleep=sleep.where((sleep>=1)&(sleep<=24))
           weight=weight.where(weight>0)
           age_bin=pd.cut(age,[17,24,34,44,54,64,74,80],labels=['18-24','25-34','35-44','45-54','55-64','65-74','75-80'],include_lowest=True)
           bmi_bin=pd.cut(bmi,[9.99,18.49,24.99,29.99,39.99,80],labels=['under','normal','over','obese1','obese2plus'],include_lowest=True)
-          sleep_bin=pd.cut(sleep,[0,5,6,8,10,24],labels=['<=5','6','7-8','9-10','>10'],include_lowest=True)
           base=pd.DataFrame({
             'age_bin':age_bin.astype('object'),'sex':sex,'bmi_bin':bmi_bin.astype('object'),
-            'smoker':smoker,'exercise':exercise,'sleep_bin':sleep_bin.astype('object'),'w':weight
+            'smoker':smoker,'exercise':exercise,'w':weight
           })
           target_specs={
             'heart_attack':('CVDINFR4',{1}, {2}),
@@ -83,7 +80,6 @@ jobs:
           }
           # Build hierarchical evidence cubes. Fallback levels avoid tiny cells.
           levels=[
-            ['age_bin','sex','bmi_bin','smoker','exercise','sleep_bin'],
             ['age_bin','sex','bmi_bin','smoker','exercise'],
             ['age_bin','sex','bmi_bin','smoker'],
             ['age_bin','sex','bmi_bin'],
@@ -121,7 +117,7 @@ jobs:
           sample=[]
           ix=base.assign(score=base.notna().sum(axis=1)).sort_values(['score'],ascending=False).head(64).index
           for i in ix:
-            rec={k:encode(base.loc[i,k]) for k in ['age_bin','sex','bmi_bin','smoker','exercise','sleep_bin']}
+            rec={k:encode(base.loc[i,k]) for k in ['age_bin','sex','bmi_bin','smoker','exercise']}
             rec['targets']={}
             for target,(col,pos,neg) in target_specs.items():
               if col not in df: continue
@@ -149,8 +145,7 @@ jobs:
               'bmi_bin':['under','normal','over','obese1','obese2plus'],
               'smoker':{'1':'current daily','2':'current some days','3':'former','4':'never'},
               'exercise':{'1':'yes','2':'no'},
-              'sleep_bin':['<=5','6','7-8','9-10','>10']
-            },
+              },
             'targets':list(target_specs),
             'cube':cube,
             'representative_profiles':sample
