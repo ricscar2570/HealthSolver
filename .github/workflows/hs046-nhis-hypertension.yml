@@ -1,0 +1,196 @@
+name: HealthSolver 0.46 NHIS Hypertension Predictive Model
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs046-nhis-hypertension.yml']
+permissions:
+  contents: write
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Build NHIS 2023 supervised cohort and train model
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install --disable-pip-version-check -q numpy pandas scikit-learn requests
+          python - <<'PY'
+          import io,json,pathlib,requests,zipfile
+          import numpy as np,pandas as pd
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import accuracy_score,roc_auc_score,average_precision_score,brier_score_loss,confusion_matrix,roc_curve
+          from sklearn.model_selection import train_test_split
+
+          url='https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NHIS/2023/adult23csv.zip'
+          r=requests.get(url,timeout=180)
+          r.raise_for_status()
+          z=zipfile.ZipFile(io.BytesIO(r.content))
+          names=z.namelist()
+          print('ZIP',names)
+          csvs=[n for n in names if n.lower().endswith('.csv')]
+          if len(csvs)!=1: raise SystemExit(f'expected one CSV, got {csvs}')
+          df=pd.read_csv(z.open(csvs[0]),low_memory=False)
+          print('ROWS',len(df),'COLS',len(df.columns))
+          need=['AGEP_A','SEX_A','HYPEV_A','WTFA_A','BMICAT_A','SMKCIGST_A','PA18_05R_A','SLPHOURS_A','PHSTAT_A']
+          missing=[c for c in need if c not in df.columns]
+          if missing: raise SystemExit(f'missing expected NHIS columns: {missing}')
+
+          # Unambiguous target only: yes=1, no=2.
+          target=pd.to_numeric(df['HYPEV_A'],errors='coerce')
+          keep=target.isin([1,2])
+          df=df.loc[keep].copy()
+          y=(pd.to_numeric(df['HYPEV_A'],errors='coerce')==1).astype(int).reset_index(drop=True)
+          w=pd.to_numeric(df['WTFA_A'],errors='coerce').reset_index(drop=True)
+          good_w=w.notna()&(w>0)
+          df=df.reset_index(drop=True).loc[good_w].reset_index(drop=True)
+          y=y.loc[good_w].reset_index(drop=True)
+          w=w.loc[good_w].to_numpy()
+
+          def valid_num(s,lo,hi):
+              q=pd.to_numeric(s,errors='coerce')
+              return q.where((q>=lo)&(q<=hi))
+
+          age=valid_num(df['AGEP_A'],18,85)
+          sex=pd.to_numeric(df['SEX_A'],errors='coerce').map({1:1,2:0})
+
+          bmi_cat=pd.to_numeric(df['BMICAT_A'],errors='coerce')
+          obese=pd.Series(np.nan,index=df.index,dtype=float)
+          obese.loc[bmi_cat.isin([1,2,3])]=0
+          obese.loc[bmi_cat.eq(4)]=1
+
+          smoke=pd.to_numeric(df['SMKCIGST_A'],errors='coerce')
+          current_smoker=pd.Series(np.nan,index=df.index,dtype=float)
+          current_smoker.loc[smoke.isin([1,2])]=1
+          current_smoker.loc[smoke.isin([3,4])]=0
+
+          pa=pd.to_numeric(df['PA18_05R_A'],errors='coerce')
+          meets_aerobic=pd.Series(np.nan,index=df.index,dtype=float)
+          meets_aerobic.loc[pa.isin([3,4])]=1
+          meets_aerobic.loc[pa.isin([1,2])]=0
+
+          sleep=valid_num(df['SLPHOURS_A'],1,24)
+
+          ph=pd.to_numeric(df['PHSTAT_A'],errors='coerce')
+          fair_poor_health=pd.Series(np.nan,index=df.index,dtype=float)
+          fair_poor_health.loc[ph.isin([1,2,3])]=0
+          fair_poor_health.loc[ph.isin([4,5])]=1
+
+          X=pd.DataFrame({
+              'age':age,'sex':sex,'obese':obese,'current_smoker':current_smoker,
+              'meets_aerobic_guideline':meets_aerobic,'sleep_hours':sleep,
+              'fair_poor_general_health':fair_poor_health
+          })
+          features=list(X.columns)
+
+          idx=np.arange(len(y))
+          tr,tmp=train_test_split(idx,test_size=.40,random_state=4601,stratify=y)
+          cal,te=train_test_split(tmp,test_size=.50,random_state=4602,stratify=y.iloc[tmp])
+          Xtr,Xca,Xte=X.iloc[tr].copy(),X.iloc[cal].copy(),X.iloc[te].copy()
+          ytr,yca,yte=y.iloc[tr].to_numpy(),y.iloc[cal].to_numpy(),y.iloc[te].to_numpy()
+          wtr,wca,wte=w[tr],w[cal],w[te]
+
+          med=Xtr.median(numeric_only=True).reindex(features)
+          Xtr=Xtr.fillna(med);Xca=Xca.fillna(med);Xte=Xte.fillna(med)
+          mu=Xtr.mean().reindex(features);sd=Xtr.std(ddof=0).replace(0,1).reindex(features)
+          lo=Xtr.min().reindex(features);hi=Xtr.max().reindex(features)
+          Ztr=(Xtr-mu)/sd;Zca=(Xca-mu)/sd;Zte=(Xte-mu)/sd
+
+          base=LogisticRegression(max_iter=5000,C=1.0,solver='lbfgs',class_weight='balanced',random_state=4603)
+          base.fit(Ztr,ytr,sample_weight=wtr)
+          cal_scores=base.decision_function(Zca).reshape(-1,1)
+          platt=LogisticRegression(max_iter=5000,C=1e6,solver='lbfgs',random_state=4604)
+          platt.fit(cal_scores,yca,sample_weight=wca)
+
+          pca=platt.predict_proba(cal_scores)[:,1]
+          fpr,tpr,thr=roc_curve(yca,pca,sample_weight=wca)
+          valid=np.isfinite(thr)
+          threshold=float(thr[valid][np.argmax((tpr-fpr)[valid])])
+
+          p=platt.predict_proba(base.decision_function(Zte).reshape(-1,1))[:,1]
+          pred=(p>=threshold).astype(int)
+          tn,fp,fn,tp=confusion_matrix(yte,pred,labels=[0,1]).ravel()
+
+          metrics={
+            'n_total':int(len(y)),'n_train':int(len(tr)),'n_calibration':int(len(cal)),'n_test':int(len(te)),
+            'positive_prevalence_unweighted':float(y.mean()),
+            'auroc_weighted':float(roc_auc_score(yte,p,sample_weight=wte)),
+            'auprc_weighted':float(average_precision_score(yte,p,sample_weight=wte)),
+            'brier_weighted':float(brier_score_loss(yte,p,sample_weight=wte)),
+            'accuracy_unweighted':float(accuracy_score(yte,pred)),
+            'sensitivity_unweighted':float(tp/(tp+fn)) if tp+fn else None,
+            'specificity_unweighted':float(tn/(tn+fp)) if tn+fp else None,
+            'decision_threshold_from_calibration':threshold,
+            'confusion_matrix_unweighted':{'tn':int(tn),'fp':int(fp),'fn':int(fn),'tp':int(tp)}
+          }
+
+          meta={
+            'age':{'label':'Età','unit':'anni'},
+            'sex':{'label':'Sesso','encoding':'0=female, 1=male'},
+            'obese':{'label':'Obesità (categoria BMI)','encoding':'0=no, 1=yes'},
+            'current_smoker':{'label':'Fumatore attuale','encoding':'0=no, 1=yes'},
+            'meets_aerobic_guideline':{'label':'Raggiunge criterio aerobico','encoding':'0=no, 1=yes'},
+            'sleep_hours':{'label':'Ore di sonno','unit':'ore/24h'},
+            'fair_poor_general_health':{'label':'Salute generale discreta/scarsa','encoding':'0=no, 1=yes'}
+          }
+          for f in features:
+              meta[f]['training_min']=float(lo[f]);meta[f]['training_max']=float(hi[f]);meta[f]['median']=float(med[f])
+
+          model={
+            'schema':'healthsolver.predictive_model.v1',
+            'model_id':'HS-NHIS-HYP-001','version':'1.0.0',
+            'release':'HealthSolver 0.46 NHIS 2023 Integration',
+            'task':'Binary research prediction of self-reported ever being told of hypertension versus no such report among NHIS 2023 sample adults.',
+            'research_only':True,'not_clinically_validated':True,
+            'dataset':{
+              'name':'NHIS 2023 Sample Adult public-use CSV','source':'CDC/NCHS NHIS',
+              'public_use':True,'survey_year':2023,'download':url,
+              'target_variable':'HYPEV_A','weight_variable':'WTFA_A'
+            },
+            'features':features,'field_meta':meta,
+            'imputation':{'strategy':'training median','values':{f:float(med[f]) for f in features}},
+            'standardization':{'mean':{f:float(mu[f]) for f in features},'scale':{f:float(sd[f]) for f in features}},
+            'logistic':{'intercept':float(base.intercept_[0]),'coefficients':{f:float(v) for f,v in zip(features,base.coef_[0])}},
+            'calibration':{'method':'Platt scaling on held-out calibration split using NHIS final annual sample weights','intercept':float(platt.intercept_[0]),'slope':float(platt.coef_[0,0])},
+            'threshold':threshold,
+            'threshold_selection':'Youden J maximum on weighted held-out calibration split; evaluated once on independent test split',
+            'metrics_test':metrics,
+            'abstention':{'max_missing_features':1,'message':'Prediction withheld when more than one required feature is missing.'},
+            'target_definition':{
+              'positive':'HYPEV_A=1, respondent reports ever being told they had hypertension',
+              'negative':'HYPEV_A=2, respondent reports no such hypertension history',
+              'excluded':'refused, not ascertained, do not know, invalid annual sample weight'
+            },
+            'survey_design_note':'WTFA_A is used as a sample weight for fitting, calibration and weighted metrics; full complex-survey variance estimation is not reproduced.'
+          }
+
+          out=pathlib.Path('predictive')
+          (out/'model-nhis-hypertension-v1.json').write_text(json.dumps(model,indent=2,sort_keys=True))
+          (out/'model-nhis-hypertension-v1-report.json').write_text(json.dumps(metrics,indent=2,sort_keys=True))
+          reg=json.loads((out/'model-registry-v2.json').read_text())
+          reg['version']='0.46.0'
+          reg['models']=[m for m in reg['models'] if m['model_id']!='HS-NHIS-HYP-001']
+          reg['models'].append({
+            'model_id':model['model_id'],
+            'title':'Ipertensione riferita (NHIS)',
+            'file':'model-nhis-hypertension-v1.json',
+            'task':model['task'],
+            'metrics_test':metrics
+          })
+          (out/'model-registry-v2.json').write_text(json.dumps(reg,indent=2,sort_keys=True))
+          print(json.dumps(metrics,indent=2))
+          PY
+      - name: Commit NHIS model and registry
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name "healthsolver-bot"
+          git config user.email "healthsolver-bot@users.noreply.github.com"
+          git add predictive/model-nhis-hypertension-v1.json predictive/model-nhis-hypertension-v1-report.json predictive/model-registry-v2.json
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: add NHIS hypertension predictive model HS-NHIS-HYP-001"
+          git push
