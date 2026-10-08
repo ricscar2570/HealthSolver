@@ -8,7 +8,7 @@ permissions:
 jobs:
   diagnostic:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,7 +19,7 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install playwright@1.55.0 >/dev/null 2>&1
           npx playwright install --with-deps chromium >/dev/null 2>&1
-      - name: Diagnose archive exports
+      - name: Diagnose archive encrypted restore
         shell: bash
         run: |
           cat > diag.mjs <<'JS'
@@ -27,39 +27,52 @@ jobs:
           import fs from 'node:fs';
           const browser=await chromium.launch({headless:true});
           const page=await browser.newPage({acceptDownloads:true,viewport:{width:1400,height:1400}});
-          const downloads=[]; const errors=[];
-          page.on('download',d=>downloads.push({name:d.suggestedFilename(),url:d.url()}));
-          page.on('pageerror',e=>errors.push('PAGE '+e.message));
-          page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
-          await page.goto('https://ricscar2570.github.io/HealthSolver/?audit=archive-diagnostic',{waitUntil:'networkidle',timeout:120000});
+          const errors=[];page.on('pageerror',e=>errors.push('PAGE '+e.message));page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
+          const confirm=async()=>{
+            const y=page.locator('#confirmYes');
+            if(await y.count()===1&&await y.isVisible())await y.click();
+          };
+          const download=async(id,path)=>{
+            const dp=page.waitForEvent('download',{timeout:15000});
+            await page.locator('#'+id).click();await page.waitForTimeout(60);await confirm();
+            const d=await dp;await d.saveAs(path);
+            console.log('DOWNLOADED',id,d.suggestedFilename(),fs.statSync(path).size);
+          };
+          await page.goto('https://ricscar2570.github.io/HealthSolver/?audit=archive-encrypted',{waitUntil:'networkidle',timeout:120000});
           await page.waitForFunction(()=>document.body.innerText.includes('Modulo singolo'),{timeout:30000});
-          // Create a revision first.
           await page.locator('aside .nav[data-page="case"]').click();
           await page.locator('#loadExample').click();
-          const consent=page.locator('#consent');if(await consent.count()===1 && !(await consent.isChecked())) await consent.check();
-          await page.locator('#evaluate').click();await page.waitForTimeout(250);
-          await page.locator('#reveal').click();await page.locator('#saveCase').click();await page.waitForTimeout(150);
+          const consent=page.locator('#consent');if(await consent.count()===1&&!(await consent.isChecked()))await consent.check();
+          await page.locator('#evaluate').click();await page.waitForTimeout(200);
+          await page.locator('#reveal').click();await page.locator('#saveCase').click();await page.waitForTimeout(100);
           await page.locator('aside .nav[data-page="archive"]').click();
-          console.log('ARCHIVE_BEFORE\n'+await page.locator('#page-archive').innerText());
 
-          for(const id of ['exportBackup','encryptBackup']){
-            if(id==='encryptBackup') await page.locator('#password').fill('HealthSolver-Archive-047!');
-            const before=downloads.length;
-            console.log('CLICK',id,'disabled',await page.locator('#'+id).isDisabled());
-            await page.locator('#'+id).click();
-            await page.waitForTimeout(1200);
-            console.log('AFTER',id,'downloads',downloads.slice(before),'TEXT\n'+(await page.locator('#page-archive').innerText()).slice(0,5000));
-          }
+          const pwd='HealthSolver-Archive-047!';
+          await download('exportBackup','/tmp/plain.json');
+          await page.locator('#password').fill(pwd);
+          await download('encryptBackup','/tmp/encrypted.json');
+          console.log('PLAIN_HEAD',fs.readFileSync('/tmp/plain.json','utf8').slice(0,600));
+          console.log('ENCRYPTED_HEAD',fs.readFileSync('/tmp/encrypted.json','utf8').slice(0,900));
+
+          await page.locator('#clearSession').click();await page.waitForTimeout(60);await confirm();await page.waitForTimeout(120);
+          console.log('AFTER_CLEAR\n'+await page.locator('#page-archive').innerText());
+
+          await page.locator('#restorePassword').fill(pwd);
+          await page.locator('#restoreFile').setInputFiles('/tmp/encrypted.json');
+          await page.waitForTimeout(100);
+          console.log('RESTORE_CONFIRM_VISIBLE',await page.locator('#confirmDialog').isVisible().catch(()=>false));
+          await confirm();await page.waitForTimeout(1500);
+          console.log('AFTER_ENCRYPTED_RESTORE\n'+await page.locator('#page-archive').innerText());
           console.log('ERRORS',errors);
-          console.log('DOWNLOADS',downloads);
-          await page.screenshot({path:'archive-diagnostic.png',fullPage:true});
+          console.log('RESTORE_PASSWORD_AFTER',await page.locator('#restorePassword').inputValue());
+          await page.screenshot({path:'archive-encrypted-diagnostic.png',fullPage:true});
           await browser.close();
           JS
-          node diag.mjs | tee archive-diagnostic.txt
+          node diag.mjs | tee archive-encrypted-diagnostic.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: healthsolver-047-archive-diagnostic
+          name: healthsolver-047-archive-encrypted-diagnostic
           path: |
-            archive-diagnostic.txt
-            archive-diagnostic.png
+            archive-encrypted-diagnostic.txt
+            archive-encrypted-diagnostic.png
           retention-days: 14
