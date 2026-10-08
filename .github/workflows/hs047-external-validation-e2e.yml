@@ -1,5 +1,5 @@
 name: HealthSolver 0.47 External Validation E2E
-# bounded UCI Heart Disease validation cohort
+# bounded UCI Heart Disease validation cohort\n# rendered-table assertion normalization
 on:
   push:
     branches: ['main']
@@ -103,7 +103,8 @@ jobs:
           must(/Valutati 40 record/i.test(status),'external validation did not complete: '+status);
 
           const report=await page.locator('#ciValReport').innerText();
-          must(/Categoria/.test(report)&&/AUC/.test(report)&&/Sensibilità/.test(report),'external validation report table missing');
+          console.log('REPORT',report.slice(0,3000));
+          must(/categoria/i.test(report)&&/auc/i.test(report)&&/sensibil/i.test(report),'external validation report table missing');
           must(!(await page.locator('#ciValExport').isDisabled()),'external validation export remains disabled');
 
           const [out]=await Promise.all([
