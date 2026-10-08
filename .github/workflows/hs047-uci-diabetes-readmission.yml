@@ -1,0 +1,190 @@
+name: HealthSolver 0.47 UCI Diabetes Readmission
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs047-uci-diabetes-readmission.yml']
+permissions:
+  contents: write
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Train calibrated 30-day readmission model
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install --disable-pip-version-check -q numpy pandas scikit-learn ucimlrepo
+          python - <<'PY'
+          import json,pathlib,re
+          import numpy as np,pandas as pd
+          from ucimlrepo import fetch_ucirepo
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import accuracy_score,roc_auc_score,average_precision_score,brier_score_loss,confusion_matrix,roc_curve
+          from sklearn.model_selection import train_test_split
+
+          ds=fetch_ucirepo(id=296)
+          Xraw=ds.data.features.copy()
+          yraw=ds.data.targets.iloc[:,0].astype(str).str.strip()
+          print('COLUMNS',list(Xraw.columns))
+          print('TARGETS',sorted(yraw.unique().tolist()))
+
+          required=[
+            'age','time_in_hospital','num_lab_procedures','num_procedures','num_medications',
+            'number_outpatient','number_emergency','number_inpatient','number_diagnoses',
+            'A1Cresult','max_glu_serum','diabetesMed','change'
+          ]
+          missing=[c for c in required if c not in Xraw.columns]
+          if missing: raise SystemExit(f'missing required columns: {missing}')
+
+          def age_mid(v):
+              m=re.match(r'\[(\d+)-(\d+)\)',str(v).strip())
+              return (float(m.group(1))+float(m.group(2)))/2 if m else np.nan
+          def yesno(v):
+              s=str(v).strip().lower()
+              if s in {'yes','ch'}: return 1.0
+              if s in {'no'}: return 0.0
+              return np.nan
+          def a1c(v):
+              s=str(v).strip().lower()
+              if s in {'>7','>8'}: return 1.0
+              if s=='norm': return 0.0
+              return np.nan
+          def gluc(v):
+              s=str(v).strip().lower()
+              if s in {'>200','>300'}: return 1.0
+              if s=='norm': return 0.0
+              return np.nan
+
+          X=pd.DataFrame({
+            'age_mid':Xraw['age'].map(age_mid),
+            'time_in_hospital':pd.to_numeric(Xraw['time_in_hospital'],errors='coerce'),
+            'num_lab_procedures':pd.to_numeric(Xraw['num_lab_procedures'],errors='coerce'),
+            'num_procedures':pd.to_numeric(Xraw['num_procedures'],errors='coerce'),
+            'num_medications':pd.to_numeric(Xraw['num_medications'],errors='coerce'),
+            'number_outpatient':pd.to_numeric(Xraw['number_outpatient'],errors='coerce'),
+            'number_emergency':pd.to_numeric(Xraw['number_emergency'],errors='coerce'),
+            'number_inpatient':pd.to_numeric(Xraw['number_inpatient'],errors='coerce'),
+            'number_diagnoses':pd.to_numeric(Xraw['number_diagnoses'],errors='coerce'),
+            'a1c_abnormal':Xraw['A1Cresult'].map(a1c),
+            'glucose_abnormal':Xraw['max_glu_serum'].map(gluc),
+            'diabetes_med':Xraw['diabetesMed'].map(yesno),
+            'medication_change':Xraw['change'].map(yesno)
+          })
+          y=(yraw=='<30').astype(int)
+          assert len(X)==len(y)
+          features=list(X.columns)
+
+          idx=np.arange(len(y))
+          tr,tmp=train_test_split(idx,test_size=.40,random_state=4701,stratify=y)
+          cal,te=train_test_split(tmp,test_size=.50,random_state=4702,stratify=y.iloc[tmp])
+          Xtr,Xca,Xte=X.iloc[tr].copy(),X.iloc[cal].copy(),X.iloc[te].copy()
+          ytr,yca,yte=y.iloc[tr].to_numpy(),y.iloc[cal].to_numpy(),y.iloc[te].to_numpy()
+
+          med=Xtr.median(numeric_only=True).reindex(features)
+          Xtr=Xtr.fillna(med);Xca=Xca.fillna(med);Xte=Xte.fillna(med)
+          mu=Xtr.mean().reindex(features);sd=Xtr.std(ddof=0).replace(0,1).reindex(features)
+          lo=Xtr.min().reindex(features);hi=Xtr.max().reindex(features)
+          Ztr=(Xtr-mu)/sd;Zca=(Xca-mu)/sd;Zte=(Xte-mu)/sd
+
+          base=LogisticRegression(max_iter=5000,C=1.0,solver='lbfgs',class_weight='balanced',random_state=4703)
+          base.fit(Ztr,ytr)
+          platt=LogisticRegression(max_iter=5000,C=1e6,solver='lbfgs',random_state=4704)
+          cals=base.decision_function(Zca).reshape(-1,1)
+          platt.fit(cals,yca)
+          pca=platt.predict_proba(cals)[:,1]
+          fpr,tpr,thr=roc_curve(yca,pca)
+          valid=np.isfinite(thr)
+          threshold=float(thr[valid][np.argmax((tpr-fpr)[valid])])
+
+          p=platt.predict_proba(base.decision_function(Zte).reshape(-1,1))[:,1]
+          pred=(p>=threshold).astype(int)
+          tn,fp,fn,tp=confusion_matrix(yte,pred,labels=[0,1]).ravel()
+          metrics={
+            'n_total':int(len(y)),'n_train':int(len(tr)),'n_calibration':int(len(cal)),'n_test':int(len(te)),
+            'positive_prevalence':float(y.mean()),
+            'auroc':float(roc_auc_score(yte,p)),
+            'auprc':float(average_precision_score(yte,p)),
+            'accuracy':float(accuracy_score(yte,pred)),
+            'brier':float(brier_score_loss(yte,p)),
+            'sensitivity':float(tp/(tp+fn)) if tp+fn else None,
+            'specificity':float(tn/(tn+fp)) if tn+fp else None,
+            'decision_threshold_from_calibration':threshold,
+            'confusion_matrix':{'tn':int(tn),'fp':int(fp),'fn':int(fn),'tp':int(tp)}
+          }
+
+          meta={
+            'age_mid':{'label':'Età (punto medio fascia)','unit':'anni'},
+            'time_in_hospital':{'label':'Durata ricovero','unit':'giorni'},
+            'num_lab_procedures':{'label':'Numero procedure di laboratorio'},
+            'num_procedures':{'label':'Numero procedure'},
+            'num_medications':{'label':'Numero farmaci'},
+            'number_outpatient':{'label':'Visite outpatient pregresse'},
+            'number_emergency':{'label':'Accessi emergenza pregressi'},
+            'number_inpatient':{'label':'Ricoveri inpatient pregressi'},
+            'number_diagnoses':{'label':'Numero diagnosi'},
+            'a1c_abnormal':{'label':'HbA1c anomala/misurata','encoding':'0=normal, 1=>7/>8, missing=not measured/other'},
+            'glucose_abnormal':{'label':'Glicemia massima anomala','encoding':'0=normal, 1=>200/>300, missing=not measured/other'},
+            'diabetes_med':{'label':'Farmaci per diabete','encoding':'0=no, 1=yes'},
+            'medication_change':{'label':'Cambio terapia','encoding':'0=no, 1=change'}
+          }
+          for f in features:
+              meta[f]['training_min']=float(lo[f]);meta[f]['training_max']=float(hi[f]);meta[f]['median']=float(med[f])
+
+          model={
+            'schema':'healthsolver.predictive_model.v1',
+            'model_id':'HS-UCI-DMREADM-001','version':'1.0.0',
+            'release':'HealthSolver 0.47 UCI Diabetes 130-US Hospitals Integration',
+            'task':'Binary research prediction of hospital readmission within 30 days versus later/no readmission among encounters in the UCI Diabetes 130-US Hospitals dataset.',
+            'research_only':True,'not_clinically_validated':True,
+            'dataset':{
+              'name':'UCI Diabetes 130-US Hospitals for Years 1999-2008',
+              'uci_id':296,'doi':'10.24432/C5230J','license':'CC BY 4.0',
+              'source':'https://archive.ics.uci.edu/dataset/296/diabetes+130-us+hospitals+for+years+1999-2008'
+            },
+            'features':features,'field_meta':meta,
+            'imputation':{'strategy':'training median','values':{f:float(med[f]) for f in features}},
+            'standardization':{'mean':{f:float(mu[f]) for f in features},'scale':{f:float(sd[f]) for f in features}},
+            'logistic':{'intercept':float(base.intercept_[0]),'coefficients':{f:float(v) for f,v in zip(features,base.coef_[0])}},
+            'calibration':{'method':'Platt scaling on held-out calibration split','intercept':float(platt.intercept_[0]),'slope':float(platt.coef_[0,0])},
+            'threshold':threshold,
+            'threshold_selection':'Youden J maximum on held-out calibration split; evaluated once on independent test split',
+            'metrics_test':metrics,
+            'abstention':{'max_missing_features':2,'message':'Prediction withheld when more than two required features are missing.'},
+            'target_definition':{
+              'positive':'readmitted=<30',
+              'negative':'readmitted=>30 or NO',
+              'meaning':'30-day readmission outcome, not diabetes diagnosis'
+            }
+          }
+
+          out=pathlib.Path('predictive')
+          (out/'model-diabetes-readmission-v1.json').write_text(json.dumps(model,indent=2,sort_keys=True))
+          (out/'model-diabetes-readmission-v1-report.json').write_text(json.dumps(metrics,indent=2,sort_keys=True))
+          reg=json.loads((out/'model-registry-v2.json').read_text())
+          reg['version']='0.47.0'
+          reg['models']=[m for m in reg['models'] if m['model_id']!='HS-UCI-DMREADM-001']
+          reg['models'].append({
+            'model_id':model['model_id'],
+            'title':'Riammissione <30 giorni nel diabete',
+            'file':'model-diabetes-readmission-v1.json',
+            'task':model['task'],
+            'metrics_test':metrics
+          })
+          (out/'model-registry-v2.json').write_text(json.dumps(reg,indent=2,sort_keys=True))
+          print(json.dumps(metrics,indent=2))
+          PY
+      - name: Commit model and registry
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name "healthsolver-bot"
+          git config user.email "healthsolver-bot@users.noreply.github.com"
+          git add predictive/model-diabetes-readmission-v1.json predictive/model-diabetes-readmission-v1-report.json predictive/model-registry-v2.json
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: add UCI diabetes 30-day readmission model HS-UCI-DMREADM-001"
+          git push
