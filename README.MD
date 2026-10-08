@@ -1,4 +1,4 @@
-# HealthSolver 0.43 — Predictive-First Integrated UI + Clinical Coach Research Edition
+# HealthSolver 0.44 — UCI HCV Integration + Predictive-First UI
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.43 line.
+The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.44 line.
 
 ## What HealthSolver does
 
@@ -44,7 +44,7 @@ For the deployed GitHub Pages build:
 - core application state, backup and recovery workflows are handled client-side;
 - large static resources are packaged for browser delivery.
 
-The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.43 application.
+The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.44 application.
 
 ## Clinical Coach
 
@@ -266,6 +266,58 @@ The predictive engine still uses the same dossier already completed in HealthSol
 
 A live Playwright audit verifies that the predictive block is visible, the Expert Mode navigation exposes the predictive badge, all three model cards are present, and the primary predictive CTA is visually large enough to function as a main action.
 
+## UCI HCV Data integration 0.44
+
+HealthSolver 0.44 adds one complete database-level predictive expansion: **UCI HCV Data** (UCI ID 571, DOI `10.24432/C5D612`, CC BY 4.0).
+
+The database provides age, sex and a biochemical liver panel together with supervised outcome categories.
+
+### New predictive model
+
+**HS-UCI-HCV-001 — Pattern epatico HCV / malattia epatica**
+
+Research task:
+
+- negative reference: blood donor;
+- positive class: hepatitis / fibrosis / cirrhosis categories;
+- ambiguous `suspect blood donor` rows are excluded from model development;
+- 12 features: age, sex, albumin, ALP, ALT, AST, bilirubin, cholinesterase, cholesterol, creatinine, GGT and total protein.
+
+Training pipeline:
+
+- total usable records: **608**
+- training: **364**
+- calibration: **122**
+- held-out test: **122**
+- training-median missing-value imputation;
+- training-set standardization;
+- class-balanced logistic regression;
+- held-out Platt probability calibration.
+
+Held-out test metrics:
+
+- AUROC: **0.925**
+- AUPRC: **0.712**
+- Accuracy: **0.918**
+- Brier score: **0.078**
+- Sensitivity at 0.5 threshold: **0.533**
+- Specificity at 0.5 threshold: **0.972**
+
+The modest sensitivity is explicitly retained in the documentation rather than hidden. This model remains a research classifier within the UCI HCV Data domain and is not a clinical HCV diagnosis.
+
+### Browser integration
+
+HealthSolver now exposes **4 supervised predictive models** in the predictive-first Expert Mode:
+
+1. `HS-UCI-HD-001` — angiographic heart disease;
+2. `HS-UCI-CKD-001` — chronic kidney disease;
+3. `HS-UCI-BC-001` — breast FNA malignant/benign pattern;
+4. `HS-UCI-HCV-001` — liver-disease/HCV dataset pattern.
+
+For the HCV model, age and sex are reused from the existing dossier. The ten biochemical values are entered in a collapsible specialist hepatic/HCV panel using the exact units expected by the source dataset, avoiding silent unit conversion from unrelated fields.
+
+A live Playwright test on GitHub Pages verifies that the fourth model is visible, accepts a complete hepatic panel, executes without abstention and renders a numeric probability.
+
 ## Machine learning and predictive research
 
 HealthSolver is being developed toward a broader machine-learning research architecture in which structured symptoms, history, vital signs, laboratory data and observations can be used as model inputs.
@@ -366,9 +418,9 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.43 — Predictive-First Integrated UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
+**HealthSolver 0.44 — UCI HCV Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
 
-Current predictive release is represented by the 0.43 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and the three model artifacts under `predictive/`.
+Current predictive release is represented by the 0.44 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and four supervised model artifacts under `predictive/`.
 
 The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
