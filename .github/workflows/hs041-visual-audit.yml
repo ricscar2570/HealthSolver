@@ -1,10 +1,10 @@
-name: HealthSolver 0.41 Visual Browser Audit
+name: HealthSolver 0.42 Integrated UI Browser Audit
 on:
   push:
     branches: ['main']
     paths: ['.github/workflows/hs041-visual-audit.yml']
 permissions:
-  contents: write
+  contents: read
 jobs:
   visual:
     runs-on: ubuntu-latest
@@ -19,43 +19,57 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install playwright@1.55.0 >/dev/null 2>&1
           npx playwright install --with-deps chromium >/dev/null 2>&1
-      - name: Audit live page and capture screenshot
+      - name: Audit integrated predictive workflow and capture screenshots
         shell: bash
         run: |
           cat > audit.mjs <<'JS'
           import { chromium } from 'playwright';
-          const browser = await chromium.launch({headless:true});
-          const page = await browser.newPage({viewport:{width:1440,height:1800}, deviceScaleFactor:1});
-          const url='https://ricscar2570.github.io/HealthSolver/?visual=041';
-          await page.goto(url,{waitUntil:'networkidle',timeout:120000});
-          await page.waitForTimeout(3000);
-          const router=page.locator('#hs-router041');
-          const count=await router.count();
-          console.log('router count',count);
-          if(count!==1){
-            console.log('body text', (await page.locator('body').innerText()).slice(0,5000));
-            throw new Error('Unified router not rendered exactly once');
-          }
-          const button=page.getByRole('button',{name:'Analizza con tutti i modelli applicabili'});
-          if(await button.count()!==1) throw new Error('Unified analyze button not rendered');
-          await page.waitForTimeout(1500);
-          const routerText=await router.innerText();
-          if(/non disponibile|failed to fetch/i.test(routerText)) throw new Error('Unified router rendered but model registry/data did not load: '+routerText);
-          const coverageCount=await router.locator('.coverage .mini').count();
-          if(coverageCount!==3) throw new Error('Expected 3 model coverage cards, got '+coverageCount);
-          if(await button.isDisabled()) throw new Error('Unified analyze button is disabled after model load');
-          await router.scrollIntoViewIfNeeded();
-          await router.screenshot({path:'HealthSolver-0.41-Unified-Router.png'});
-          await page.screenshot({path:'HealthSolver-0.41-Full-Page.png',fullPage:true});
-          console.log('router text', (await router.innerText()).slice(0,4000));
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1800},deviceScaleFactor:1});
+          const errors=[];
+          page.on('pageerror',e=>errors.push('pageerror '+e.message));
+          page.on('console',m=>{if(m.type()==='error')errors.push('console '+m.text())});
+          await page.goto('https://ricscar2570.github.io/HealthSolver/?visual=042',{waitUntil:'networkidle',timeout:120000});
+          await page.waitForTimeout(2500);
+          if(await page.locator('#hs-pe040').count()) throw new Error('Legacy standalone predictive engine still visible');
+          if(await page.locator('#hs-router041').count()) throw new Error('Legacy unified router still visible');
+          const integrated=page.locator('#hs-predictive-integrated');
+          if(await integrated.count()!==1) throw new Error('Integrated predictive UI missing');
+          const expert=page.locator('#page-intelligence');
+          if(await expert.locator('#hs-predictive-integrated').count()!==1) throw new Error('Predictive UI is not inside Expert Mode');
+          await page.evaluate(()=>{
+            const set=(id,v)=>{const e=document.getElementById(id);if(!e)return; e.value=String(v);e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));};
+            const firstNonEmpty=id=>{const e=document.getElementById(id);if(!e)return;const o=[...e.options].find(x=>x.value!=='');if(o){e.value=o.value;e.dispatchEvent(new Event('change',{bubbles:true}));}};
+            set('ciAge',58);firstNonEmpty('ciSex');set('ci_systolic',138);set('ci_total_chol',238);set('ci_fasting_glucose',126);
+            set('ci_max_heart_rate',154);firstNonEmpty('ci_exercise_angina');set('ci_oldpeak',1.1);set('ci_major_vessels',1);firstNonEmpty('ci_cp_2');
+            set('ci_bp',82);set('ci_specific_gravity',1.02);set('ci_urine_albumin',1);set('ci_urine_sugar',0);set('ci_random_glucose',142);
+            set('ci_blood_urea',34);set('ci_creatinine',1.3);set('ci_sodium',139);set('ci_potassium',4.3);set('ci_hemoglobin',13.1);set('ci_pcv',40);set('ci_wbc_count',7600);set('ci_rbc_count',4.7);
+            const fna={radius1:14.2,texture1:20.1,perimeter1:92.4,area1:630,smoothness1:.098,compactness1:.12,concavity1:.11,concave_points1:.055,symmetry1:.19,fractal_dimension1:.062};
+            for(const [k,v] of Object.entries(fna)) set('hs42_'+k,v);
+          });
+          await page.waitForTimeout(500);
+          const run=page.locator('#hs42Run');
+          if(await run.count()!==1||await run.isDisabled()) throw new Error('Integrated prediction button unavailable');
+          await run.click();
+          await page.waitForTimeout(500);
+          const results=page.locator('#hs42Results > .card');
+          if(await results.count()!==3) throw new Error('Expected 3 integrated result cards');
+          const text=await integrated.innerText();
+          if(/Astensione\./i.test(text)) throw new Error('Unexpected abstention with complete test inputs: '+text);
+          if(!/3\/3 modelli applicabili/i.test(text)) throw new Error('Expected all three models applicable: '+text);
+          if(errors.length) throw new Error('Browser errors: '+errors.join(' | '));
+          await integrated.scrollIntoViewIfNeeded();
+          await integrated.screenshot({path:'HealthSolver-0.42-Integrated-Predictive-UI.png'});
+          await expert.screenshot({path:'HealthSolver-0.42-Expert-Mode.png'});
+          console.log(text.slice(0,7000));
           await browser.close();
           JS
           node audit.mjs | tee visual-audit.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: healthsolver-041-visual-audit
+          name: healthsolver-042-integrated-ui-audit
           path: |
-            HealthSolver-0.41-Unified-Router.png
-            HealthSolver-0.41-Full-Page.png
+            HealthSolver-0.42-Integrated-Predictive-UI.png
+            HealthSolver-0.42-Expert-Mode.png
             visual-audit.txt
           retention-days: 14
