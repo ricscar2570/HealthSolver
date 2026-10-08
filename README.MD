@@ -1,4 +1,4 @@
-# HealthSolver 0.47 — UCI Diabetes Readmission Integration + Predictive-First UI
+# HealthSolver 0.47.1 — Full Audit Remediation + UCI Diabetes Readmission Integration
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.47 line.
+The current public build is deployed from the `gh-pages` branch and corresponds to the audited HealthSolver 0.47.1 line.
 
 ## What HealthSolver does
 
@@ -437,6 +437,54 @@ HealthSolver 0.46 now exposes **6 supervised predictive models**:
 The NHIS inputs are integrated in a collapsible specialist panel inside the same predictive-first Expert Mode. Age and sex are reused from the existing dossier.
 
 A live Playwright test on GitHub Pages verifies published version metadata, six-model availability, NHIS inputs, model execution and numeric probability rendering.
+
+## Full audit remediation 0.47.1
+
+Before starting the next database macrostep, the complete application was audited end to end rather than limiting qualification to the predictive models.
+
+The audit covered:
+
+- repository integrity and syntax across Python, JavaScript, JSON and YAML;
+- all seven supervised predictive model artifacts and registry consistency;
+- GitHub Pages payload reconstruction and public-asset synchronization;
+- Clinical Coach creation, local resume, backup and restore;
+- Expert Mode extraction, dossier editing, seven-model prediction and encrypted backup/restore;
+- Multi-Model Hub;
+- Massive Public Data including BRFSS, openFDA response handling and local FHIR import;
+- single-model case, report and archive workflows;
+- client-side training and validation exports;
+- external frozen-model validation workflow;
+- preserved respiratory visit workspace and encrypted browser vault;
+- preserved Real Data Laboratory including WDBC classification, training, evaluation, exports, backup/restore, NHAMCS intake surface and external-cohort surface.
+
+### Defects found and remediated
+
+The audit identified real release-quality defects and fixed them before further dataset integration:
+
+1. the separately published predictive registry on GitHub Pages was stale and still exposed only the old three-model registry;
+2. the generic published-release smoke workflow was still tied to HealthSolver 0.41;
+3. a local `.env` file was tracked and the repository had no `.gitignore`;
+4. several legacy FastAPI/CNN/ML paths contained import/runtime defects and missing direct dependencies;
+5. the preserved visit iframe could not reliably use its browser-local encrypted vault because sandbox storage permissions were incomplete;
+6. the nested preserved Real Data Laboratory iframe lacked `allow-forms`, which meant its visible form buttons could be blocked by the browser, and it also lacked same-origin storage permission required by its local workspace features.
+
+The two sandbox issues were fixed only for trusted embedded HealthSolver srcdoc workspaces; no remote third-party page was granted these permissions.
+
+### Qualification result
+
+Final release gates:
+
+- full static release audit: **PASS**
+- predictive-model and registry integrity: **PASS**
+- all historical predictive smokes: **PASS**
+- full active-app browser E2E: **PASS**
+- external validation E2E: **PASS**
+- preserved visit/vault E2E: **PASS**
+- preserved laboratory full E2E: **PASS**
+- GitHub Pages deployment: **PASS**
+- published release smoke against the live site: **PASS**
+
+Application release version is **0.47.1**. The predictive registry remains semantically versioned **0.47.0** because no predictive model coefficients, features, datasets or metrics changed in this remediation patch.
 
 ## UCI Diabetes 130-US Hospitals integration 0.47
 
