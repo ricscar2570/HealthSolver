@@ -88,7 +88,7 @@ jobs:
           const password='HealthSolver-Preserved-047!';
           await frame.locator('#password').fill(password);
           await frame.locator('#passwordRepeat').fill(password);
-          await frame.locator('#saveVault').click();await page.waitForTimeout(250);
+          await frame.locator('#saveVault').click();await page.waitForTimeout(50);await confirmIfOpen();await page.waitForTimeout(250);
           must(await frame.locator('#unlockVault').count()===1,'vault unlock missing');
           await save(frame.locator('#exportEncrypted'),'/tmp/previous-encrypted.json');
 
@@ -109,7 +109,7 @@ jobs:
           if(await frame.locator('#restoreFile').count()===1){
             if(await restorePwd.count()===1) await restorePwd.fill(password);
             await frame.locator('#restoreFile').setInputFiles('/tmp/previous-encrypted.json');
-            await page.waitForTimeout(350);
+            await page.waitForTimeout(50);await confirmIfOpen();await page.waitForTimeout(350);
             body=await frame.locator('body').innerText();
             must(/visita|revisione/i.test(body),'encrypted file restore produced no workspace');
           }
