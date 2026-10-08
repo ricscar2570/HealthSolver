@@ -1,4 +1,5 @@
 name: HealthSolver 0.42 Integrated Predictive UI Repack
+# 0.42 cardiac fallback integration
 # rerun after predictive module path/placement fix
 on:
   push:
