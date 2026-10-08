@@ -1,0 +1,55 @@
+name: HealthSolver 0.47 Coach Diagnostic
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs047-coach-diagnostic.yml']
+permissions:
+  contents: read
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Diagnose Coach transition and resume
+        shell: bash
+        run: |
+          cat > coach.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1400,height:1400}});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          await page.goto('https://ricscar2570.github.io/HealthSolver/?audit=coach-diagnostic',{waitUntil:'networkidle',timeout:120000});
+          await page.waitForFunction(()=>document.body.innerText.includes('Clinical Coach'),{timeout:30000});
+          await page.locator('aside .nav[data-page="coach"]').click();
+          await page.locator('#coachNewBlank').click();
+          console.log('BLANK\n'+(await page.locator('#page-coach').innerText()).slice(0,3500));
+          await page.locator('#coachAge').fill('45');
+          await page.locator('#coachSex').selectOption({label:'Femminile'});
+          console.log('VALUES',await page.locator('#coachAge').inputValue(),await page.locator('#coachSex').inputValue());
+          console.log('PHASE_BEFORE',await page.locator('.coach-phase.current').innerText());
+          await page.locator('#coachContinue').click();
+          await page.waitForTimeout(500);
+          console.log('PHASE_AFTER',await page.locator('.coach-phase.current').innerText());
+          console.log('AFTER\n'+(await page.locator('#page-coach').innerText()).slice(0,5000));
+          console.log('LOCALSTORAGE',await page.evaluate(()=>Object.fromEntries(Object.entries(localStorage))));
+          console.log('ERRORS',errors);
+          await page.screenshot({path:'coach-diagnostic.png',fullPage:true});
+          await browser.close();
+          JS
+          node coach.mjs | tee coach-diagnostic.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: healthsolver-047-coach-diagnostic
+          path: |
+            coach-diagnostic.txt
+            coach-diagnostic.png
+          retention-days: 14
