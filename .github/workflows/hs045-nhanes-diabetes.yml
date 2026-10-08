@@ -26,7 +26,7 @@ jobs:
           from sklearn.metrics import accuracy_score,roc_auc_score,average_precision_score,brier_score_loss,confusion_matrix
           from sklearn.model_selection import train_test_split
 
-          BASE='https://wwwn.cdc.gov/Nchs/Nhanes/2017-2018/'
+          BASE='https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2017/DataFiles/'
           files=['DEMO_J.XPT','BMX_J.XPT','BPX_J.XPT','TCHOL_J.XPT','HDL_J.XPT','DIQ_J.XPT']
           frames={}
           for fn in files:
