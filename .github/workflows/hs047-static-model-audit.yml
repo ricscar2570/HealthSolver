@@ -1,0 +1,98 @@
+name: HealthSolver 0.47 Static and Model Integrity
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs047-static-model-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install parsers
+        run: |
+          python -m pip install --disable-pip-version-check -q pyyaml
+          npm install @babel/parser@7 >/dev/null 2>&1
+      - name: Source integrity
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git fsck --full
+          test ! -f .env
+          test -f .env.example
+          test -f .gitignore
+          ! git grep -nE '^(<<<<<<<|=======|>>>>>>>)' -- . ':!README.MD'
+          python -m compileall -q backend dashboard tests
+          python - <<'PY'
+          import json,pathlib,yaml
+          for p in pathlib.Path('.').rglob('*.json'):
+              if '.git' not in p.parts:
+                  json.loads(p.read_text())
+          for ext in ('*.yml','*.yaml'):
+              for p in pathlib.Path('.').rglob(ext):
+                  if '.git' not in p.parts:
+                      yaml.safe_load(p.read_text())
+          print('JSON/YAML parse PASS')
+          PY
+          for f in predictive/*.js; do node --check "$f"; done
+          node - <<'JS'
+          const fs=require('fs'),path=require('path'),parser=require('@babel/parser');
+          function walk(d){let out=[];for(const n of fs.readdirSync(d)){const p=path.join(d,n),s=fs.statSync(p);if(s.isDirectory())out=out.concat(walk(p));else if(p.endsWith('.js'))out.push(p)}return out}
+          for(const f of walk('frontend/src')){
+            parser.parse(fs.readFileSync(f,'utf8'),{sourceType:'module',plugins:['jsx']});
+            console.log('JSX PASS',f);
+          }
+          JS
+      - name: Predictive mathematical integrity
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,math,pathlib
+          root=pathlib.Path('predictive')
+          reg=json.loads((root/'model-registry-v2.json').read_text())
+          assert reg['schema']=='healthsolver.predictive_registry.v2'
+          assert reg['version']=='0.47.0'
+          assert len(reg['models'])==7
+          ids=[]
+          for e in reg['models']:
+              m=json.loads((root/e['file']).read_text())
+              assert m['schema']=='healthsolver.predictive_model.v1'
+              assert m['model_id']==e['model_id']
+              assert m['research_only'] is True
+              assert m['not_clinically_validated'] is True
+              fs=m['features']
+              assert len(fs)==len(set(fs)) and len(fs)>=5
+              assert set(m['imputation']['values'])==set(fs)
+              assert set(m['standardization']['mean'])==set(fs)
+              assert set(m['standardization']['scale'])==set(fs)
+              assert set(m['logistic']['coefficients'])==set(fs)
+              assert all(float(m['standardization']['scale'][f])>0 for f in fs)
+              assert 0<float(m['threshold'])<1
+              assert 0<=int(m['abstention']['max_missing_features'])<len(fs)
+              q=m['metrics_test'];assert q['n_test']>0
+              auc=q.get('auroc',q.get('auroc_weighted'));brier=q.get('brier',q.get('brier_weighted'))
+              assert auc is not None and .5<=auc<=1
+              assert brier is not None and 0<=brier<=1
+              score=float(m['logistic']['intercept'])
+              for f in fs:
+                  v=float(m['imputation']['values'][f])
+                  z=(v-float(m['standardization']['mean'][f]))/float(m['standardization']['scale'][f])
+                  score+=z*float(m['logistic']['coefficients'][f])
+              z=float(m['calibration']['intercept'])+float(m['calibration']['slope'])*score
+              p=1/(1+math.exp(-max(-35,min(35,z))))
+              assert math.isfinite(p) and 0<p<1
+              ids.append(m['model_id'])
+          expected=['HS-UCI-HD-001','HS-UCI-CKD-001','HS-UCI-BC-001','HS-UCI-HCV-001','HS-NHANES-DM-001','HS-NHIS-HYP-001','HS-UCI-DMREADM-001']
+          assert ids==expected,(ids,expected)
+          print('MODEL INTEGRITY PASS',ids)
+          PY
