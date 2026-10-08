@@ -33,7 +33,7 @@ jobs:
           if len(xpt)!=1: raise SystemExit(f'expected one XPT, got {xpt}')
           z.extract(xpt[0],'.')
           path=pathlib.Path(xpt[0])
-          _,meta=pyreadstat.read_xport(path,metadataonly=True)
+          _,meta=pyreadstat.read_xport(path,metadataonly=True,encoding='latin1')
           cols=set(meta.column_names)
           candidates=[
             '_AGE80','SEXVAR','_BMI5','_SMOKER3','EXERANY2','SLEPTIM1','GENHLTH',
@@ -43,7 +43,7 @@ jobs:
           use=[c for c in candidates if c in cols]
           missing=[c for c in candidates if c not in cols]
           print('using',use); print('missing',missing)
-          df,_=pyreadstat.read_xport(path,usecols=use)
+          df,_=pyreadstat.read_xport(path,usecols=use,encoding='latin1')
           raw_n=len(df)
           if raw_n != 457670:
             raise SystemExit(f'unexpected BRFSS row count {raw_n}')
