@@ -1,0 +1,81 @@
+{
+  "models": [
+    {
+      "file": "model-heart-disease-v1.json",
+      "metrics_test": {
+        "accuracy": 0.8360655737704918,
+        "auprc": 0.9042968120540597,
+        "auroc": 0.895021645021645,
+        "brier": 0.127647858526313,
+        "confusion_matrix": {
+          "fn": 7,
+          "fp": 3,
+          "tn": 30,
+          "tp": 21
+        },
+        "n_calibration": 61,
+        "n_test": 61,
+        "n_total": 303,
+        "n_train": 181,
+        "prevalence_total": 0.45874587458745875,
+        "sensitivity": 0.75,
+        "specificity": 0.9090909090909091
+      },
+      "model_id": "HS-UCI-HD-001",
+      "task": "Binary prediction of angiographic heart disease presence (>50% diameter narrowing) versus absence in the UCI Heart Disease dataset.",
+      "title": "Cardiopatia angiografica"
+    },
+    {
+      "file": "model-ckd-v1.json",
+      "metrics_test": {
+        "accuracy": 0.975,
+        "auprc": 0.9988307692307692,
+        "auroc": 0.998,
+        "brier": 0.02476232214110584,
+        "confusion_matrix": {
+          "fn": 0,
+          "fp": 2,
+          "tn": 28,
+          "tp": 50
+        },
+        "n_calibration": 80,
+        "n_test": 80,
+        "n_total": 400,
+        "n_train": 240,
+        "prevalence_total": 0.625,
+        "sensitivity": 1.0,
+        "specificity": 0.9333333333333333
+      },
+      "model_id": "HS-UCI-CKD-001",
+      "task": "Binary research prediction of CKD versus not-CKD within the UCI CKD dataset feature domain.",
+      "title": "Malattia renale cronica"
+    },
+    {
+      "file": "model-breast-cancer-v1.json",
+      "metrics_test": {
+        "accuracy": 0.9210526315789473,
+        "auprc": 0.9653093930966312,
+        "auroc": 0.9745370370370371,
+        "brier": 0.0595773175850383,
+        "confusion_matrix": {
+          "fn": 6,
+          "fp": 3,
+          "tn": 69,
+          "tp": 36
+        },
+        "n_calibration": 114,
+        "n_test": 114,
+        "n_total": 569,
+        "n_train": 341,
+        "prevalence_total": 0.37258347978910367,
+        "sensitivity": 0.8571428571428571,
+        "specificity": 0.9583333333333334
+      },
+      "model_id": "HS-UCI-BC-001",
+      "task": "Binary research prediction of malignant versus benign FNA-derived breast-mass feature pattern within the UCI WDBC domain.",
+      "title": "Malignit\u00e0 su caratteristiche FNA"
+    }
+  ],
+  "schema": "healthsolver.predictive_registry.v2",
+  "version": "0.40.0"
+}
