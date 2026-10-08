@@ -1,0 +1,28 @@
+name: HealthSolver 0.47 Legacy Router Diagnostic
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs047-legacy-router-diagnostic.yml']
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Inspect FastAPI route registration
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check -q fastapi sqlalchemy joblib scikit-learn prometheus-fastapi-instrumentator prometheus-client cryptography
+          python - <<'PY'
+          import backend.main as m
+          from backend.routes.predict import router
+          print('PREDICT_ROUTER',type(router),[(type(x).__name__,getattr(x,'path',None)) for x in router.routes])
+          for i,r in enumerate(m.app.routes):
+              print('APP_ROUTE',i,type(r),getattr(r,'path',None),vars(r) if type(r).__name__=='_IncludedRouter' else '')
+          print('ROUTER_ROOT',type(m.app.router),[(type(x).__name__,getattr(x,'path',None)) for x in m.app.router.routes])
+          PY
