@@ -12,3 +12,4 @@ numpy
 prometheus-fastapi-instrumentator
 prometheus-client
 redis
+cryptography
