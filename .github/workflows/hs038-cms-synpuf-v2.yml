@@ -63,6 +63,9 @@ jobs:
           ben_by_year={}
           chronic_cols=None
           for year in (2008,2009,2010):
+            if not (src/f'beneficiary_{year}.zip').exists():
+              print('beneficiary year unavailable',year)
+              continue
             z,n=open_one(f'beneficiary_{year}.zip')
             with z.open(n) as raw:
               import io
