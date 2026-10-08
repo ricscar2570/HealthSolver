@@ -134,7 +134,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          python -m pip install --disable-pip-version-check -q fastapi sqlalchemy joblib scikit-learn prometheus-fastapi-instrumentator prometheus-client
+          python -m pip install --disable-pip-version-check -q fastapi sqlalchemy joblib scikit-learn prometheus-fastapi-instrumentator prometheus-client cryptography
           python - <<'PY'
           import os
           for k in list(os.environ):
