@@ -1,0 +1,61 @@
+name: HealthSolver 0.41 Unified Router Smoke
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'predictive/unified-case-router.js'
+      - '.github/workflows/hs041-router-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: node --check predictive/unified-case-router.js
+      - name: Registry coverage and routing semantics
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import json,math,pathlib
+          root=pathlib.Path('predictive')
+          reg=json.loads((root/'model-registry-v2.json').read_text())
+          models=[json.loads((root/e['file']).read_text()) for e in reg['models']]
+          assert len(models)==3
+          union=[]
+          for m in models:
+              for f in m['features']:
+                  if f not in union: union.append(f)
+              assert m['abstention']['max_missing_features'] < len(m['features'])
+          assert 'age' in union
+          assert len(union) >= 30
+          # Empty case must abstain for all models.
+          for m in models:
+              missing=len(m['features'])
+              assert missing > m['abstention']['max_missing_features']
+          # Complete median-valued case must run for all models and yield finite probabilities.
+          case={}
+          for m in models:
+              case.update(m['imputation']['values'])
+          probs={}
+          for m in models:
+              missing=[f for f in m['features'] if f not in case]
+              assert len(missing) <= m['abstention']['max_missing_features']
+              score=m['logistic']['intercept']
+              for f in m['features']:
+                  v=case[f]
+                  z=(v-m['standardization']['mean'][f])/m['standardization']['scale'][f]
+                  score+=z*m['logistic']['coefficients'][f]
+              z=m['calibration']['intercept']+m['calibration']['slope']*score
+              p=1/(1+math.exp(-max(-35,min(35,z))))
+              assert math.isfinite(p) and 0<p<1
+              probs[m['model_id']]=p
+          assert set(probs)=={'HS-UCI-HD-001','HS-UCI-CKD-001','HS-UCI-BC-001'}
+          print({'union_features':len(union),'probabilities_at_medians':probs})
+          PY
