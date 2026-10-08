@@ -1,4 +1,5 @@
 name: HealthSolver 0.47 Full Static Release Audit
+# rerun after legacy backend remediation
 on:
   push:
     branches: ['main']
