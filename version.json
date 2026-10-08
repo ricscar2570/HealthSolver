@@ -1,7 +1,7 @@
 {
   "app": "HealthSolver",
-  "version": "0.41.0",
-  "release": "Unified Predictive Case Router + Multi-Outcome Predictive Engine + Clinical Coach Research Edition",
+  "version": "0.42.0",
+  "release": "Integrated Predictive UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition",
   "base_release": "0.38.0",
   "base_source_sha256": "c1bef787551183db369643036e9fc9a7f64ddec515ad804066b9a37279df6b68",
   "predictive_registry": "predictive/model-registry-v2.json",
@@ -12,6 +12,7 @@
   ],
   "unified_router": "unified-case-router.js",
   "payload_parts": 7,
-  "source_sha256": "b71435903f26f742e39eda79034d2067da483e4af036b28bcd01214f188ed6ca",
-  "predictive_modules_embedded": true
+  "source_sha256": "da39e5f01e52bce3e0cb8a710b10180e505d363b1eb7f70e41acff704185a6a6",
+  "predictive_modules_embedded": true,
+  "integrated_predictive_ui": true
 }
