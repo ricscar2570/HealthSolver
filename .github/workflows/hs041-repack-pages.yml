@@ -94,7 +94,7 @@ jobs:
             const digest=[...new Uint8Array(await crypto.subtle.digest("SHA-256",htmlBytes))].map(x=>x.toString(16).padStart(2,"0")).join("");
             if(digest!==expected) throw new Error("Controllo SHA-256 applicativo non superato.");
             const html=new TextDecoder().decode(htmlBytes);
-            if(!html.includes("HealthSolver")||!html.includes("Clinical Coach")||!html.includes("HS_INTEGRATED_PREDICTIVE_042")) throw new Error("Marcatori applicativi mancanti.");
+            if(!html.includes("HealthSolver")||!html.includes("Clinical Coach")||!html.includes("HS_INTEGRATED_PREDICTIVE_043")) throw new Error("Marcatori applicativi mancanti.");
             document.open();document.write(html);document.close();
            }}catch(e){{err.textContent="Impossibile avviare HealthSolver.\\n"+(e?.message||String(e));status.textContent="Caricamento interrotto.";}}
           }})();
