@@ -36,9 +36,11 @@ jobs:
           await page.locator('aside .nav[data-page="previous"]').click();
           const iframe=page.locator('#previous');
           ok(await iframe.count()===1,'preserved iframe exists');
-          await page.waitForFunction(()=>{const f=document.getElementById('previous');return f&&f.contentDocument&&f.contentDocument.body&&f.contentDocument.body.innerText.length>1000},{timeout:30000});
           const frame=page.frameLocator('#previous');
+          await frame.locator('body').waitFor({state:'attached',timeout:30000});
+          await frame.getByText('HealthSolver',{exact:false}).first().waitFor({state:'visible',timeout:30000});
           const body=await frame.locator('body').innerText();
+          ok(body.length>1000,'preserved iframe content loaded');
           for(const term of ['CRB65','WDBC','NHAMCS','Backup']){
             ok(body.toLowerCase().includes(term.toLowerCase()),'preserved module contains '+term);
           }
