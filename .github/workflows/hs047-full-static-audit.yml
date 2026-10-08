@@ -44,7 +44,7 @@ jobs:
               json.loads(p.read_text(encoding='utf-8'))
           for ext in ('*.yml','*.yaml'):
               for p in pathlib.Path('.').rglob(ext):
-                  yaml.safe_load(p.read_text(encoding='utf-8'))
+                  list(yaml.safe_load_all(p.read_text(encoding='utf-8')))
           print('JSON/YAML parse PASS')
           PY
           npx --yes esbuild@0.25.10 frontend/src/App.js --bundle --loader:.js=jsx --packages=external --outfile=/tmp/healthsolver-legacy-frontend.js
