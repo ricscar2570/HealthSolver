@@ -9,6 +9,27 @@ if(!BUNDLE?.registry||!BUNDLE?.models) return;
 document.getElementById('hs-pe040')?.remove();
 document.getElementById('hs-router041')?.remove();
 
+
+// Release identity reconciliation: the standalone base originated from 0.38,
+// but the live product is HealthSolver 0.42. Keep dataset provenance text intact
+// while updating only visible application-release branding.
+(function reconcileReleaseBranding(){
+  const replacements=[
+    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'INTEGRATED PREDICTIVE UI · 0.42'],
+    [/^HealthSolver\s+0\.38\.0\s*·\s*Massive Public Data \+ Clinical Coach Research Edition\s*·\s*Riccardo Scaringi\s*·\s*Non uso clinico\.?$/i,
+     'HealthSolver 0.42.0 · Integrated Predictive UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
+  ];
+  const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+  const nodes=[];
+  while(walker.nextNode()) nodes.push(walker.currentNode);
+  for(const n of nodes){
+    const t=(n.nodeValue||'').trim();
+    for(const [rx,to] of replacements){
+      if(rx.test(t)){ n.nodeValue=n.nodeValue.replace(rx,to); break; }
+    }
+  }
+})();
+
 const host=document.getElementById('page-intelligence');
 if(!host) return;
 
