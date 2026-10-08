@@ -44,6 +44,14 @@ jobs:
           # Remove any prior embedded 0.39/0.40/0.41 overlay block if this workflow is rerun.
           html=re.sub(r'\n<!-- HS_PREDICTIVE_OVERLAY_BEGIN -->.*?<!-- HS_PREDICTIVE_OVERLAY_END -->\n',
                       '\n',html,flags=re.S)
+          # The preserved 0.32 visit/laboratory workspace uses a browser-local encrypted
+          # vault. A sandboxed srcdoc iframe without allow-same-origin has an opaque
+          # origin and cannot reliably access localStorage. The iframe content is
+          # trusted, fully embedded HealthSolver code; enable same-origin storage.
+          html=html.replace(
+              'sandbox="allow-scripts allow-forms allow-downloads allow-modals allow-popups allow-popups-to-escape-sandbox"',
+              'sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups allow-popups-to-escape-sandbox"'
+          )
           overlay='\n<!-- HS_PREDICTIVE_OVERLAY_BEGIN -->\n<script>window.__HS_PREDICTIVE_BUNDLE__='+bundle+';</script>\n<script>\n'+integrated+'\n</script>\n<!-- HS_PREDICTIVE_OVERLAY_END -->\n'
           assert '</body>' in html.lower()
           pos=html.lower().rfind('</body>')
