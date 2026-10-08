@@ -90,8 +90,10 @@ jobs:
           cube=[]
           def encode(v):
             if pd.isna(v): return None
-            if isinstance(v,(np.integer,)): return int(v)
-            if isinstance(v,(np.floating,)): return float(v)
+            if isinstance(v,(int,np.integer)): return int(v)
+            if isinstance(v,(float,np.floating)):
+              f=float(v)
+              return int(f) if f.is_integer() else f
             return str(v)
           for target,(col,pos,neg) in target_specs.items():
             if col not in df.columns: continue
