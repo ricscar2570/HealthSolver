@@ -1,0 +1,29 @@
+name: HealthSolver 0.35 CKD extract
+on:
+  push:
+    branches: ['macrostep/v0.33.0-differential-data']
+    paths: ['.github/workflows/hs035-ckd-extract.yml']
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download and extract CKD archive
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p out
+          curl -L --fail --retry 3 -o ckd.zip 'https://archive.ics.uci.edu/static/public/336/chronic%2Bkidney%2Bdisease.zip'
+          unzip -q ckd.zip -d temp
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq unrar-free >/dev/null
+          unrar-free x temp/Chronic_Kidney_Disease.rar out/
+          find out -type f -maxdepth 4 -print
+          sha256sum ckd.zip temp/Chronic_Kidney_Disease.rar > out/SOURCE_SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hs035-ckd-extracted
+          path: out/
+          retention-days: 14
