@@ -1,0 +1,56 @@
+name: HealthSolver 0.47 Preserved Module Diagnostic
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs047-preserved-module-diagnostic.yml']
+permissions:
+  contents: read
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Inspect preserved previous module
+        shell: bash
+        run: |
+          cat > diag.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1600}});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          await page.goto('https://ricscar2570.github.io/HealthSolver/?audit=previous-diagnostic',{waitUntil:'networkidle',timeout:120000});
+          await page.waitForFunction(()=>document.body.innerText.includes('Visita e laboratori precedenti'),{timeout:30000});
+          await page.locator('aside .nav[data-page="previous"]').click();
+          const iframe=page.locator('#previous');
+          console.log('IFRAME_COUNT',await iframe.count());
+          if(await iframe.count()===1){
+            const frame=page.frameLocator('#previous');
+            await frame.locator('body').waitFor({state:'attached',timeout:30000});
+            const body=await frame.locator('body').innerText();
+            console.log('BODY\n'+body.slice(0,15000));
+            const controls=await frame.locator('button,input,select,textarea,a,summary').evaluateAll(els=>els.map(e=>({tag:e.tagName,id:e.id||'',type:e.type||'',text:(e.innerText||e.value||e.placeholder||'').trim().slice(0,120)})));
+            console.log('CONTROLS\n'+JSON.stringify(controls,null,2));
+          }else{
+            console.log('OUTER\n'+await page.locator('#page-previous').innerText());
+          }
+          console.log('ERRORS',errors);
+          await page.screenshot({path:'preserved-diagnostic.png',fullPage:true});
+          await browser.close();
+          JS
+          node diag.mjs | tee preserved-diagnostic.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: healthsolver-047-preserved-diagnostic
+          path: |
+            preserved-diagnostic.txt
+            preserved-diagnostic.png
+          retention-days: 14
