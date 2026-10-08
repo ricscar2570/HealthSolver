@@ -1,4 +1,4 @@
-# HealthSolver 0.42 — Integrated Predictive UI + Clinical Coach Research Edition
+# HealthSolver 0.43 — Predictive-First Integrated UI + Clinical Coach Research Edition
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.42 line.
+The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.43 line.
 
 ## What HealthSolver does
 
@@ -44,7 +44,7 @@ For the deployed GitHub Pages build:
 - core application state, backup and recovery workflows are handled client-side;
 - large static resources are packaged for browser delivery.
 
-The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.42 application.
+The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.43 application.
 
 ## Clinical Coach
 
@@ -246,6 +246,26 @@ A final Playwright browser audit on the live GitHub Pages build verifies that:
 - the `HS-UCI-BC-001` model runs successfully;
 - a numeric predictive percentage is rendered inside Expert Mode.
 
+## Predictive-First UI 0.43
+
+HealthSolver 0.43 makes supervised prediction a primary, visually prominent function of Expert Mode rather than a secondary block hidden lower in the dossier.
+
+The predictive area now appears as a large highlighted section titled **“Predizioni cliniche di ricerca”** with:
+
+- a clear **Motore predittivo · HealthSolver 0.43** identity;
+- a visible badge showing **3 modelli supervisionati**;
+- three large model coverage cards for angiographic heart disease, CKD and breast FNA malignancy;
+- a large primary action button: **CALCOLA PREDIZIONI**;
+- a separate secondary action to refresh available dossier data;
+- specialist cardiac and FNA inputs kept collapsible so the main predictive workflow stays readable;
+- a dedicated **Risultati predittivi** area;
+- larger numeric probability output when a model runs;
+- a visible **PREDITTIVO** badge in the Expert Mode navigation item.
+
+The predictive engine still uses the same dossier already completed in HealthSolver. No second full case form is introduced.
+
+A live Playwright audit verifies that the predictive block is visible, the Expert Mode navigation exposes the predictive badge, all three model cards are present, and the primary predictive CTA is visually large enough to function as a main action.
+
 ## Machine learning and predictive research
 
 HealthSolver is being developed toward a broader machine-learning research architecture in which structured symptoms, history, vital signs, laboratory data and observations can be used as model inputs.
@@ -346,9 +366,9 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.42 — Integrated Predictive UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
+**HealthSolver 0.43 — Predictive-First Integrated UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
 
-Current predictive release is represented by the 0.42 checkpoint, the integrated Expert Mode predictive UI, the versioned predictive registry and the three model artifacts under `predictive/`.
+Current predictive release is represented by the 0.43 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and the three model artifacts under `predictive/`.
 
 The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
