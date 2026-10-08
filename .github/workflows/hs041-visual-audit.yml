@@ -40,7 +40,7 @@ jobs:
           if(await expert.locator('#hs-predictive-integrated').count()!==1) throw new Error('Predictive UI is not inside Expert Mode');
           await page.evaluate(()=>{
             const set=(id,v)=>{const e=document.getElementById(id);if(!e)return; e.value=String(v);e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));};
-            const firstNonEmpty=id=>{const e=document.getElementById(id);if(!e)return;const o=[...e.options].find(x=>x.value!=='');if(o){e.value=o.value;e.dispatchEvent(new Event('change',{bubbles:true}));}};
+            const firstNonEmpty=id=>{const e=document.getElementById(id);if(!e)return;const os=[...e.options].filter(x=>x.value!=='');const o=os[os.length-1];if(o){e.value=o.value;e.dispatchEvent(new Event('change',{bubbles:true}));}};
             set('ciAge',58);firstNonEmpty('ciSex');set('ci_systolic',138);set('ci_total_chol',238);set('ci_fasting_glucose',126);
             set('ci_max_heart_rate',154);firstNonEmpty('ci_exercise_angina');set('ci_oldpeak',1.1);set('ci_major_vessels',1);firstNonEmpty('ci_cp_2');firstNonEmpty('ci_ecg_0');firstNonEmpty('ci_slope_2');firstNonEmpty('ci_thal_3');
             set('ci_bp',82);set('ci_specific_gravity',1.02);set('ci_urine_albumin',1);set('ci_urine_sugar',0);set('ci_random_glucose',142);
