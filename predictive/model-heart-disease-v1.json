@@ -1,0 +1,143 @@
+{
+  "abstention": {
+    "max_missing_features": 3,
+    "message": "Prediction withheld when more than three required features are missing."
+  },
+  "calibration": {
+    "intercept": 0.10696267172981477,
+    "method": "Platt scaling on held-out calibration split",
+    "slope": 1.176530881894335
+  },
+  "dataset": {
+    "doi": "10.24432/C52P4X",
+    "license": "CC BY 4.0",
+    "name": "UCI Heart Disease",
+    "source": "https://archive.ics.uci.edu/dataset/45/heart+disease",
+    "uci_id": 45
+  },
+  "features": [
+    "age",
+    "sex",
+    "cp",
+    "trestbps",
+    "chol",
+    "fbs",
+    "restecg",
+    "thalach",
+    "exang",
+    "oldpeak",
+    "slope",
+    "ca",
+    "thal"
+  ],
+  "imputation": {
+    "strategy": "training median",
+    "values": {
+      "age": 55.0,
+      "ca": 0.0,
+      "chol": 236.0,
+      "cp": 3.0,
+      "exang": 0.0,
+      "fbs": 0.0,
+      "oldpeak": 0.8,
+      "restecg": 0.0,
+      "sex": 1.0,
+      "slope": 2.0,
+      "thal": 3.0,
+      "thalach": 152.0,
+      "trestbps": 130.0
+    }
+  },
+  "input_semantics": {
+    "age": "years",
+    "ca": "number of major vessels colored by fluoroscopy (0-3)",
+    "chol": "serum cholesterol mg/dL",
+    "cp": "1=typical angina,2=atypical angina,3=non-anginal pain,4=asymptomatic",
+    "exang": "exercise-induced angina 0/1",
+    "fbs": "1 if fasting blood sugar >120 mg/dL else 0",
+    "oldpeak": "ST depression induced by exercise relative to rest",
+    "restecg": "0=normal,1=ST-T abnormality,2=LVH",
+    "sex": "0=female, 1=male",
+    "slope": "1=upsloping,2=flat,3=downsloping",
+    "thal": "3=normal,6=fixed defect,7=reversible defect",
+    "thalach": "maximum heart rate achieved",
+    "trestbps": "resting systolic blood pressure mmHg"
+  },
+  "logistic": {
+    "coefficients": {
+      "age": 0.0680458091650609,
+      "ca": 0.5859680810003117,
+      "chol": 0.049972019680745106,
+      "cp": 0.7590341070827215,
+      "exang": 0.3587782216627789,
+      "fbs": -0.015956888096918382,
+      "oldpeak": 0.46230109717437934,
+      "restecg": 0.07585942255505437,
+      "sex": 0.4823212002556218,
+      "slope": 0.2568840949921057,
+      "thal": 0.515877358370169,
+      "thalach": -0.527683716634837,
+      "trestbps": 0.23732142283175908
+    },
+    "intercept": -0.15660528662119425
+  },
+  "metrics_test": {
+    "accuracy": 0.8360655737704918,
+    "auprc": 0.9042968120540597,
+    "auroc": 0.895021645021645,
+    "brier": 0.127647858526313,
+    "confusion_matrix": {
+      "fn": 7,
+      "fp": 3,
+      "tn": 30,
+      "tp": 21
+    },
+    "n_calibration": 61,
+    "n_test": 61,
+    "n_total": 303,
+    "n_train": 181,
+    "prevalence_total": 0.45874587458745875,
+    "sensitivity": 0.75,
+    "specificity": 0.9090909090909091
+  },
+  "model_id": "HS-UCI-HD-001",
+  "not_clinically_validated": true,
+  "release": "HealthSolver 0.39 Predictive Engine v1",
+  "research_only": true,
+  "schema": "healthsolver.predictive_model.v1",
+  "standardization": {
+    "mean": {
+      "age": 53.591160220994475,
+      "ca": 0.580110497237569,
+      "chol": 245.8011049723757,
+      "cp": 3.143646408839779,
+      "exang": 0.3370165745856354,
+      "fbs": 0.1270718232044199,
+      "oldpeak": 1.0867403314917126,
+      "restecg": 0.9668508287292817,
+      "sex": 0.6961325966850829,
+      "slope": 1.6464088397790055,
+      "thal": 4.762430939226519,
+      "thalach": 149.22099447513813,
+      "trestbps": 131.08839779005524
+    },
+    "scale": {
+      "age": 8.757552654031912,
+      "ca": 0.8671041465994895,
+      "chol": 52.84245529545314,
+      "cp": 1.0034889230179376,
+      "exang": 0.47269059969519195,
+      "fbs": 0.333053411560255,
+      "oldpeak": 1.2322735955704893,
+      "restecg": 0.9911238806570576,
+      "sex": 0.4599260859285616,
+      "slope": 0.6279413252750267,
+      "thal": 1.9479193183099175,
+      "thalach": 22.819633910926324,
+      "trestbps": 16.515284338149915
+    }
+  },
+  "task": "Binary prediction of angiographic heart disease presence (>50% diameter narrowing) versus absence in the UCI Heart Disease dataset.",
+  "threshold": 0.5,
+  "version": "1.0.0"
+}
