@@ -1,0 +1,43 @@
+name: HealthSolver 0.47 Validation Source Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs047-validation-source-audit.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract external validation implementation
+        shell: bash
+        run: |
+          git fetch origin gh-pages
+          git worktree add /tmp/hs-pages origin/gh-pages
+          python - <<'PY'
+          import base64,gzip,pathlib,re
+          p=pathlib.Path('/tmp/hs-pages/docs/payload')
+          enc=''.join(x.read_text().strip() for x in sorted(p.glob('part-*.b64')))
+          html=gzip.decompress(base64.b64decode(enc)).decode('utf-8')
+          needles=['ciValRun','ciValTemplate','ciValFile','ciValExport','target_']
+          out=[]
+          for needle in needles:
+              out.append('\n===== '+needle+' =====\n')
+              matches=list(re.finditer(re.escape(needle),html,re.I))
+              out.append('COUNT='+str(len(matches))+'\n')
+              for m in matches[:10]:
+                  out.append(html[max(0,m.start()-7000):min(len(html),m.end()+14000)])
+                  out.append('\n---\n')
+          pathlib.Path('validation-source.txt').write_text(''.join(out))
+          PY
+          grep -n -E 'ciValRun|ciValTemplate|ciValFile|ciValExport|target_' validation-source.txt | head -80
+          head -c 120000 validation-source.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: healthsolver-047-validation-source
+          path: validation-source.txt
+          retention-days: 7
