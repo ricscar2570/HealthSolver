@@ -43,7 +43,8 @@ jobs:
               })));
             }
           }
-          console.log('\nBODYROOTS',await page.locator('body > *').evaluateAll(els=>els.map(el=>({tag:el.tagName,id:el.id,cls:el.className,html:el.outerHTML.slice(0,4000)}))));
+          console.log('\nMAINCHILDREN',await page.locator('.main > *').evaluateAll(els=>els.map((el,i)=>({i,tag:el.tagName,id:el.id,cls:el.className,dataPage:el.getAttribute('data-page'),text:(el.innerText||'').slice(0,300)}))));
+          console.log('\nNAVBUTTONS',await page.locator('aside .nav').evaluateAll(els=>els.map((el,i)=>({i,text:el.innerText,dataPage:el.getAttribute('data-page'),cls:el.className}))));
           await browser.close();
           JS
           node audit.mjs > dom-audit.txt
