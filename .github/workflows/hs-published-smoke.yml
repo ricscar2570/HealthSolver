@@ -8,32 +8,33 @@ permissions:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 6
     steps:
-      - name: Verify live HealthSolver 0.40 assets
+      - name: Verify live HealthSolver 0.41 assets
         shell: bash
         run: |
           set -euxo pipefail
           base='https://ricscar2570.github.io/HealthSolver'
           ok=0
-          for i in $(seq 1 12); do
-            curl -L --fail -H 'Cache-Control: no-cache' "$base/?release=0.40.0&attempt=$i" -o index.html || true
-            if grep -q 'HealthSolver 0.40.0' index.html; then ok=1; break; fi
+          for i in $(seq 1 18); do
+            curl -L --fail -H 'Cache-Control: no-cache' "$base/?release=0.41.0&attempt=$i" -o index.html || true
+            if grep -q 'HealthSolver 0.41.0' index.html && grep -q 'unified-case-router.js' index.html; then ok=1; break; fi
             sleep 5
           done
           test "$ok" = 1
-          grep -q 'predictive-engine.js' index.html
-          curl -L --fail --retry 8 --retry-delay 5 "$base/version.json" -o version.json
+          curl -L --fail --retry 8 --retry-delay 5 "$base/version.json?release=0.41.0" -o version.json
           python - <<'PY'
           import json
           v=json.load(open('version.json'))
-          assert v['version']=='0.40.0',v
+          assert v['version']=='0.41.0',v
+          assert v['unified_router']=='unified-case-router.js',v
           assert set(v['predictive_models'])=={'HS-UCI-HD-001','HS-UCI-CKD-001','HS-UCI-BC-001'},v
           print(v)
           PY
-          curl -L --fail --retry 8 --retry-delay 5 "$base/predictive-engine.js" -o predictive-engine.js
-          grep -q 'HS_PREDICTIVE_ENGINE_040' predictive-engine.js
-          curl -L --fail --retry 8 --retry-delay 5 "$base/predictive/model-registry-v2.json" -o registry.json
+          curl -L --fail --retry 8 --retry-delay 5 "$base/unified-case-router.js?release=0.41.0" -o router.js
+          grep -q 'HS_UNIFIED_ROUTER_041' router.js
+          grep -q 'Analizza con tutti i modelli applicabili' router.js
+          curl -L --fail --retry 8 --retry-delay 5 "$base/predictive/model-registry-v2.json?release=0.41.0" -o registry.json
           python - <<'PY'
           import json
           r=json.load(open('registry.json'))
@@ -42,7 +43,7 @@ jobs:
           print([m['model_id'] for m in r['models']])
           PY
           for file in model-heart-disease-v1.json model-ckd-v1.json model-breast-cancer-v1.json; do
-            curl -L --fail --retry 8 --retry-delay 5 "$base/predictive/$file" -o "$file"
+            curl -L --fail --retry 8 --retry-delay 5 "$base/predictive/$file?release=0.41.0" -o "$file"
           done
           python - <<'PY'
           import json
