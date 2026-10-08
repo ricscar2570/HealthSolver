@@ -1,4 +1,5 @@
 name: HealthSolver 0.47 Preserved Module Diagnostic
+# recursive laboratory inventory
 on:
   push:
     branches: ['main']
@@ -37,8 +38,23 @@ jobs:
             await frame.locator('body').waitFor({state:'attached',timeout:30000});
             const body=await frame.locator('body').innerText();
             console.log('BODY\n'+body.slice(0,15000));
-            const controls=await frame.locator('button,input,select,textarea,a,summary').evaluateAll(els=>els.map(e=>({tag:e.tagName,id:e.id||'',type:e.type||'',text:(e.innerText||e.value||e.placeholder||'').trim().slice(0,120)})));
+            const controls=await frame.locator('button,input,select,textarea,a,summary').evaluateAll(els=>els.map(e=>({tag:e.tagName,id:e.id||'',type:e.type||'',text:(e.innerText||e.value||e.placeholder||'').trim().slice(0,120),dataPage:e.getAttribute('data-page')})));
             console.log('CONTROLS\n'+JSON.stringify(controls,null,2));
+            const navs=await frame.locator('[data-page]').evaluateAll(els=>els.map(e=>({tag:e.tagName,id:e.id||'',text:(e.innerText||'').trim(),dataPage:e.getAttribute('data-page')})));
+            console.log('INTERNAL_NAVS\n'+JSON.stringify(navs,null,2));
+            const labNav=frame.locator('[data-page="lab"]');
+            if(await labNav.count()===1){
+              await labNav.click();await page.waitForTimeout(250);
+              const labOuter=frame.locator('#laboratory');
+              console.log('LAB_IFRAME_COUNT',await labOuter.count());
+              if(await labOuter.count()===1){
+                const lab=frame.frameLocator('#laboratory');
+                await lab.locator('body').waitFor({state:'attached',timeout:30000});
+                console.log('LAB_BODY\n'+(await lab.locator('body').innerText()).slice(0,16000));
+                const labControls=await lab.locator('button,input,select,textarea,a,summary').evaluateAll(els=>els.map(e=>({tag:e.tagName,id:e.id||'',type:e.type||'',text:(e.innerText||e.value||e.placeholder||'').trim().slice(0,140),dataPage:e.getAttribute('data-page')})));
+                console.log('LAB_CONTROLS\n'+JSON.stringify(labControls,null,2));
+              }
+            }
           }else{
             console.log('OUTER\n'+await page.locator('#page-previous').innerText());
           }
