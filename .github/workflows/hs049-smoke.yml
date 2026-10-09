@@ -84,7 +84,7 @@ jobs:
       - name: Verify integrated UI references ninth model
         shell: bash
         run: |
-          grep -Eq 'HS_INTEGRATED_PREDICTIVE_051|HS_INTEGRATED_PREDICTIVE_050|HS_INTEGRATED_PREDICTIVE_0491|HS_INTEGRATED_PREDICTIVE_049' predictive/integrated-predictive-ui.js
+          grep -Eq 'HS_INTEGRATED_PREDICTIVE_052|HS_INTEGRATED_PREDICTIVE_0511|HS_INTEGRATED_PREDICTIVE_051|HS_INTEGRATED_PREDICTIVE_050|HS_INTEGRATED_PREDICTIVE_0491|HS_INTEGRATED_PREDICTIVE_049' predictive/integrated-predictive-ui.js
           grep -q 'MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
           grep -q 'HS-UCI-HFDEATH-001' predictive/integrated-predictive-ui.js
           grep -Eq 'Insufficienza cardiaca · (DEATH_EVENT coorte UCI 519|mortalità nel follow-up)' predictive/integrated-predictive-ui.js
