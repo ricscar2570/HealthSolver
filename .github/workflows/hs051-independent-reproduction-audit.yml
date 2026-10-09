@@ -20,7 +20,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          python -m pip install --disable-pip-version-check -q numpy pandas scikit-learn
+          python -m pip install --disable-pip-version-check -q numpy==2.5.3 pandas==3.0.6 scikit-learn==1.9.1
           python - <<'PY'
           import io,json,math,urllib.request,zipfile
           import numpy as np,pandas as pd,sklearn
@@ -30,6 +30,8 @@ jobs:
           from sklearn.model_selection import train_test_split
 
           stored=json.load(open('predictive/model-sepsis-hospital-death-v1.json'))
+          assert stored['version']=='1.0.1'
+          assert stored['runtime_environment']=={'python':'3.13','numpy':'2.5.3','pandas':'3.0.6','scikit_learn':'1.9.1'}
           report=json.load(open('predictive/model-sepsis-hospital-death-v1-report.json'))
 
           url='https://archive.ics.uci.edu/static/public/827/sepsis+survival+minimal+clinical+records.zip'
