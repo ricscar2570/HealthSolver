@@ -144,8 +144,8 @@ jobs:
           model={
             'schema':'healthsolver.predictive_model.v1',
             'model_id':'HS-SUPPORT2-HOSPDEATH-001',
-            'version':'1.0.0',
-            'release':'HealthSolver 0.53 SUPPORT2 Hospital Death Integration',
+            'version':'1.0.1',
+            'release':'HealthSolver 0.53.1 Code Audit Remediation',
             'task':'Binary research classification of SUPPORT2 hospdead using a predeclared day-3/baseline feature set after split-first protocol.',
             'research_only':True,
             'not_clinically_validated':True,
@@ -176,7 +176,13 @@ jobs:
             'threshold':threshold,
             'threshold_selection':'Youden J maximum on held-out calibration split; evaluated once on untouched held-out test',
             'metrics_test':metrics,
-            'abstention':{'max_missing_features':4,'message':'Prediction withheld when more than four encoded/raw clinical inputs are unavailable.'},
+            'abstention':{
+              'max_missing_features':4,
+              'max_missing_raw_features':4,
+              'required_raw_features':['sex','dzgroup','ca'],
+              'message':'Prediction withheld when more than four raw clinical inputs are unavailable or when a required categorical field (sex, diagnosis group, cancer status) is missing.'
+            },
+            'input_timepoint_policy':'Age and sex may be reused from the common dossier. Day-3 physiology (mean blood pressure, WBC, heart rate, respiratory rate, temperature, creatinine, sodium) must be supplied explicitly in the SUPPORT2 panel because the common dossier does not encode the SUPPORT day-3 timepoint.',
             'target_definition':{
               'source_name':'hospdead',
               'negative':'0 = survived hospitalization',
@@ -194,10 +200,10 @@ jobs:
           (out/'model-support2-hospital-death-v1-report.json').write_text(json.dumps(metrics,indent=2,sort_keys=True))
 
           reg=json.loads((out/'model-registry-v2.json').read_text())
-          assert reg['version'] in {'0.52.0','0.53.0'},reg['version']
+          assert reg['version'] in {'0.52.0','0.53.0','0.53.1'},reg['version']
           old=[m for m in reg['models'] if m['model_id']!='HS-SUPPORT2-HOSPDEATH-001']
           assert len(old)==12,[m['model_id'] for m in old]
-          reg['version']='0.53.0'
+          reg['version']='0.53.1'
           reg['models']=old+[{
             'model_id':model['model_id'],
             'title':'SUPPORT2 · decesso intraospedaliero · day 3',
