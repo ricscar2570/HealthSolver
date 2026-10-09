@@ -1,11 +1,12 @@
 // frontend/src/components/Results.js
 import React from 'react';
 import ResultChart from './ResultChart'; // Assicurati che l'import sia corretto
+import { apiUrl } from '../apiBase';
 
 const Results = () => {
   // Definisci l'endpoint API da cui caricare i dati per il grafico
   // Esempio: usa l'endpoint di previsione temporale da analytics.py (se attivato)
-  const predictionApiEndpoint = 'http://localhost:8000/dashboard/predict'; // URL aggiornato
+  const predictionApiEndpoint = apiUrl('/dashboard/predict');
 
   // Esempio: usa un altro endpoint se vuoi visualizzare altro, ad esempio
   // una distribuzione di rischio o dati paziente da /dashboard/data
