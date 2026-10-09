@@ -1,0 +1,153 @@
+name: HealthSolver 0.54 eICU Live Browser Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs054-live-browser-audit.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Verify live eICU integration
+        shell: bash
+        run: |
+          cat > audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const base='https://ricscar2570.github.io/HealthSolver/';
+          const meta=await fetch(base+'version.json?audit=054-eicu').then(r=>r.json());
+          if(meta.version!=='0.54.0') throw new Error('wrong published version '+meta.version);
+          if(meta.predictive_model_count!==14) throw new Error('wrong model count '+meta.predictive_model_count);
+          if(!meta.predictive_models.includes('HS-EICU-DEMO-HOSPDEATH-001')) throw new Error('eICU model missing');
+          if(meta.eicu_demo_hospital_death_integrated!==true) throw new Error('eICU integration flag missing');
+
+          const reg=await fetch(base+'predictive/model-registry-v2.json?audit=054-eicu').then(r=>r.json());
+          if(reg.version!=='0.54.0'||reg.models.length!==14) throw new Error('wrong registry');
+          const model=await fetch(base+'predictive/model-eicu-demo-hospital-death-v1.json?audit=054-eicu').then(r=>r.json());
+          if(model.dataset.version!=='2.0.1'||model.dataset.development_cohort_rows!==2004) throw new Error('eICU provenance mismatch');
+          if(model.raw_features.length!==11||model.features.length!==12) throw new Error('eICU feature shape mismatch');
+          if(model.target_definition.source_name!=='hospitaldischargestatus') throw new Error('wrong eICU target');
+          if(!model.split_policy.includes('uniquepid')) throw new Error('patient grouping disclosure missing');
+
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:2400}});
+          const errors=[];
+          page.on('pageerror',e=>errors.push('PAGE '+e.message));
+          page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
+          await page.goto(base+'?audit=054-eicu',{waitUntil:'networkidle',timeout:120000});
+          await page.waitForFunction(()=>document.body.innerText.includes('Clinical Coach')&&document.body.innerText.includes('Expert Mode'),{timeout:30000});
+          await page.locator('aside .nav[data-page="intelligence"]').click();
+          await page.waitForTimeout(300);
+
+          const block=page.locator('#hs-predictive-integrated');
+          const initial=await block.innerText();
+          if(!initial.includes('14 MODELLI SUPERVISIONATI')) throw new Error('14-model badge missing');
+          if(!initial.includes('eICU Demo · decesso ospedaliero · first APACHE day')) throw new Error('eICU coverage card missing');
+
+          const details=page.locator('#hs54EicuDetails');
+          if(await details.count()!==1) throw new Error('eICU panel missing');
+          await details.evaluate(el=>{el.open=true});
+          const detail=await details.innerText();
+          for(const needle of [
+            'fine del primo APACHE day',
+            'hospitalDischargeStatus = Expired',
+            'non è mortalità a 24 ore, 30 o 90 giorni',
+            'nessun APACHE score',
+            'stesso paziente non compare in più partizioni',
+            'non è validazione esterna'
+          ]){
+            if(!detail.includes(needle)) throw new Error('missing eICU disclosure '+needle);
+          }
+
+          const set=async(id,v)=>{
+            const loc=page.locator('#'+id);
+            if(await loc.count()!==1) throw new Error('missing control '+id);
+            await loc.evaluate((e,val)=>{
+              e.value=String(val);
+              e.dispatchEvent(new Event('input',{bubbles:true}));
+              e.dispatchEvent(new Event('change',{bubbles:true}));
+            },v);
+          };
+
+          await set('ciAge',65);
+          const sex=page.locator('#ciSex');
+          const opts=await sex.locator('option').evaluateAll(os=>os.map(o=>({v:o.value,t:o.textContent.trim()})));
+          const male=opts.find(o=>/masch|male|^m$/i.test(o.t)||/^(m|male|maschio|1)$/i.test(o.v));
+          if(!male) throw new Error('male option missing');
+          await sex.selectOption(male.v);
+
+          // Deliberately set incompatible generic values. The eICU collector must ignore them.
+          await set('ci_pulse',190);
+          await set('ci_creatinine',9.9);
+          await set('ci_sodium',111);
+
+          const vals={
+            hs54_gcs_total:15,
+            hs54_gcs_meds:0,
+            hs54_temperature:37.0,
+            hs54_respiratoryrate:18,
+            hs54_heartrate:82,
+            hs54_meanbp:85,
+            hs54_glucose:120,
+            hs54_sodium:140,
+            hs54_creatinine:1.0
+          };
+          for(const [id,v] of Object.entries(vals)) await set(id,v);
+
+          await page.locator('#hs42Refresh').click();
+          await page.waitForTimeout(150);
+          const cov=page.locator('#hs42Coverage .metric').filter({hasText:'eICU Demo · decesso ospedaliero · first APACHE day'});
+          if(await cov.count()!==1) throw new Error('eICU coverage missing');
+          const covText=await cov.innerText();
+          if(!/12\/12/.test(covText)||!/PRONTO ALLA PREDIZIONE/i.test(covText)) throw new Error('eICU not ready '+covText);
+
+          await page.locator('#hs42Run').click();
+          await page.waitForTimeout(400);
+          const card=page.locator('#hs42Results .card').filter({hasText:'HS-EICU-DEMO-HOSPDEATH-001'});
+          if(await card.count()!==1) throw new Error('eICU result missing');
+          const text=await card.innerText();
+          if(!/%/.test(text)||/Astensione/i.test(text)) throw new Error('eICU probability missing');
+          if(!/Test interno: AUROC 0\.822 · Brier 0\.069/.test(text)) throw new Error('eICU metrics missing');
+          if(!text.includes('eICU Demo hospitalDischargeStatus, first APACHE day')) throw new Error('eICU semantic warning missing');
+          if(!text.includes('Split patient-disjoint')) throw new Error('patient split warning missing');
+
+          // Explicit first-day values must be used rather than generic dossier values.
+          if(text.includes('Fuori dal range osservato nel training: heartrate')||
+             text.includes('Fuori dal range osservato nel training: creatinine')||
+             text.includes('Fuori dal range osservato nel training: sodium')){
+            throw new Error('generic dossier values leaked into eICU model');
+          }
+
+          const resultCards=await page.locator('#hs42Results>.card').count();
+          if(resultCards!==14) throw new Error('expected 14 result cards, got '+resultCards);
+
+          const serious=errors.filter(e=>!/Failed to load resource.*api\.fda\.gov/i.test(e));
+          if(serious.length) throw new Error(serious.join(' | '));
+          await page.screenshot({path:'HealthSolver-0.54-eICU.png',fullPage:true});
+          console.log('EICU_COVERAGE\n'+covText);
+          console.log('EICU_RESULT\n'+text);
+          console.log('EICU LIVE PASS');
+          await browser.close();
+          JS
+          node audit.mjs | tee audit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: healthsolver-054-eicu-live
+          path: |
+            HealthSolver-0.54-eICU.png
+            audit.txt
+          retention-days: 14
