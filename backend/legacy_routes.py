@@ -1,8 +1,8 @@
 """Legacy compatibility router.
 
 This module belongs to the pre-browser HealthSolver prototype and is not used by
-the current GitHub Pages Research Edition. It is kept syntactically valid for
-historical/local development without claiming unavailable integrations.
+the current GitHub Pages Research Edition. It remains importable for controlled
+local demonstrations only.
 """
 
 import random
@@ -29,14 +29,22 @@ def recommendation(data: LegacyPatientFeatures):
         prediction = predict_therapy(
             [data.age, data.bmi, data.condition_severity, data.comorbidities_count]
         )
-        return {"recommended_therapy": int(prediction)}
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Legacy therapy model is unavailable.",
+        ) from exc
     except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"Legacy model unavailable: {exc}") from exc
+        raise HTTPException(
+            status_code=500,
+            detail="Legacy therapy prediction failed.",
+        ) from exc
+    return {"recommended_therapy": int(prediction), "legacy": True}
 
 
 @router.get("/chart_data/")
 def chart_data():
-    """Return synthetic demo chart data for the legacy React ResultChart."""
+    """Return explicitly synthetic chart data for the legacy demonstration."""
     return {
         "labels": ["Therapy A", "Therapy B", "Therapy C"],
         "datasets": [
@@ -57,5 +65,6 @@ def chart_data():
             }
         ],
         "research_only": True,
+        "synthetic": True,
         "note": "Synthetic legacy demonstration data; not a clinical risk estimate.",
     }
