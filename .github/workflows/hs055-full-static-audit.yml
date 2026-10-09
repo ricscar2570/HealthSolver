@@ -138,8 +138,11 @@ jobs:
           grep -q 'window.__HS_ENSEMBLE_CONFIG__' predictive/integrated-predictive-ui.js
           grep -q "ensemble=json.loads((main/'predictive'/'ensemble-intelligence-v1.json').read_text())" .github/workflows/hs041-repack-pages.yml
           grep -q 'window.__HS_ENSEMBLE_CONFIG__' .github/workflows/hs041-repack-pages.yml
-          grep -q "v\['version'\]='0.55.0'" .github/workflows/hs041-repack-pages.yml
+          grep -q "v\['version'\]='0.56.0'" .github/workflows/hs041-repack-pages.yml
           grep -q "v\['ensemble_intelligence_integrated'\]=True" .github/workflows/hs041-repack-pages.yml
-          grep -q "expected_release='0.55.0'" .github/workflows/hs-published-smoke.yml
+          grep -q "transport=json.loads((main/'predictive'/'common-outcome-transport-v1.json').read_text())" .github/workflows/hs041-repack-pages.yml
+          grep -q 'window.__HS_COMMON_OUTCOME_TRANSPORT__' .github/workflows/hs041-repack-pages.yml
+          grep -q "v\['common_outcome_transport_integrated'\]=True" .github/workflows/hs041-repack-pages.yml
+          grep -q "expected_release='0.56.0'" .github/workflows/hs-published-smoke.yml
           grep -q "expected_registry='0.54.1'" .github/workflows/hs-published-smoke.yml
-          echo '0.55 PACKAGING INVARIANTS PASS'
+          echo '0.55 ENSEMBLE + CURRENT 0.56 PACKAGING INVARIANTS PASS'
