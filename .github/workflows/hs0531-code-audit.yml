@@ -1,6 +1,7 @@
 name: HealthSolver 0.53.1 Code Audit
 # rerun after SQLite MLflow remediation
 # strict-negative-checks
+# http-integration-hardening
 on:
   push:
     branches: ['main']
@@ -50,7 +51,7 @@ jobs:
 
       - name: Install minimal legacy Python dependencies
         run: |
-          python -m pip install --disable-pip-version-check -q             pytest ruff fastapi sqlalchemy pandas numpy joblib scikit-learn mlflow redis             prometheus-fastapi-instrumentator prometheus-client cryptography requests
+          python -m pip install --disable-pip-version-check -q             pytest ruff fastapi httpx sqlalchemy pandas numpy joblib scikit-learn mlflow redis             prometheus-fastapi-instrumentator prometheus-client cryptography requests
 
       - name: Run Python undefined-name audit and isolated tests
         shell: bash
@@ -68,12 +69,24 @@ jobs:
           for k in list(os.environ):
               if k.startswith('ENABLE_LEGACY_'): os.environ.pop(k,None)
           import backend.main as m
+          from fastapi.testclient import TestClient
           paths=set(m.app.openapi()['paths'])
           assert '/' in paths
           assert '/predict/predict' in paths
           assert '/dashboard/data' not in paths
           assert '/dashboard/predict' not in paths
-          print('DEFAULT LEGACY API PASS')
+          client=TestClient(m.app)
+          assert client.get('/').status_code==200
+          r=client.post('/predict/predict',json={'age':50,'bmi':25,'condition_severity':2,'comorbidities_count':1})
+          assert r.status_code==503,r.text
+          preflight=client.options('/predict/predict',headers={
+              'Origin':'http://localhost:3000',
+              'Access-Control-Request-Method':'POST',
+              'Access-Control-Request-Headers':'content-type',
+          })
+          assert preflight.status_code==200,preflight.text
+          assert preflight.headers.get('access-control-allow-origin')=='http://localhost:3000'
+          print('DEFAULT LEGACY API + CORS PASS')
           PY
           ENABLE_LEGACY_ANALYTICS=1 python - <<'PY'
           import asyncio
@@ -92,6 +105,25 @@ jobs:
           else:
               raise AssertionError('Predict endpoint should be unavailable without optional Prophet')
           print('OPTIONAL ANALYTICS LAZY-LOAD PASS')
+          PY
+          ENABLE_LEGACY_ADMIN_ROUTES=1 python - <<'PY'
+          import backend.main as m
+          from fastapi.testclient import TestClient
+          paths=set(m.app.openapi()['paths'])
+          assert '/admin/alerts' in paths
+          client=TestClient(m.app)
+          response=client.get('/admin/alerts')
+          assert response.status_code==200,response.text
+          assert 'alerts' in response.json()
+          print('OPTIONAL ADMIN ALERTS PASS')
+          PY
+          ENABLE_LEGACY_PACS=1 python - <<'PY'
+          import backend.main as m
+          paths=set(m.app.openapi()['paths'])
+          assert '/pacs/studies' in paths
+          assert '/pacs/study/{study_id}/series' in paths
+          assert '/pacs/instance/{instance_id}' in paths
+          print('OPTIONAL PACS ROUTES PASS')
           PY
 
       - name: Verify legacy dashboard source regression fixes
@@ -137,4 +169,7 @@ jobs:
           if grep -q "crea:first(num('ci_creatinine')" predictive/integrated-predictive-ui.js; then echo 'Generic creatinine fallback still present'; exit 1; fi
           grep -q 'max_missing_raw_features' predictive/integrated-predictive-ui.js
           grep -q 'requiredRawMissing' predictive/integrated-predictive-ui.js
-          echo 'SUPPORT2 WIRING PASS'
+          grep -q 'Path(file.filename or "upload.dcm").name' backend/routes/cnn_api.py
+          grep -q '64 \* 1024 \* 1024' backend/routes/cnn_api.py
+          grep -q 'timeout=PACS_TIMEOUT_SECONDS' backend/models/pacs.py
+          echo 'SUPPORT2 + LEGACY SECURITY WIRING PASS'
