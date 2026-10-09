@@ -1,4 +1,4 @@
-# HealthSolver 0.50 — CDC Diabetes Health Indicators Integration + Predictive-First UI
+# HealthSolver 0.51 — UCI Sepsis Survival Integration + Predictive-First UI
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.50 line.
+The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.51 line.
 
 ## What HealthSolver does
 
@@ -44,7 +44,7 @@ For the deployed GitHub Pages build:
 - core application state, backup and recovery workflows are handled client-side;
 - large static resources are packaged for browser delivery.
 
-The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.50 application.
+The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.51 application.
 
 ## Clinical Coach
 
@@ -826,6 +826,123 @@ The new section:
 
 contains the survey-domain inputs and shows the target limitation both before prediction and again on the result card.
 
+## UCI Sepsis Survival Minimal Clinical Records integration 0.51
+
+HealthSolver 0.51 adds one complete database macrostep based on **Sepsis Survival Minimal Clinical Records** (UCI ID 827, DOI `10.24432/C53C8N`, CC BY 4.0).
+
+The source package contains three related files:
+
+- **Norwegian primary cohort:** 110,204 admissions from 84,811 hospitalized subjects, 2011–2012;
+- **Norwegian study cohort:** 19,051 admissions satisfying the later Sepsis-3-compatible selection and nested inside the primary cohort;
+- **South Korean validation cohort:** 137 independent patients, collected 2007–2015.
+
+The study cohort is **not appended** to the primary cohort during training because it is a subset of it.
+
+### Predictors
+
+The source model uses only three admission-level fields:
+
+- age in years;
+- sex, source-coded `0=male, 1=female`;
+- septic episode number.
+
+HealthSolver reuses age and sex from the common dossier and explicitly converts its own sex encoding to the UCI source encoding. The user supplies only the septic episode number in the dedicated panel.
+
+### Target semantics
+
+The source target is:
+
+`hospital_outcome_1alive_0dead`
+
+with:
+
+- `1 = alive`
+- `0 = dead`
+
+HealthSolver inverts this solely for risk-oriented display so that its positive class is **hospital-outcome death**.
+
+This does **not** mean “9-day mortality”.
+
+The associated publication reports hospital length of stay ranging from 0 to 499 days with mean about 9.351 days. Length of stay is excluded from the predictors because it is related to survival. Therefore the HealthSolver output is a binary hospital-outcome source label with **no fixed time horizon**, not a time-to-event or survival probability.
+
+### Internal split limitation
+
+The primary cohort contains more admissions than unique subjects. The minimal released table does not expose a patient identifier, so HealthSolver cannot perform a subject-grouped internal split.
+
+The internal train/calibration/test split is therefore **admission-level**. Repeated admissions from the same subject cannot be guaranteed to remain in only one partition.
+
+This limitation is recorded explicitly in the model artifact.
+
+### Training design
+
+Primary cohort only:
+
+- total admissions: **110,204**
+- training: **66,122**
+- calibration: **22,041**
+- held-out internal test: **22,041**
+- death prevalence: **7.35%**
+- class-balanced regularized logistic regression;
+- training-derived standardization;
+- held-out Platt calibration;
+- threshold selected only on the Norwegian calibration partition using Youden J.
+
+Internal held-out test:
+
+- AUROC: **0.704**
+- AUPRC (death-positive): **0.133**
+- Accuracy: **0.542**
+- Brier: **0.066**
+- Sensitivity for death: **0.782**
+- Specificity for survival: **0.523**
+- threshold: **0.0687**
+
+### Independent external validation
+
+The trained Norwegian model is also applied, without retraining or threshold reselection, to the **137-patient South Korean cohort**.
+
+External results:
+
+- death prevalence: **17.52%**
+- AUROC: **0.548**
+- AUPRC (death-positive): **0.209**
+- Accuracy: **0.664**
+- Brier: **0.158**
+- sensitivity for death: **0.417**
+- specificity for survival: **0.717**
+
+This external discrimination is **weak and close to chance by ROC AUC**.
+
+HealthSolver therefore labels the model:
+
+`WEAK_GENERALIZATION`
+
+and the UI explicitly says not to generalize its probability clinically.
+
+The original Chicco/Jurman paper likewise reported only modest external ROC AUC values when models trained on the Norwegian cohorts were tested on the South Korean validation cohort, despite higher precision-recall values when survival was treated as the positive majority class.
+
+### Browser integration
+
+New model:
+
+**HS-UCI-SEPSISDEATH-001 — Esito ospedaliero · decesso · coorte sepsi**
+
+HealthSolver 0.51 exposes **11 supervised predictive models** in Predictive-First Expert Mode.
+
+The new section:
+
+**Sepsi / infezione · esito ospedaliero**
+
+requires only the septic episode number because age and sex are reused from the common dossier.
+
+Both the specialist panel and the result card display:
+
+- no fixed mortality horizon;
+- not a survival probability;
+- external validation n=137;
+- external AUROC 0.548;
+- explicit weak-generalization warning.
+
 ## Machine learning and predictive research
 
 HealthSolver is being developed toward a broader machine-learning research architecture in which structured symptoms, history, vital signs, laboratory data and observations can be used as model inputs.
@@ -926,9 +1043,9 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.50 — CDC Diabetes Health Indicators Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
+**HealthSolver 0.51 — UCI Sepsis Survival Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
 
-Current predictive release is represented by the 0.50 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and ten supervised model artifacts under `predictive/`.
+Current predictive release is represented by the 0.51 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and eleven supervised model artifacts under `predictive/`.
 
 The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
