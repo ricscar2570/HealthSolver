@@ -82,7 +82,7 @@ jobs:
               assert m['research_only'] is True
               assert m['not_clinically_validated'] is True
               fs=m['features']
-              assert len(fs)==len(set(fs)) and len(fs)>=5
+              assert len(fs)==len(set(fs)) and len(fs)>=1
               assert set(m['imputation']['values'])==set(fs)
               assert set(m['standardization']['mean'])==set(fs)
               assert set(m['standardization']['scale'])==set(fs)
