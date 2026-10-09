@@ -31,7 +31,8 @@
     "source_unique_patients": 1841,
     "source_unit_stays": 2520,
     "version": "2.0.1",
-    "years": "2014-2015"
+    "years": "2014-2015",
+    "source_metadata_note": "PhysioNet's demo page describes the sample as selected from 20 larger hospitals, while the distributed v2.0.1 patient.csv.gz and hospital.csv.gz used in the audit contain 186 distinct hospitalid values. HealthSolver does not use hospital count or hospitalid as a predictor and does not assert a hospital-count claim for this model."
   },
   "encoding_map": {
     "age_numeric": {
@@ -147,69 +148,69 @@
   ],
   "field_meta": {
     "age_numeric": {
-      "median": 65.0,
-      "training_max": 90.0,
-      "training_min": 15.0,
+      "median": 65,
+      "training_max": 90,
+      "training_min": 15,
       "training_missing_fraction": 0.0016666666666666668
     },
     "age_over_89": {
-      "median": 0.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
+      "median": 0,
+      "training_max": 1,
+      "training_min": 0,
       "training_missing_fraction": 0.0016666666666666668
     },
     "creatinine": {
-      "median": 1.0,
+      "median": 1,
       "training_max": 14.95,
       "training_min": 0.1,
       "training_missing_fraction": 0.26166666666666666
     },
     "gcs_total": {
-      "median": 15.0,
-      "training_max": 15.0,
-      "training_min": 3.0,
+      "median": 15,
+      "training_max": 15,
+      "training_min": 3,
       "training_missing_fraction": 0.04833333333333333
     },
     "gcs_unscorable_meds": {
-      "median": 0.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
+      "median": 0,
+      "training_max": 1,
+      "training_min": 0,
       "training_missing_fraction": 0.0375
     },
     "glucose": {
-      "median": 128.0,
-      "training_max": 975.0,
-      "training_min": 10.0,
+      "median": 128,
+      "training_max": 975,
+      "training_min": 10,
       "training_missing_fraction": 0.1825
     },
     "heartrate": {
-      "median": 104.0,
-      "training_max": 202.0,
-      "training_min": 23.0,
+      "median": 104,
+      "training_max": 202,
+      "training_min": 23,
       "training_missing_fraction": 0.02
     },
     "male": {
-      "median": 1.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
+      "median": 1,
+      "training_max": 1,
+      "training_min": 0,
       "training_missing_fraction": 0.0008333333333333334
     },
     "meanbp": {
-      "median": 66.0,
-      "training_max": 200.0,
-      "training_min": 40.0,
+      "median": 66,
+      "training_max": 200,
+      "training_min": 40,
       "training_missing_fraction": 0.03
     },
     "respiratoryrate": {
-      "median": 27.0,
-      "training_max": 60.0,
-      "training_min": 4.0,
+      "median": 27,
+      "training_max": 60,
+      "training_min": 4,
       "training_missing_fraction": 0.0275
     },
     "sodium": {
-      "median": 138.0,
-      "training_max": 170.0,
-      "training_min": 103.0,
+      "median": 138,
+      "training_max": 170,
+      "training_min": 103,
       "training_missing_fraction": 0.25833333333333336
     },
     "temperature": {
@@ -222,17 +223,17 @@
   "imputation": {
     "strategy": "training median after source-specific missing-value normalization",
     "values": {
-      "age_numeric": 65.0,
-      "age_over_89": 0.0,
-      "creatinine": 1.0,
-      "gcs_total": 15.0,
-      "gcs_unscorable_meds": 0.0,
-      "glucose": 128.0,
-      "heartrate": 104.0,
-      "male": 1.0,
-      "meanbp": 66.0,
-      "respiratoryrate": 27.0,
-      "sodium": 138.0,
+      "age_numeric": 65,
+      "age_over_89": 0,
+      "creatinine": 1,
+      "gcs_total": 15,
+      "gcs_unscorable_meds": 0,
+      "glucose": 128,
+      "heartrate": 104,
+      "male": 1,
+      "meanbp": 66,
+      "respiratoryrate": 27,
+      "sodium": 138,
       "temperature": 36.44
     }
   },
@@ -288,8 +289,8 @@
     {
       "key": "age",
       "kind": "numeric",
-      "label": "Et\u00e0",
-      "note": "Nel source >89 \u00e8 top-coded; HealthSolver replica il top-coding a 90 per il modello.",
+      "label": "Età",
+      "note": "Nel source >89 è top-coded; HealthSolver replica il top-coding a 90 per il modello.",
       "unit": "anni"
     },
     {
@@ -311,13 +312,13 @@
       "key": "gcs_unscorable_meds",
       "kind": "binary",
       "label": "GCS non valutabile per farmaci",
-      "unit": "0=no, 1=s\u00ec"
+      "unit": "0=no, 1=sì"
     },
     {
       "key": "temperature",
       "kind": "numeric",
       "label": "Temperatura peggiore nel primo APACHE day",
-      "unit": "\u00b0C"
+      "unit": "°C"
     },
     {
       "key": "respiratoryrate",
@@ -369,7 +370,7 @@
     "sodium",
     "creatinine"
   ],
-  "release": "HealthSolver 0.54.0 eICU Demo Hospital Death Integration",
+  "release": "HealthSolver 0.54.1 Scientific Semantics Remediation",
   "research_only": true,
   "runtime_environment": {
     "numpy": "2.5.3",
@@ -420,5 +421,6 @@
   "temporal_semantics": "Prediction index is the end of the first APACHE day (first 24 hours after ICU admission). APS variables are source-defined worst values during that APACHE day. This is not an admission-time model.",
   "threshold": 0.09266448469789074,
   "threshold_selection": "Youden J maximum on held-out calibration split; evaluated once on untouched patient-group-disjoint test split",
-  "version": "1.0.0"
+  "version": "1.0.1",
+  "input_consistency_policy": "The source defines meds=1 as GCS unavailable for the APACHE day. In the browser runtime, when GCS is marked unscorable because of medication, any entered numeric GCS total is ignored and gcs_total is treated as missing, reproducing the development-cohort representation (training-median imputation plus the medication indicator)."
 }
