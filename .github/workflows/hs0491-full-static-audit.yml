@@ -1,0 +1,84 @@
+name: HealthSolver 0.49.1 Full Static Release Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs0491-full-static-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Source integrity
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git fsck --full
+          test ! -f .env
+          ! git ls-files | grep -E '(^|/)\.env$'
+          ! git grep -nE '^(<<<<<<<|=======|>>>>>>>)' -- . ':!README.MD'
+          python -m compileall -q backend dashboard tests
+          for f in predictive/*.js; do node --check "$f"; done
+          python -m pip install --disable-pip-version-check -q pyyaml
+          python - <<'PY'
+          import json,pathlib,yaml
+          for p in pathlib.Path('.').rglob('*.json'):
+              if '.git' not in p.parts: json.loads(p.read_text())
+          for ext in ('*.yml','*.yaml'):
+              for p in pathlib.Path('.').rglob(ext):
+                  if '.git' not in p.parts: list(yaml.safe_load_all(p.read_text()))
+          print('PARSE PASS')
+          PY
+          npx --yes esbuild@0.25.10 frontend/src/App.js --bundle --loader:.js=jsx --packages=external --outfile=/tmp/healthsolver-legacy-frontend.js
+      - name: Nine-model integrity and 0.49 numerical freeze
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git show 14ad568fba33b6e69c399103f78dd2bbedbba6c3:predictive/model-heart-failure-mortality-v1.json > /tmp/old.json
+          git show 14ad568fba33b6e69c399103f78dd2bbedbba6c3:predictive/model-heart-failure-mortality-v1-report.json > /tmp/old-report.json
+          python - <<'PY'
+          import json,math,pathlib
+          root=pathlib.Path('predictive')
+          reg=json.loads((root/'model-registry-v2.json').read_text())
+          assert reg['version']=='0.49.1'
+          assert len(reg['models'])==9
+          for e in reg['models']:
+              m=json.loads((root/e['file']).read_text())
+              assert m['schema']=='healthsolver.predictive_model.v1'
+              assert m['research_only'] is True and m['not_clinically_validated'] is True
+              fs=m['features']; assert fs and len(fs)==len(set(fs))
+              assert set(m['imputation']['values'])==set(fs)
+              assert set(m['standardization']['mean'])==set(fs)
+              assert set(m['standardization']['scale'])==set(fs)
+              assert set(m['logistic']['coefficients'])==set(fs)
+              score=float(m['logistic']['intercept'])
+              for f in fs:
+                  scale=float(m['standardization']['scale'][f]); assert scale>0
+                  v=float(m['imputation']['values'][f])
+                  score+=(v-float(m['standardization']['mean'][f]))/scale*float(m['logistic']['coefficients'][f])
+              z=float(m['calibration']['intercept'])+float(m['calibration']['slope'])*score
+              p=1/(1+math.exp(-max(-35,min(35,z))))
+              assert 0<p<1 and math.isfinite(p)
+          old=json.load(open('/tmp/old.json')); new=json.load(open(root/'model-heart-failure-mortality-v1.json'))
+          for k in ['features','field_meta','imputation','standardization','logistic','calibration','threshold','threshold_selection','metrics_test','abstention','excluded_source_features']:
+              assert new[k]==old[k],k
+          assert json.load(open('/tmp/old-report.json'))==json.load(open(root/'model-heart-failure-mortality-v1-report.json'))
+          assert new['dataset']['cohort_scope']['location']=='Faisalabad, Punjab, Pakistan'
+          assert new['dataset']['follow_up']=={'min_days':4,'max_days':285,'mean_days':130,'variable_duration':True}
+          assert new['target_definition']['fixed_horizon'] is False
+          assert new['target_definition']['survival_model'] is False
+          print('NINE MODEL + SCIENTIFIC FREEZE PASS')
+          PY
+          grep -q 'HS_INTEGRATED_PREDICTIVE_0491' predictive/integrated-predictive-ui.js
+          grep -q "v\['version'\]='0.49.1'" .github/workflows/hs041-repack-pages.yml
+          grep -q 'scientific_semantics_remediation' .github/workflows/hs041-repack-pages.yml
