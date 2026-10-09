@@ -1,13 +1,20 @@
 name: HealthSolver 0.53.1 Code Audit
-# rerun after SQLite MLflow remediation
-# strict-negative-checks
-# http-integration-hardening
 on:
   push:
     branches: ['main']
-    paths: ['.github/workflows/hs0531-code-audit.yml']
+    paths:
+      - '.github/workflows/hs0531-code-audit.yml'
+      - 'backend/**'
+      - 'frontend/src/**'
+      - 'dashboard/**'
+      - 'tests/**'
+      - 'predictive/**'
+      - '.env.example'
+  workflow_dispatch:
+
 permissions:
   contents: read
+
 jobs:
   audit:
     runs-on: ubuntu-latest
@@ -28,11 +35,15 @@ jobs:
         run: |
           set -euxo pipefail
           git fsck --full
-          if git grep -nE '^(<<<<<<<|=======|>>>>>>>)' -- . ':!README.MD'; then echo 'Conflict markers found'; exit 1; fi
+          if git grep -nE '^(<<<<<<<|=======|>>>>>>>)' -- . ':!README.MD'; then
+            echo 'Conflict markers found'
+            exit 1
+          fi
           python -m compileall -q backend dashboard tests
           for f in predictive/*.js; do node --check "$f"; done
           python - <<'PY'
-          import json,pathlib
+          import json
+          import pathlib
           for p in pathlib.Path('predictive').glob('*.json'):
               json.loads(p.read_text(encoding='utf-8'))
           print('PARSE PASS')
@@ -42,11 +53,16 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          npx --yes esbuild@0.25.10 frontend/src/App.js --bundle --loader:.js=jsx --packages=external --outfile=/tmp/healthsolver-legacy-frontend.js
-          npx --yes eslint@8 frontend/src --no-eslintrc --env browser,es6             --parser-options '{"ecmaVersion":2022,"sourceType":"module","ecmaFeatures":{"jsx":true}}'             --rule 'no-undef:error'
-          if grep -R "http://localhost:8000" frontend/src/components; then echo "Hard-coded legacy API URL found"; exit 1; fi
+          npx --yes esbuild@0.25.10 frontend/src/App.js             --bundle --loader:.js=jsx --packages=external             --outfile=/tmp/healthsolver-legacy-frontend.js
+          npx --yes eslint@8 frontend/src             --no-eslintrc --env browser,es6             --parser-options '{"ecmaVersion":2022,"sourceType":"module","ecmaFeatures":{"jsx":true}}'             --rule 'no-undef:error'
+          if grep -R "http://localhost:8000" frontend/src/components; then
+            echo "Hard-coded legacy API URL found"
+            exit 1
+          fi
           grep -q "__HEALTHSOLVER_API_BASE_URL__" frontend/src/apiBase.js
-          grep -q "useState, useEffect" frontend/src/components/PACSViewer.js
+          grep -q "identityDataTransformer" frontend/src/components/ResultChart.js
+          grep -q "const transformPredictionData" frontend/src/components/Results.js
+          grep -q "AbortController" frontend/src/components/ResultChart.js
           echo 'LEGACY REACT STATIC PASS'
 
       - name: Install minimal legacy Python dependencies
@@ -60,25 +76,31 @@ jobs:
           ruff check backend dashboard tests --select F821,F822,F823
           PYTHONPATH=. python -m pytest -q tests/test_pipeline.py
 
-      - name: Verify legacy backend optional analytics loads safely
+      - name: Verify default and optional legacy API behavior
         shell: bash
         run: |
           set -euxo pipefail
           python - <<'PY'
           import os
           for k in list(os.environ):
-              if k.startswith('ENABLE_LEGACY_'): os.environ.pop(k,None)
+              if k.startswith('ENABLE_LEGACY_'):
+                  os.environ.pop(k, None)
           import backend.main as m
           from fastapi.testclient import TestClient
+
           paths=set(m.app.openapi()['paths'])
           assert '/' in paths
           assert '/predict/predict' in paths
           assert '/dashboard/data' not in paths
           assert '/dashboard/predict' not in paths
+
           client=TestClient(m.app)
           assert client.get('/').status_code==200
-          r=client.post('/predict/predict',json={'age':50,'bmi':25,'condition_severity':2,'comorbidities_count':1})
+          r=client.post('/predict/predict',json={
+              'age':50,'bmi':25,'condition_severity':2,'comorbidities_count':1
+          })
           assert r.status_code==503,r.text
+
           preflight=client.options('/predict/predict',headers={
               'Origin':'http://localhost:3000',
               'Access-Control-Request-Method':'POST',
@@ -88,17 +110,18 @@ jobs:
           assert preflight.headers.get('access-control-allow-origin')=='http://localhost:3000'
           print('DEFAULT LEGACY API + CORS PASS')
           PY
+
           ENABLE_LEGACY_ANALYTICS=1 python - <<'PY'
-          import asyncio
           import backend.main as m
           paths=set(m.app.openapi()['paths'])
           assert '/dashboard/data' in paths
           assert '/dashboard/predict' in paths
+
           from backend.routes.analytics import get_patient_data, predict_condition
-          rows=asyncio.run(get_patient_data())
+          rows=get_patient_data()
           assert len(rows)==2 and rows[0]['age']==45
           try:
-              asyncio.run(predict_condition())
+              predict_condition()
           except Exception as exc:
               assert getattr(exc,'status_code',None)==503
               assert 'prophet' in str(getattr(exc,'detail','')).lower()
@@ -106,24 +129,78 @@ jobs:
               raise AssertionError('Predict endpoint should be unavailable without optional Prophet')
           print('OPTIONAL ANALYTICS LAZY-LOAD PASS')
           PY
+
           ENABLE_LEGACY_ADMIN_ROUTES=1 python - <<'PY'
           import backend.main as m
           from fastapi.testclient import TestClient
           paths=set(m.app.openapi()['paths'])
           assert '/admin/alerts' in paths
+          assert '/admin/train' in paths
           client=TestClient(m.app)
           response=client.get('/admin/alerts')
           assert response.status_code==200,response.text
           assert 'alerts' in response.json()
-          print('OPTIONAL ADMIN ALERTS PASS')
+          print('OPTIONAL ADMIN ROUTES PASS')
           PY
+
           ENABLE_LEGACY_PACS=1 python - <<'PY'
           import backend.main as m
+          from fastapi import HTTPException
+          import backend.models.pacs as pacs
+
           paths=set(m.app.openapi()['paths'])
           assert '/pacs/studies' in paths
           assert '/pacs/study/{study_id}/series' in paths
           assert '/pacs/instance/{instance_id}' in paths
-          print('OPTIONAL PACS ROUTES PASS')
+
+          original=pacs.requests.get
+          def fail(*args, **kwargs):
+              raise pacs.requests.Timeout('synthetic timeout')
+          pacs.requests.get=fail
+          try:
+              pacs.get_studies()
+          except HTTPException as exc:
+              assert exc.status_code==502
+          else:
+              raise AssertionError('PACS timeout must map to 502')
+          finally:
+              pacs.requests.get=original
+          print('OPTIONAL PACS ROUTES + TIMEOUT PASS')
+          PY
+
+      - name: Verify fail-closed legacy source invariants
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          cnn=Path('backend/models/cnn_model.py').read_text()
+          cnn_api=Path('backend/routes/cnn_api.py').read_text()
+          ehr=Path('backend/routes/ehr.py').read_text()
+          cache=Path('backend/utils/cache.py').read_text()
+          raw=Path('backend/raw_connection.py').read_text()
+          training=Path('backend/models/data_training.py').read_text()
+
+          assert '_cnn_model = None' in cnn
+          assert 'LegacyCNNUnavailableError' in cnn
+          assert 'if not MODEL_PATH.is_file()' in cnn
+          assert 'cnn_model = CNNModel()' not in cnn
+          assert 'run_in_threadpool(predict_dicom' in cnn_api
+          assert 'from backend.models.cnn_model import cnn_model' not in cnn_api
+
+          assert 'HEALTHSOLVER_FHIR_BASE_URL' in ehr
+          assert 'server.fire.ly' not in ehr
+
+          assert 'socket_connect_timeout=REDIS_TIMEOUT_SECONDS' in cache
+          assert 'if client is None:' in cache
+
+          assert 'POSTGRES_PASSWORD", "password"' not in raw
+          assert 'POSTGRES_PASSWORD is required' in raw
+
+          assert 'finally:\n        session.close()' in training
+          assert '_configure_mlflow()' in training
+          print('FAIL-CLOSED LEGACY SOURCE PASS')
           PY
 
       - name: Verify legacy dashboard source regression fixes
@@ -132,7 +209,10 @@ jobs:
           set -euxo pipefail
           grep -q 'HEALTHSOLVER_API_BASE_URL' dashboard/dashboard.py
           grep -q 'df\["age"\]' dashboard/dashboard.py
-          if grep -q 'df\["Age"\]' dashboard/dashboard.py; then echo 'Wrong Age column remains'; exit 1; fi
+          if grep -q 'df\["Age"\]' dashboard/dashboard.py; then
+            echo 'Wrong Age column remains'
+            exit 1
+          fi
           grep -q 'timeout=15' dashboard/dashboard.py
           echo 'LEGACY DASHBOARD PASS'
 
@@ -141,13 +221,20 @@ jobs:
         run: |
           set -euxo pipefail
           git diff --exit-code 8a2815f80edf7f34d728da6efdfbf66d7dc59a9f --             predictive/model-heart-disease-v1.json             predictive/model-heart-disease-v1-report.json             predictive/model-ckd-v1.json             predictive/model-breast-cancer-v1.json             predictive/model-hcv-v1.json             predictive/model-hcv-v1-report.json             predictive/model-nhanes-diabetes-v1.json             predictive/model-nhanes-diabetes-v1-report.json             predictive/model-nhis-hypertension-v1.json             predictive/model-nhis-hypertension-v1-report.json             predictive/model-diabetes-readmission-v1.json             predictive/model-diabetes-readmission-v1-report.json             predictive/model-thyroid-recurrence-v1.json             predictive/model-thyroid-recurrence-v1-report.json             predictive/model-heart-failure-mortality-v1.json             predictive/model-heart-failure-mortality-v1-report.json             predictive/model-cdc-diabetes-indicators-v1.json             predictive/model-cdc-diabetes-indicators-v1-report.json             predictive/model-sepsis-hospital-death-v1.json             predictive/model-sepsis-hospital-death-v1-report.json             predictive/model-mi-fatal-outcome-v1.json             predictive/model-mi-fatal-outcome-v1-report.json
+
           git show c05229c5046a8efc699e5c1ecc3126e780c5df53:predictive/model-support2-hospital-death-v1.json > /tmp/support2-0530.json
           git show c05229c5046a8efc699e5c1ecc3126e780c5df53:predictive/model-support2-hospital-death-v1-report.json > /tmp/support2-0530-report.json
           python - <<'PY'
           import json
           old=json.load(open('/tmp/support2-0530.json'))
           new=json.load(open('predictive/model-support2-hospital-death-v1.json'))
-          frozen=['features','raw_features','encoding_map','field_meta','imputation','standardization','logistic','calibration','threshold','threshold_selection','metrics_test','feature_policy','excluded_source_fields','target_definition','temporal_semantics','leakage_review']
+          frozen=[
+              'features','raw_features','encoding_map','field_meta','imputation',
+              'standardization','logistic','calibration','threshold',
+              'threshold_selection','metrics_test','feature_policy',
+              'excluded_source_fields','target_definition','temporal_semantics',
+              'leakage_review'
+          ]
           for k in frozen:
               assert new[k]==old[k],f'numerical/core drift in {k}'
           assert json.load(open('/tmp/support2-0530-report.json'))==json.load(open('predictive/model-support2-hospital-death-v1-report.json'))
@@ -165,8 +252,14 @@ jobs:
           grep -q "hrt:num('hs53_hrt')" predictive/integrated-predictive-ui.js
           grep -q "crea:num('hs53_crea')" predictive/integrated-predictive-ui.js
           grep -q "sod:num('hs53_sod')" predictive/integrated-predictive-ui.js
-          if grep -q "hrt:first(num('ci_pulse')" predictive/integrated-predictive-ui.js; then echo 'Generic pulse fallback still present'; exit 1; fi
-          if grep -q "crea:first(num('ci_creatinine')" predictive/integrated-predictive-ui.js; then echo 'Generic creatinine fallback still present'; exit 1; fi
+          if grep -q "hrt:first(num('ci_pulse')" predictive/integrated-predictive-ui.js; then
+            echo 'Generic pulse fallback still present'
+            exit 1
+          fi
+          if grep -q "crea:first(num('ci_creatinine')" predictive/integrated-predictive-ui.js; then
+            echo 'Generic creatinine fallback still present'
+            exit 1
+          fi
           grep -q 'max_missing_raw_features' predictive/integrated-predictive-ui.js
           grep -q 'requiredRawMissing' predictive/integrated-predictive-ui.js
           grep -q 'Path(file.filename or "upload.dcm").name' backend/routes/cnn_api.py
