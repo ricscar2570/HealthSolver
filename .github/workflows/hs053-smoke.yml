@@ -1,4 +1,4 @@
-name: HealthSolver 0.53 SUPPORT2 Smoke
+name: HealthSolver 0.53.1 Code Audit SUPPORT2 Smoke
 on:
   push:
     branches: ['main']
@@ -29,7 +29,7 @@ jobs:
           root=pathlib.Path('predictive')
           reg=json.loads((root/'model-registry-v2.json').read_text())
           assert reg['schema']=='healthsolver.predictive_registry.v2'
-          assert reg['version']=='0.53.0'
+          assert reg['version']=='0.53.1'
           assert len(reg['models'])==13
           ids=[e['model_id'] for e in reg['models']]
           assert len(ids)==len(set(ids))
@@ -37,6 +37,7 @@ jobs:
 
           m=json.loads((root/'model-support2-hospital-death-v1.json').read_text())
           assert m['model_id']=='HS-SUPPORT2-HOSPDEATH-001'
+          assert m['version']=='1.0.1'
           assert m['dataset']['instances']==9105
           assert m['dataset']['centers']==5
           assert m['dataset']['country']=='United States'
@@ -47,6 +48,9 @@ jobs:
           assert m['target_definition']['source_name']=='hospdead'
           assert m['target_definition']['fixed_horizon'] is False
           assert m['target_definition']['survival_probability'] is False
+          assert m['abstention']['max_missing_raw_features']==4
+          assert m['abstention']['required_raw_features']==['sex','dzgroup','ca']
+          assert 'Day-3 physiology' in m['input_timepoint_policy']
           assert 'day-3' in m['temporal_semantics'].lower()
           assert 'Split performed before any screening' in m['feature_policy']
           assert 'no outcome association' in m['feature_policy']
@@ -76,8 +80,10 @@ jobs:
       - name: Verify Predictive-First UI
         shell: bash
         run: |
-          grep -q 'HS_INTEGRATED_PREDICTIVE_053' predictive/integrated-predictive-ui.js
+          grep -q 'HS_INTEGRATED_PREDICTIVE_0531' predictive/integrated-predictive-ui.js
           grep -q '13 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -q 'Solo età e sesso vengono riutilizzati automaticamente' predictive/integrated-predictive-ui.js
+          grep -q 'max_missing_raw_features' predictive/model-support2-hospital-death-v1.json
           grep -q 'HS-SUPPORT2-HOSPDEATH-001' predictive/integrated-predictive-ui.js
           grep -q 'hs53Support2Details' predictive/integrated-predictive-ui.js
           grep -q 'hospdead=1' predictive/integrated-predictive-ui.js
