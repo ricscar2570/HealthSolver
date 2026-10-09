@@ -1,5 +1,6 @@
 name: HealthSolver 0.51.1 Full Static Release Audit
 # final workflow-freeze qualification
+# final 0.51.1 documentation-and-reproduction qualification
 on:
   push:
     branches: ['main']
