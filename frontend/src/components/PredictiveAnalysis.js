@@ -1,5 +1,6 @@
 // frontend/src/components/PredictiveAnalysis.js
 import React, { useState } from 'react';
+import { apiUrl } from '../apiBase';
 import { Bar } from 'react-chartjs-2'; // Manteniamo il grafico se vogliamo visualizzare l'input o un risultato fittizio
 
 // Assicurati che Chart.js sia registrato (potrebbe essere già fatto in ResultChart.js o qui)
@@ -45,7 +46,7 @@ const PredictiveAnalysis = () => {
 
     try {
       // Chiama lo stesso endpoint di PatientForm
-      const response = await fetch('http://localhost:8000/predict/predict', { // URL aggiornato
+      const response = await fetch(apiUrl('/predict/predict'), { // URL aggiornato
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
