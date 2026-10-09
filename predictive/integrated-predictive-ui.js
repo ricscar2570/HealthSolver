@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.__HS_INTEGRATED_PREDICTIVE_0491__) return;
-window.__HS_INTEGRATED_PREDICTIVE_0491__=true;
+if(window.__HS_INTEGRATED_PREDICTIVE_050__) return;
+window.__HS_INTEGRATED_PREDICTIVE_050__=true;
 
 const BUNDLE=window.__HS_PREDICTIVE_BUNDLE__||null;
 if(!BUNDLE?.registry||!BUNDLE?.models) return;
@@ -15,9 +15,9 @@ document.getElementById('hs-router041')?.remove();
 // while updating only visible application-release branding.
 (function reconcileReleaseBranding(){
   const replacements=[
-    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.49.1'],
+    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.50'],
     [/^HealthSolver\s+0\.38\.0\s*·\s*Massive Public Data \+ Clinical Coach Research Edition\s*·\s*Riccardo Scaringi\s*·\s*Non uso clinico\.?$/i,
-     'HealthSolver 0.49.1 · Scientific Semantics Remediation + UCI Heart Failure Clinical Records Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
+     'HealthSolver 0.50.0 · CDC Diabetes Health Indicators Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
   ];
   const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
   const nodes=[];
@@ -51,6 +51,23 @@ const oneHot=(prefix,vals)=>{
   return null;
 };
 const first=(...xs)=>xs.find(v=>v!==null&&v!==undefined&&v!=='')??null;
+const brfssAgeCategory=age=>{
+  if(age===null||age===undefined||!Number.isFinite(Number(age))||Number(age)<18) return null;
+  const a=Number(age);
+  if(a<25) return 1;
+  if(a<30) return 2;
+  if(a<35) return 3;
+  if(a<40) return 4;
+  if(a<45) return 5;
+  if(a<50) return 6;
+  if(a<55) return 7;
+  if(a<60) return 8;
+  if(a<65) return 9;
+  if(a<70) return 10;
+  if(a<75) return 11;
+  if(a<80) return 12;
+  return 13;
+};
 
 const FNA=[
  ['radius1','Raggio medio'],['texture1','Texture media'],['perimeter1','Perimetro medio'],['area1','Area media'],
@@ -103,11 +120,11 @@ wrap.className='card';
 wrap.innerHTML=`
   <div class="hs43-hero">
     <div>
-      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.49.1</div>
+      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.50</div>
       <h2 class="hs43-title">Predizioni cliniche di ricerca</h2>
       <p class="hs43-sub">HealthSolver usa lo stesso dossier che hai già compilato per verificare quali modelli sono applicabili e calcolare le stime disponibili. Le funzioni predittive sono qui, in primo piano. Ogni nuovo database entra nello stesso registry e nello stesso dossier.</p>
     </div>
-    <div class="hs43-badge">9 MODELLI SUPERVISIONATI</div>
+    <div class="hs43-badge">10 MODELLI SUPERVISIONATI</div>
   </div>
   <div id="hs42Coverage" class="metrics"></div>
   <div class="actions" style="margin-top:8px">
@@ -220,6 +237,31 @@ wrap.innerHTML=`
       </label>
     </div>
     <div class="notice" style="margin-top:10px"><b>Semantica dell'output:</b> stima del label binario <code>DEATH_EVENT</code> nella coorte sorgente UCI 519. Il follow-up varia da 4 a 285 giorni (media circa 130): la percentuale <b>non</b> rappresenta mortalità a 30/90/365 giorni, non ha un orizzonte temporale fisso e non è una probabilità di sopravvivenza. Il modello non è una survival analysis né uno score prognostico clinicamente validato.</div>
+  </details>
+  <details id="hs50CdcDiabetesDetails">
+    <summary><b>CDC/BRFSS · diabete/prediabete</b> · 253.680 record survey</summary>
+    <p class="hint">Modello cross-sectional sul dataset CDC Diabetes Health Indicators. Età, sesso e BMI vengono riutilizzati dal dossier quando disponibili. Le altre risposte devono rispettare le definizioni BRFSS sorgente.</p>
+    <div class="grid">
+      <label>Pressione alta riferita<select id="hs50_high_bp"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>Colesterolo alto riferito<select id="hs50_high_chol"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>Controllo colesterolo negli ultimi 5 anni<select id="hs50_chol_check"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>Almeno 100 sigarette nella vita<select id="hs50_smoker_100"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>Ictus riferito<select id="hs50_stroke_history"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>CHD o infarto riferito<select id="hs50_heart_disease_or_attack"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>Attività fisica negli ultimi 30 giorni<select id="hs50_physical_activity"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>Frutta ≥1 volta/giorno<select id="hs50_fruits_daily"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>Verdura ≥1 volta/giorno<select id="hs50_veggies_daily"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>Consumo elevato di alcol<select id="hs50_heavy_alcohol"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>Copertura sanitaria<select id="hs50_any_healthcare"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>Impossibilità di vedere un medico per costo negli ultimi 12 mesi<select id="hs50_no_doctor_due_cost"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>Salute generale riferita<select id="hs50_general_health"><option value="">—</option><option value="1">Ottima</option><option value="2">Molto buona</option><option value="3">Buona</option><option value="4">Discreta</option><option value="5">Scarsa</option></select></label>
+      <label>Giorni di salute mentale non buona (ultimi 30)<input id="hs50_mental_health_days" type="number" min="0" max="30" step="1"></label>
+      <label>Giorni di salute fisica non buona (ultimi 30)<input id="hs50_physical_health_days" type="number" min="0" max="30" step="1"></label>
+      <label>Difficoltà seria a camminare/salire scale<select id="hs50_difficulty_walking"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>Istruzione BRFSS<select id="hs50_education"><option value="">—</option><option value="1">Mai frequentato / solo kindergarten</option><option value="2">Classi 1–8</option><option value="3">Classi 9–11</option><option value="4">Diploma / GED</option><option value="5">College 1–3 anni / scuola tecnica</option><option value="6">College ≥4 anni</option></select></label>
+      <label>Reddito BRFSS<select id="hs50_income"><option value="">—</option><option value="1">Categoria 1 · &lt;$10.000</option><option value="2">Categoria 2</option><option value="3">Categoria 3</option><option value="4">Categoria 4</option><option value="5">Categoria 5 · &lt;$35.000</option><option value="6">Categoria 6</option><option value="7">Categoria 7</option><option value="8">Categoria 8 · ≥$75.000</option></select></label>
+    </div>
+    <div class="notice" style="margin-top:10px"><b>Semantica del target:</b> <code>Diabetes_binary=1</code> unisce <b>prediabete e diabete</b>. La percentuale è una classificazione del label sorgente BRFSS, non una diagnosi, non separa prediabete da diabete e non è la probabilità futura di sviluppare diabete.</div>
   </details>
   <h3 style="margin:24px 0 10px;font-size:1.25rem">Risultati predittivi</h3>
   <div id="hs42Results" class="grid"></div>
@@ -386,6 +428,29 @@ function dossierCase(){
     sex:sexVal(),
     smoking:num('hs49_smoking')
   };
+  const cdcDiabetes={
+    high_bp:num('hs50_high_bp'),
+    high_chol:num('hs50_high_chol'),
+    chol_check:num('hs50_chol_check'),
+    bmi:first(num('ci_bmi'),num('hs45_bmi')),
+    smoker_100:num('hs50_smoker_100'),
+    stroke_history:num('hs50_stroke_history'),
+    heart_disease_or_attack:num('hs50_heart_disease_or_attack'),
+    physical_activity:num('hs50_physical_activity'),
+    fruits_daily:num('hs50_fruits_daily'),
+    veggies_daily:num('hs50_veggies_daily'),
+    heavy_alcohol:num('hs50_heavy_alcohol'),
+    any_healthcare:num('hs50_any_healthcare'),
+    no_doctor_due_cost:num('hs50_no_doctor_due_cost'),
+    general_health:num('hs50_general_health'),
+    mental_health_days:num('hs50_mental_health_days'),
+    physical_health_days:num('hs50_physical_health_days'),
+    difficulty_walking:num('hs50_difficulty_walking'),
+    sex:sexVal(),
+    age_category:brfssAgeCategory(age),
+    education:num('hs50_education'),
+    income:num('hs50_income')
+  };
   return {
     'HS-UCI-HD-001':heart,
     'HS-UCI-CKD-001':ckd,
@@ -395,7 +460,8 @@ function dossierCase(){
     'HS-NHIS-HYP-001':nhis,
     'HS-UCI-DMREADM-001':readm,
     'HS-UCI-THYREC-001':thyroid,
-    'HS-UCI-HFDEATH-001':heartFailure
+    'HS-UCI-HFDEATH-001':heartFailure,
+    'HS-CDC-DIABIND-001':cdcDiabetes
   };
 }
 function readiness(model,values){
@@ -440,7 +506,9 @@ function renderResult(entry,model,res){
   const contrib=res.contributions.slice(0,4).map(([f,c])=>`<li><b>${f}</b>: ${c>=0?'+':''}${c.toFixed(3)}</li>`).join('');
   const semanticNotice=model.model_id==='HS-UCI-HFDEATH-001'
     ? `<div class="notice"><b>DEATH_EVENT UCI 519, non rischio a tempo fisso.</b> Coorte Faisalabad 2015 con disfunzione sistolica ventricolare sinistra e NYHA III–IV; follow-up 4–285 giorni (media ~130). Questa percentuale non è mortalità a 30/90/365 giorni e non è una probabilità di sopravvivenza.</div>`
-    : '';
+    : model.model_id==='HS-CDC-DIABIND-001'
+      ? `<div class="notice"><b>Label BRFSS, non diagnosi né rischio futuro.</b> <code>Diabetes_binary=1</code> unisce prediabete e diabete. Questa percentuale non distingue le due condizioni e non stima la probabilità futura di sviluppare diabete.</div>`
+      : '';
   d.innerHTML=`
     <div class="eyebrow">${model.model_id}</div>
     <h3>${titleFor(entry)}</h3>
