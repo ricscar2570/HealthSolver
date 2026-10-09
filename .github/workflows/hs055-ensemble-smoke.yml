@@ -1,0 +1,108 @@
+name: HealthSolver 0.55 Ensemble Intelligence Smoke
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'predictive/ensemble-intelligence-v1.json'
+      - 'predictive/integrated-predictive-ui.js'
+      - '.github/workflows/hs055-ensemble-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Parse and verify ensemble specification
+        shell: bash
+        run: |
+          set -euxo pipefail
+          node --check predictive/integrated-predictive-ui.js
+          python - <<'PY'
+          import json,pathlib,math
+          root=pathlib.Path('predictive')
+          reg=json.loads((root/'model-registry-v2.json').read_text())
+          e=json.loads((root/'ensemble-intelligence-v1.json').read_text())
+          assert reg['version']=='0.54.1'
+          assert len(reg['models'])==14
+          ids=[m['model_id'] for m in reg['models']]
+          assert len(ids)==len(set(ids))
+          assert e['schema']=='healthsolver.ensemble_intelligence.v1'
+          assert e['version']=='1.0.0'
+          assert e['release']=='HealthSolver 0.55.0 Ensemble Intelligence Layer'
+          assert e['research_only'] is True
+          assert e['clinically_validated'] is False
+          assert e['global_probability'] is False
+          assert e['aggregation']['no_cross_model_probability_averaging'] is True
+          assert e['aggregation']['no_recalibration'] is True
+          domains=e['domains']
+          assert len(domains)==6
+          assigned=[mid for d in domains for mid in d['models']]
+          assert len(assigned)==14
+          assert len(assigned)==len(set(assigned))
+          assert set(assigned)==set(ids)
+          groups=e['concordance_groups']
+          assert len(groups)==1
+          assert set(groups[0]['models'])=={
+              'HS-UCI-SEPSISDEATH-001',
+              'HS-SUPPORT2-HOSPDEATH-001',
+              'HS-EICU-DEMO-HOSPDEATH-001'
+          }
+          for entry in reg['models']:
+              m=json.loads((root/entry['file']).read_text())
+              t=float(m['threshold'])
+              assert math.isfinite(t) and 0<t<1,(entry['model_id'],t)
+          boundaries=' '.join(e['hard_boundaries']).lower()
+          for phrase in ['never average raw probabilities','not model agreement','no new patient-level outcome']:
+              assert phrase in boundaries,phrase
+          print('ENSEMBLE SPEC PASS')
+          PY
+
+      - name: Verify threshold-position mathematics
+        shell: bash
+        run: |
+          python - <<'PY'
+          def pos(p,t):
+              return 0.5*(p/t) if p<=t else 0.5+0.5*((p-t)/(1-t))
+          for t in [0.05,0.1,0.25,0.5,0.8]:
+              assert abs(pos(0,t)-0)<1e-15
+              assert abs(pos(t,t)-0.5)<1e-15
+              assert abs(pos(1,t)-1)<1e-15
+              last=-1
+              for i in range(1001):
+                  p=i/1000
+                  x=pos(p,t)
+                  assert 0<=x<=1
+                  assert x>=last-1e-15
+                  last=x
+          assert abs(pos(.25,.5)-.25)<1e-15
+          assert abs(pos(.75,.5)-.75)<1e-15
+          print('THRESHOLD POSITION MATH PASS')
+          PY
+
+      - name: Verify UI safety boundaries
+        shell: bash
+        run: |
+          set -euxo pipefail
+          grep -q 'HS_INTEGRATED_PREDICTIVE_0550' predictive/integrated-predictive-ui.js
+          grep -q 'ENSEMBLE INTELLIGENCE · 0.55' predictive/integrated-predictive-ui.js
+          grep -q 'NON È UNA PROBABILITÀ' predictive/integrated-predictive-ui.js
+          grep -q 'Research Activation Index' predictive/integrated-predictive-ui.js
+          grep -q 'hs55ThresholdPosition' predictive/integrated-predictive-ui.js
+          grep -q 'window.__HS_LAST_ENSEMBLE__' predictive/integrated-predictive-ui.js
+          grep -q 'Abstaining models contribute neither zero' predictive/ensemble-intelligence-v1.json
+          if grep -Eqi 'global (risk|probability)[^<]*(%|percent)' predictive/integrated-predictive-ui.js; then
+            echo 'Forbidden global probability language found'
+            exit 1
+          fi
+          echo 'ENSEMBLE UI SAFETY PASS'
