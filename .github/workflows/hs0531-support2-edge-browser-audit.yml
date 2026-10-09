@@ -1,0 +1,144 @@
+name: HealthSolver 0.53.1 SUPPORT2 Edge Browser Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs0531-support2-edge-browser-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Exercise SUPPORT2 missingness and timepoint edges
+        shell: bash
+        run: |
+          cat > audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+
+          const base='https://ricscar2570.github.io/HealthSolver/';
+          const meta=await fetch(base+'version.json?audit=0531-edge').then(r=>r.json());
+          if(meta.version!=='0.53.1') throw new Error('wrong published version '+meta.version);
+          if(meta.predictive_model_count!==13) throw new Error('wrong model count');
+          if(meta.code_audit_remediation!==true) throw new Error('code audit remediation flag missing');
+
+          const model=await fetch(base+'predictive/model-support2-hospital-death-v1.json?audit=0531-edge').then(r=>r.json());
+          if(model.version!=='1.0.1') throw new Error('wrong SUPPORT2 model version');
+          if(model.abstention.max_missing_raw_features!==4) throw new Error('raw missing threshold wrong');
+          if(model.abstention.required_raw_features.join(',')!=='sex,dzgroup,ca') throw new Error('required raw categories wrong');
+
+          const b=await chromium.launch({headless:true});
+          const p=await b.newPage({viewport:{width:1440,height:2200}});
+          const errors=[];
+          p.on('pageerror',e=>errors.push('PAGE '+e.message));
+          p.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
+          const ok=(v,m)=>{if(!v) throw new Error(m)};
+          const set=async(id,v)=>{
+            const q=p.locator('#'+id);ok(await q.count()===1,'missing '+id);
+            await q.evaluate((e,x)=>{e.value=String(x);e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));},v);
+          };
+          const clear=async id=>set(id,'');
+          const cov=()=>p.locator('#hs42Coverage .metric').filter({hasText:'SUPPORT2 · decesso intraospedaliero · day 3'});
+          const card=()=>p.locator('#hs42Results .card').filter({hasText:'HS-SUPPORT2-HOSPDEATH-001'});
+          const refresh=async()=>{await p.locator('#hs42Refresh').click();await p.waitForTimeout(100);return await cov().innerText();};
+          const run=async()=>{await p.locator('#hs42Run').click();await p.waitForTimeout(280);return await card().innerText();};
+
+          await p.goto(base+'?audit=0531-edge',{waitUntil:'networkidle',timeout:120000});
+          await p.waitForFunction(()=>document.body.innerText.includes('Clinical Coach')&&document.body.innerText.includes('Expert Mode'),{timeout:30000});
+          await p.locator('aside .nav[data-page="intelligence"]').click();await p.waitForTimeout(250);
+
+          const duplicateIds=await p.locator('[id]').evaluateAll(els=>{
+            const counts={};for(const e of els) counts[e.id]=(counts[e.id]||0)+1;
+            return Object.entries(counts).filter(([,n])=>n>1);
+          });
+          ok(duplicateIds.length===0,'duplicate DOM ids '+JSON.stringify(duplicateIds));
+
+          await set('ciAge',65);
+          const sex=p.locator('#ciSex');
+          const options=await sex.locator('option').evaluateAll(os=>os.map(o=>({v:o.value,t:o.textContent.trim()})));
+          const male=options.find(o=>/masch|male|^m$/i.test(o.t)||/^(m|male|maschio|1)$/i.test(o.v));
+          ok(male,'male option missing');await sex.selectOption(male.v);
+
+          const full={
+            hs53_dzgroup:'CHF',hs53_numco:2,hs53_scoma:0,hs53_hday:1,hs53_diabetes:0,
+            hs53_dementia:0,hs53_ca:'no',hs53_meanbp:77,hs53_wblc:10.5,
+            hs53_hrt:100,hs53_resp:24,hs53_temp:36.7,hs53_crea:1.2,hs53_sod:137
+          };
+          for(const [id,v] of Object.entries(full)) await set(id,v);
+
+          let ctext=await refresh();
+          ok(/25\/25/.test(ctext)&&/PRONTO ALLA PREDIZIONE/i.test(ctext),'complete SUPPORT2 case not ready');
+          let rtext=await run();
+          ok(/%/.test(rtext)&&!/Astensione/i.test(rtext),'complete SUPPORT2 case did not predict');
+          console.log('COMPLETE_CASE PASS');
+
+          // Generic dossier values must not substitute SUPPORT day-3 observations.
+          await set('ci_pulse',111);await set('ci_creatinine',9.9);await set('ci_sodium',111);
+          await clear('hs53_hrt');await clear('hs53_crea');await clear('hs53_sod');
+          ctext=await refresh();
+          ok(/22\/25/.test(ctext),'generic dossier values leaked into SUPPORT2 day-3 fields: '+ctext);
+          ok(/PRONTO ALLA PREDIZIONE/i.test(ctext),'three raw numeric missing should be imputable');
+          rtext=await run();
+          ok(rtext.includes('Imputati con mediana training: hrt, crea, sod'),'day-3 missing fields were not explicitly imputed: '+rtext);
+          console.log('NO_GENERIC_DAY3_REUSE PASS');
+
+          // Required categorical raw fields must never be silently imputed.
+          await set('hs53_hrt',100);await set('hs53_crea',1.2);await set('hs53_sod',137);
+          for(const id of ['hs53_dzgroup','hs53_ca']){
+            const prior=await p.locator('#'+id).inputValue();
+            await clear(id);
+            ctext=await refresh();
+            ok(!/PRONTO ALLA PREDIZIONE/i.test(ctext),'required category '+id+' incorrectly ready');
+            ok(/mancano 1 dati/i.test(ctext),'raw missing count inflated for '+id+': '+ctext);
+            rtext=await run();
+            ok(/Astensione/i.test(rtext),'required category '+id+' did not abstain');
+            await set(id,prior);
+          }
+          const oldSex=await sex.inputValue();
+          await sex.selectOption('');
+          const coachSex=p.locator('#coachSex');if(await coachSex.count()) await coachSex.selectOption('').catch(()=>{});
+          ctext=await refresh();
+          ok(!/PRONTO ALLA PREDIZIONE/i.test(ctext),'missing sex incorrectly ready');
+          rtext=await run();ok(/Astensione/i.test(rtext),'missing sex did not abstain');
+          await sex.selectOption(oldSex);
+          console.log('REQUIRED_CATEGORIES PASS');
+
+          // Four missing raw numerics are allowed; five must abstain.
+          for(const id of ['hs53_meanbp','hs53_wblc','hs53_resp','hs53_temp']) await clear(id);
+          ctext=await refresh();
+          ok(/PRONTO ALLA PREDIZIONE/i.test(ctext),'four raw missing should remain ready: '+ctext);
+          rtext=await run();
+          ok(!/Astensione/i.test(rtext),'four raw missing unexpectedly abstained');
+          for(const name of ['meanbp','wblc','resp','temp']) ok(rtext.includes(name),'missing imputation label '+name);
+          await clear('hs53_hrt');
+          ctext=await refresh();
+          ok(!/PRONTO ALLA PREDIZIONE/i.test(ctext),'five raw missing incorrectly ready');
+          ok(/mancano 5 dati/i.test(ctext),'five raw missing count wrong: '+ctext);
+          rtext=await run();ok(/Astensione/i.test(rtext),'five raw missing did not abstain');
+          console.log('RAW_MISSING_THRESHOLD PASS');
+
+          const serious=errors.filter(e=>!/Failed to load resource.*api\.fda\.gov/i.test(e));
+          console.log('ALL_BROWSER_ERRORS',JSON.stringify(errors));
+          ok(serious.length===0,'browser errors '+serious.join(' | '));
+          await p.screenshot({path:'HealthSolver-0.53.1-SUPPORT2-Edge.png',fullPage:true});
+          await b.close();
+          console.log('SUPPORT2 EDGE AUDIT PASS');
+          JS
+          node audit.mjs | tee edge-audit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: healthsolver-0531-support2-edge-audit
+          path: |
+            edge-audit.txt
+            HealthSolver-0.53.1-SUPPORT2-Edge.png
+          retention-days: 14
