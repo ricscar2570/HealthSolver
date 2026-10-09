@@ -82,7 +82,7 @@ jobs:
       - name: Verify Predictive-First UI references tenth model
         shell: bash
         run: |
-          grep -Eq 'HS_INTEGRATED_PREDICTIVE_053|HS_INTEGRATED_PREDICTIVE_052|HS_INTEGRATED_PREDICTIVE_0511|HS_INTEGRATED_PREDICTIVE_051|HS_INTEGRATED_PREDICTIVE_050' predictive/integrated-predictive-ui.js
+          grep -Eq 'HS_INTEGRATED_PREDICTIVE_0531|HS_INTEGRATED_PREDICTIVE_053|HS_INTEGRATED_PREDICTIVE_052|HS_INTEGRATED_PREDICTIVE_0511|HS_INTEGRATED_PREDICTIVE_051|HS_INTEGRATED_PREDICTIVE_050' predictive/integrated-predictive-ui.js
           grep -q 'MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
           grep -q 'HS-CDC-DIABIND-001' predictive/integrated-predictive-ui.js
           grep -q 'hs50CdcDiabetesDetails' predictive/integrated-predictive-ui.js
