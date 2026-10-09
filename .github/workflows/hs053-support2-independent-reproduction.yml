@@ -1,0 +1,122 @@
+name: HealthSolver 0.53 SUPPORT2 Independent Reproduction
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs053-support2-independent-reproduction.yml']
+permissions:
+  contents: read
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Re-download SUPPORT2 and reproduce model
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install --disable-pip-version-check -q numpy==2.5.3 pandas==3.0.6 scikit-learn==1.9.1
+          python - <<'PY'
+          import io,json,math,urllib.request,zipfile
+          import numpy as np,pandas as pd
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import accuracy_score,roc_auc_score,average_precision_score,brier_score_loss,confusion_matrix,roc_curve
+          from sklearn.model_selection import train_test_split
+
+          stored=json.load(open('predictive/model-support2-hospital-death-v1.json'))
+          report=json.load(open('predictive/model-support2-hospital-death-v1-report.json'))
+          assert stored['runtime_environment']=={'python':'3.13','numpy':'2.5.3','pandas':'3.0.6','scikit_learn':'1.9.1'}
+
+          req=urllib.request.Request('https://hbiostat.org/data/repo/support2csv.zip',headers={'User-Agent':'HealthSolver/0.53 independent audit'})
+          with urllib.request.urlopen(req,timeout=120) as r: blob=r.read()
+          with zipfile.ZipFile(io.BytesIO(blob)) as z:
+              df=pd.read_csv(z.open('support2.csv'))
+          assert df.shape==(9105,47)
+          y=pd.to_numeric(df['hospdead'],errors='raise').astype(int)
+          assert y.value_counts().sort_index().to_dict()=={0:6745,1:2360}
+
+          idx=np.arange(len(df))
+          tr,tmp=train_test_split(idx,test_size=.40,random_state=5301,stratify=y)
+          cal,te=train_test_split(tmp,test_size=.50,random_state=5302,stratify=y.iloc[tmp])
+          assert (len(tr),len(cal),len(te))==(5463,1821,1821)
+
+          raw=stored['raw_features']
+          categorical={'sex':['female','male'],
+                       'dzgroup':['ARF/MOSF w/Sepsis','COPD','CHF','Cirrhosis','Coma','Colon Cancer','Lung Cancer','MOSF w/Malig'],
+                       'ca':['no','yes','metastatic']}
+          numeric=[f for f in raw if f not in categorical]
+          train=df.iloc[tr].copy();calib=df.iloc[cal].copy();test=df.iloc[te].copy()
+          for c in numeric:
+              train[c]=pd.to_numeric(train[c],errors='coerce')
+              calib[c]=pd.to_numeric(calib[c],errors='coerce')
+              test[c]=pd.to_numeric(test[c],errors='coerce')
+          med=train[numeric].median()
+          train[numeric]=train[numeric].fillna(med);calib[numeric]=calib[numeric].fillna(med);test[numeric]=test[numeric].fillna(med)
+
+          def encode(frame):
+              out=pd.DataFrame(index=frame.index)
+              for f in numeric: out[f]=pd.to_numeric(frame[f],errors='raise')
+              out['sex_male']=(frame['sex'].astype(str)=='male').astype(float)
+              for cat in categorical['dzgroup']: out['dzgroup__'+cat]=(frame['dzgroup'].astype(str)==cat).astype(float)
+              for cat in categorical['ca']: out['ca__'+cat]=(frame['ca'].astype(str)==cat).astype(float)
+              return out
+
+          Xtr=encode(train);Xca=encode(calib);Xte=encode(test)
+          assert list(Xtr.columns)==stored['features']
+          mu=Xtr.mean();sd=Xtr.std(ddof=0).replace(0,1)
+          Ztr=(Xtr-mu)/sd;Zca=(Xca-mu)/sd;Zte=(Xte-mu)/sd
+          ytr=y.iloc[tr].to_numpy();yca=y.iloc[cal].to_numpy();yte=y.iloc[te].to_numpy()
+
+          base=LogisticRegression(max_iter=5000,C=.5,solver='lbfgs',class_weight='balanced',random_state=5303)
+          base.fit(Ztr,ytr)
+          platt=LogisticRegression(max_iter=5000,C=1e6,solver='lbfgs',random_state=5304)
+          cs=base.decision_function(Zca).reshape(-1,1)
+          platt.fit(cs,yca)
+          pca=platt.predict_proba(cs)[:,1]
+          fpr,tpr,thr=roc_curve(yca,pca)
+          valid=np.isfinite(thr)
+          threshold=float(thr[valid][np.argmax((tpr-fpr)[valid])])
+          p=platt.predict_proba(base.decision_function(Zte).reshape(-1,1))[:,1]
+          pred=(p>=threshold).astype(int)
+          tn,fp,fn,tp=confusion_matrix(yte,pred,labels=[0,1]).ravel()
+          q={
+            'accuracy':float(accuracy_score(yte,pred)),
+            'auprc':float(average_precision_score(yte,p)),
+            'auroc':float(roc_auc_score(yte,p)),
+            'brier':float(brier_score_loss(yte,p)),
+            'confusion_matrix':{'fn_death':int(fn),'fp_death':int(fp),'tn_survived':int(tn),'tp_death':int(tp)},
+            'n_calibration':1821,'n_test':1821,'n_total':9105,'n_train':5463,
+            'positive_prevalence_hospital_death':float(y.mean()),
+            'sensitivity_hospital_death':float(tp/(tp+fn)),
+            'specificity_hospital_survival':float(tn/(tn+fp)),
+            'threshold':threshold
+          }
+
+          def close(a,b,tol=1e-10):
+              assert math.isclose(float(a),float(b),rel_tol=tol,abs_tol=tol),(a,b)
+          close(base.intercept_[0],stored['logistic']['intercept'])
+          for f,v in zip(stored['features'],base.coef_[0]): close(v,stored['logistic']['coefficients'][f])
+          for f in stored['features']:
+              close(mu[f],stored['standardization']['mean'][f]);close(sd[f],stored['standardization']['scale'][f])
+          for f in numeric: close(med[f],stored['imputation']['raw_values'][f])
+          close(platt.intercept_[0],stored['calibration']['intercept']);close(platt.coef_[0,0],stored['calibration']['slope'])
+          close(threshold,stored['threshold'])
+          for k in ['accuracy','auprc','auroc','brier','positive_prevalence_hospital_death','sensitivity_hospital_death','specificity_hospital_survival','threshold']:
+              close(q[k],stored['metrics_test'][k])
+          assert q['confusion_matrix']==stored['metrics_test']['confusion_matrix']
+          assert report==stored['metrics_test']
+
+          print('SUPPORT2 SOURCE PASS',df.shape,y.value_counts().sort_index().to_dict())
+          print('SPLIT-FIRST PASS',(len(tr),len(cal),len(te)))
+          print('MODEL_COEFFICIENTS PASS')
+          print('IMPUTATION_STANDARDIZATION PASS')
+          print('CALIBRATION PASS')
+          print('THRESHOLD PASS')
+          print('METRICS PASS',q)
+          print('SUPPORT2 INDEPENDENT REPRODUCTION PASS')
+          PY
