@@ -1,0 +1,115 @@
+name: HealthSolver 0.54 eICU Demo Profile
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs054-eicu-demo-profile.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install profiling dependencies
+        run: python -m pip install --disable-pip-version-check -q pandas
+      - name: Download and profile eICU demo
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p out
+          base='https://physionet.org/files/eicu-crd-demo/2.0.1'
+          for f in patient.csv.gz apacheApsVar.csv.gz apachePatientResult.csv.gz admissionDx.csv.gz hospital.csv.gz; do
+            curl -L --fail --retry 5 --retry-delay 2 --connect-timeout 15 --max-time 180               -o "out/$f" "$base/$f"
+          done
+          curl -L --fail --retry 5 --retry-delay 2 -o out/LICENSE.txt "$base/LICENSE.txt"
+          curl -L --fail --retry 5 --retry-delay 2 -o out/OFFICIAL_SHA256SUMS.txt "$base/SHA256SUMS.txt"
+          sha256sum out/*.gz > out/DOWNLOAD_SHA256SUMS.txt
+
+          python - <<'PY'
+          import json, pathlib
+          import pandas as pd
+
+          root=pathlib.Path('out')
+          patient=pd.read_csv(root/'patient.csv.gz',low_memory=False)
+          aps=pd.read_csv(root/'apacheApsVar.csv.gz',low_memory=False)
+          apr=pd.read_csv(root/'apachePatientResult.csv.gz',low_memory=False)
+          adm=pd.read_csv(root/'admissionDx.csv.gz',low_memory=False)
+          hospital=pd.read_csv(root/'hospital.csv.gz',low_memory=False)
+
+          def cols(df):
+              return [str(x) for x in df.columns]
+
+          print('PATIENT_SHAPE',patient.shape)
+          print('PATIENT_COLUMNS',json.dumps(cols(patient)))
+          print('APS_SHAPE',aps.shape)
+          print('APS_COLUMNS',json.dumps(cols(aps)))
+          print('APACHE_RESULT_SHAPE',apr.shape)
+          print('APACHE_RESULT_COLUMNS',json.dumps(cols(apr)))
+          print('ADMISSION_DX_SHAPE',adm.shape)
+          print('ADMISSION_DX_COLUMNS',json.dumps(cols(adm)))
+          print('HOSPITAL_SHAPE',hospital.shape)
+          print('HOSPITAL_COLUMNS',json.dumps(cols(hospital)))
+
+          assert 'patientunitstayid' in patient.columns
+          assert 'hospitaldischargestatus' in patient.columns
+          target=patient['hospitaldischargestatus'].astype(str).str.strip().str.lower()
+          print('HOSPITAL_DISCHARGE_STATUS_COUNTS',target.value_counts(dropna=False).to_dict())
+
+          print('PATIENT_UNIQUE_STAYS',int(patient['patientunitstayid'].nunique()))
+          if 'uniquepid' in patient.columns:
+              print('UNIQUE_PATIENTS',int(patient['uniquepid'].nunique()))
+          if 'hospitalid' in patient.columns:
+              print('HOSPITAL_IDS',int(patient['hospitalid'].nunique()))
+
+          joined=patient.merge(aps,on='patientunitstayid',how='inner',suffixes=('_patient','_aps'))
+          print('PATIENT_APS_JOIN_SHAPE',joined.shape)
+          print('PATIENT_APS_JOIN_UNIQUE_STAYS',int(joined['patientunitstayid'].nunique()))
+          tgt=joined['hospitaldischargestatus'].astype(str).str.strip().str.lower()
+          print('JOIN_TARGET_COUNTS',tgt.value_counts(dropna=False).to_dict())
+
+          candidate=[
+              'age','gender','admissionheight','admissionweight',
+              'intubated','vent','dialysis','eyes','motor','verbal','meds',
+              'urine','wbc','temperature','respiratoryrate','sodium',
+              'heartrate','meanbp','ph','hematocrit','creatinine','albumin',
+              'pao2','pco2','bilirubin','fio2','glucose'
+          ]
+          available=[c for c in candidate if c in joined.columns]
+          print('CANDIDATE_AVAILABLE',json.dumps(available))
+          miss={c:float(joined[c].isna().mean()) for c in available}
+          print('CANDIDATE_MISSINGNESS',json.dumps(miss,sort_keys=True))
+
+          leakage_terms=['mortality','predicted','discharge','actual','apacheversion','apache']
+          suspicious=[c for c in joined.columns if any(t in c.lower() for t in leakage_terms)]
+          print('SUSPICIOUS_JOIN_COLUMNS',json.dumps(suspicious))
+
+          summary={
+              'patient_rows':int(len(patient)),
+              'patient_unit_stays':int(patient['patientunitstayid'].nunique()),
+              'aps_rows':int(len(aps)),
+              'joined_rows':int(len(joined)),
+              'joined_unique_stays':int(joined['patientunitstayid'].nunique()),
+              'target_counts':{str(k):int(v) for k,v in tgt.value_counts(dropna=False).to_dict().items()},
+              'candidate_available':available,
+              'candidate_missingness':miss,
+              'patient_columns':cols(patient),
+              'aps_columns':cols(aps),
+              'apache_result_columns':cols(apr),
+              'admission_dx_columns':cols(adm),
+              'hospital_columns':cols(hospital)
+          }
+          (root/'profile.json').write_text(json.dumps(summary,indent=2,sort_keys=True))
+          print('EICU_DEMO_PROFILE_PASS')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hs054-eicu-demo-profile
+          path: out/
+          retention-days: 14
