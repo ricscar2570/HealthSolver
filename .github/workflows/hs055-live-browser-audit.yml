@@ -100,15 +100,19 @@ jobs:
           const text=await ensemble.innerText();
           for(const needle of [
             'Sintesi complessa multi-modello',
-            'Research Activation Index',
             'Modelli applicabili',
             'Sopra soglia interna',
             'Ampiezza co-attivazione',
             'Concordanza core esito ospedaliero',
-            'Mappa di co-attivazione',
-            'non produce una nuova probabilità clinica globale'
+            'Mappa di co-attivazione'
           ]){
             if(!text.includes(needle)) throw new Error('ensemble text missing '+needle);
+          }
+          const methodology=page.locator('#hs55Methodology');
+          await methodology.evaluate(el=>{el.open=true});
+          const methodologyText=await methodology.innerText();
+          for(const needle of ['Research Activation Index (RAI)','non produce una nuova probabilità clinica globale']){
+            if(!methodologyText.includes(needle)) throw new Error('ensemble methodology missing '+needle);
           }
 
           const domains=page.locator('#hs55DomainGrid .hs55-domain');
