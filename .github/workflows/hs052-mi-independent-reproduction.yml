@@ -31,6 +31,9 @@ jobs:
           stored=json.load(open('predictive/model-mi-fatal-outcome-v1.json'))
           report=json.load(open('predictive/model-mi-fatal-outcome-v1-report.json'))
           assert stored['runtime_environment']=={'python':'3.13','numpy':'2.5.3','pandas':'3.0.6','scikit_learn':'1.9.1'}
+          assert stored['target_definition']['negative']=='0 = unknown (alive) in the UCI source coding'
+          assert 'not fully outcome-blind' in stored['feature_selection_policy']
+          assert 'feature-screening knowledge' in stored['feature_selection_limitation']
 
           url='https://archive.ics.uci.edu/static/public/579/myocardial+infarction+complications.zip'
           req=urllib.request.Request(url,headers={'User-Agent':'HealthSolver/0.52 independent audit'})
