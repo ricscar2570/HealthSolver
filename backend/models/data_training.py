@@ -1,127 +1,158 @@
-# backend/models/data_training.py
 import logging
+import math
 import os
 from pathlib import Path
 
-import pandas as pd
 import joblib
 import mlflow
 import mlflow.sklearn
+import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score # Aggiungi metriche
 from sqlalchemy.orm import Session
-from backend.database import SessionLocal, Patient # Assumendo che Patient sia definito qui
 
-# Legacy/local MLflow configuration. Prefer an explicit remote/local URI when supplied;
-# otherwise use a writable repository-local directory rather than /mlflow_data.
+from backend.database import Patient, SessionLocal
+
+logger = logging.getLogger(__name__)
+
 MLFLOW_EXPERIMENT_NAME = "HealthSolver_Therapy_Prediction"
-MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "").strip()
-if not MLFLOW_TRACKING_URI:
-    tracking_db = Path(os.getenv("MLFLOW_TRACKING_DB", "mlflow_data/mlflow.db")).resolve()
-    tracking_db.parent.mkdir(parents=True, exist_ok=True)
-    MLFLOW_TRACKING_URI = f"sqlite:///{tracking_db}"
-mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
+MODEL_PATH = Path(
+    os.getenv(
+        "HEALTHSOLVER_LEGACY_THERAPY_MODEL_PATH",
+        "models/saved_models/therapy_model.pkl",
+    )
+)
 
-MODEL_DIR = "models/saved_models" # Directory per salvare il modello localmente
-MODEL_PATH = os.path.join(MODEL_DIR, "therapy_model.pkl")
 
-# Assicurati che la directory del modello esista
-os.makedirs(MODEL_DIR, exist_ok=True)
+def _configure_mlflow() -> None:
+    """Configure MLflow only when the deprecated training workflow is invoked."""
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "").strip()
+    if not tracking_uri:
+        tracking_db = Path(
+            os.getenv("MLFLOW_TRACKING_DB", "mlflow_data/mlflow.db")
+        ).resolve()
+        tracking_db.parent.mkdir(parents=True, exist_ok=True)
+        tracking_uri = f"sqlite:///{tracking_db}"
+
+    mlflow.set_tracking_uri(tracking_uri)
+    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
+
 
 def get_training_data(session: Session) -> pd.DataFrame:
-    """ Recupera e pre-processa i dati per il training dal database. """
+    """Build the deprecated local therapy-training table from Patient rows."""
     records = session.query(Patient).all()
     if not records:
-        logging.warning("No patient records found in the database for training.")
+        logger.warning("No patient records found in the database for training.")
         return pd.DataFrame()
 
-    data = []
-    for p in records:
-        # Estrai feature rilevanti dalla storia medica (esempio)
-        # Questo dipende MOLTO da come è strutturato il JSON 'medical_history'
-        history = p.medical_history or {}
-        # Esempio: Assumiamo che 'history' contenga queste chiavi
-        # Devi adattare questa logica alla tua struttura dati REALE
-        data.append({
-            "age": p.age,
-            "bmi": history.get("bmi", None), # Esempio: prendi BMI da history
-            "condition_severity": history.get("condition_severity", None), # Esempio
-            "comorbidities_count": history.get("comorbidities_count", 0), # Esempio
-            # Assumiamo che la 'target' sia la terapia raccomandata/applicata
-            # o un outcome. ADATTARE QUESTO ALLA LOGICA REALE.
-            "target": history.get("recommended_therapy", None) # Esempio Target
-        })
+    rows = []
+    for patient in records:
+        history = patient.medical_history or {}
+        if not isinstance(history, dict):
+            logger.warning("Skipping patient %s: medical_history is not an object.", patient.id)
+            continue
 
-    df = pd.DataFrame(data)
-    # Rimuovi righe con valori mancanti nelle feature o nel target
-    # Potrebbe essere necessaria una gestione più sofisticata dell'imputazione
-    df.dropna(subset=["age", "bmi", "condition_severity", "comorbidities_count", "target"], inplace=True)
-    logging.info(f"Retrieved {len(df)} preprocessed records for training.")
+        rows.append(
+            {
+                "age": patient.age,
+                "bmi": history.get("bmi"),
+                "condition_severity": history.get("condition_severity"),
+                "comorbidities_count": history.get("comorbidities_count", 0),
+                "target": history.get("recommended_therapy"),
+            }
+        )
+
+    df = pd.DataFrame(rows)
+    required = ["age", "bmi", "condition_severity", "comorbidities_count", "target"]
+    if df.empty:
+        return df
+
+    for column in required:
+        df[column] = pd.to_numeric(df[column], errors="coerce")
+    df.dropna(subset=required, inplace=True)
+    logger.info("Retrieved %d valid records for deprecated local training.", len(df))
     return df
 
-def train_model():
-    """ Addestra il modello di raccomandazione terapia e logga con MLflow. """
-    logging.info("Starting model training...")
-    session = SessionLocal()
-    df = get_training_data(session)
-    session.close()
 
-    if df.empty or len(df) < 10: # Aggiungi controllo sulla dimensione minima
-        logging.error("Not enough valid data available for training. Aborting.")
+def train_model():
+    """Train the deprecated local therapy classifier and log it with MLflow."""
+    logger.info("Starting deprecated local model training.")
+    session = SessionLocal()
+    try:
+        df = get_training_data(session)
+    finally:
+        session.close()
+
+    if len(df) < 10:
         raise ValueError("Not enough valid data available for training.")
 
-    # Definisci features e target (basato su get_training_data)
     features = ["age", "bmi", "condition_severity", "comorbidities_count"]
-    target = "target" # Assicurati che corrisponda alla colonna in get_training_data
-
+    target = "target"
     X = df[features]
-    y = df[target]
+    y = df[target].astype(int)
 
-    # Split Train/Test
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y if len(y.unique()) > 1 else None)
-    logging.info(f"Training data shape: {X_train.shape}, Test data shape: {X_test.shape}")
+    class_counts = y.value_counts()
+    if len(class_counts) < 2:
+        raise ValueError("At least two target classes are required for training.")
+    if int(class_counts.min()) < 2:
+        raise ValueError("Each target class needs at least two observations.")
 
-    # Avvia run MLflow
+    test_rows = max(math.ceil(len(df) * 0.2), len(class_counts))
+    if len(df) - test_rows < len(class_counts):
+        raise ValueError("Not enough observations for a stratified train/test split.")
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=test_rows,
+        random_state=42,
+        stratify=y,
+    )
+    logger.info("Training shape=%s test shape=%s", X_train.shape, X_test.shape)
+
+    _configure_mlflow()
+    MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+
     with mlflow.start_run():
-        # Definisci e addestra il modello
-        # Puoi parametrizzare questi iperparametri
         params = {"n_estimators": 100, "learning_rate": 0.1, "random_state": 42}
         model = GradientBoostingClassifier(**params)
         model.fit(X_train, y_train)
 
-        # Valuta il modello
         y_pred = model.predict(X_test)
         accuracy = accuracy_score(y_test, y_pred)
-        logging.info(f"Model Accuracy: {accuracy:.4f}")
+        logger.info("Legacy model accuracy: %.4f", accuracy)
 
-        # Logga parametri e metriche con MLflow
         mlflow.log_params(params)
         mlflow.log_metric("accuracy", accuracy)
-        # Aggiungi altre metriche se rilevanti (es. precision, recall, AUC se applicabile)
 
-        # Salva il modello localmente
         joblib.dump(model, MODEL_PATH)
-        logging.info(f"Model saved locally to {MODEL_PATH}")
+        logger.info("Legacy model saved to %s", MODEL_PATH)
 
-        # Logga il modello con MLflow
         mlflow.sklearn.log_model(
             sk_model=model,
-            artifact_path="therapy_model", # Nome artefatto in MLflow
-            registered_model_name="HealthSolverTherapyModel" # Nome opzionale nel Model Registry
+            artifact_path="therapy_model",
+            registered_model_name="HealthSolverTherapyModel",
         )
-        mlflow.log_artifact(MODEL_PATH) # Logga anche il file .pkl direttamente
+        mlflow.log_artifact(str(MODEL_PATH))
 
-        logging.info(f"✅ ML model trained and logged to MLflow. Run ID: {mlflow.active_run().info.run_id}")
+        active_run = mlflow.active_run()
+        if active_run is not None:
+            logger.info("MLflow run ID: %s", active_run.info.run_id)
 
-    print("✅ ML model training pipeline finished.") # Output per pipeline_runner
+    return {
+        "status": "trained",
+        "records": len(df),
+        "accuracy": float(accuracy),
+        "model_path": str(MODEL_PATH),
+    }
 
-# Permette di eseguire lo script direttamente se necessario
+
 if __name__ == "__main__":
     try:
         train_model()
-    except ValueError as e:
-        logging.error(f"Training failed: {e}")
-    except Exception as e:
-        logging.exception("An unexpected error occurred during training.")
+    except ValueError as exc:
+        logger.error("Training failed: %s", exc)
+    except Exception:
+        logger.exception("Unexpected legacy training failure.")
+        raise
