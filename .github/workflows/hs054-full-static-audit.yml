@@ -1,0 +1,110 @@
+name: HealthSolver 0.54 Full Static Release Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs054-full-static-audit.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Repository and JSON/JavaScript integrity
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git fsck --full
+          node --check predictive/integrated-predictive-ui.js
+          node --check predictive/predictive-engine.js
+          node --check predictive/unified-case-router.js
+          python - <<'PY'
+          import json,pathlib
+          for p in pathlib.Path('predictive').glob('*.json'):
+              json.loads(p.read_text())
+          print('PARSE PASS')
+          PY
+
+      - name: Freeze all pre-eICU predictive artifacts
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import pathlib,subprocess
+          baseline='bbe7d40a978bbf907f527f9e33798cabaab8894e'
+          names=subprocess.check_output(
+              ['git','ls-tree','-r','--name-only',baseline,'predictive'],
+              text=True
+          ).splitlines()
+          frozen=[
+              n for n in names
+              if n.startswith('predictive/model-')
+              and n.endswith('.json')
+              and n!='predictive/model-registry-v2.json'
+          ]
+          assert len(frozen)>=25,len(frozen)
+          for path in frozen:
+              old=subprocess.check_output(['git','show',f'{baseline}:{path}'])
+              new=pathlib.Path(path).read_bytes()
+              assert old==new,path
+          print('PRE-EICU MODEL ARTIFACT FREEZE PASS',len(frozen))
+          PY
+
+      - name: Verify current registry and eICU semantics
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import json,pathlib,math
+          root=pathlib.Path('predictive')
+          reg=json.loads((root/'model-registry-v2.json').read_text())
+          assert reg['version']=='0.54.0'
+          assert len(reg['models'])==14
+          ids=[e['model_id'] for e in reg['models']]
+          assert len(ids)==len(set(ids))
+          assert ids[-1]=='HS-EICU-DEMO-HOSPDEATH-001'
+          m=json.loads((root/'model-eicu-demo-hospital-death-v1.json').read_text())
+          assert m['features']==[
+              'age_numeric','age_over_89','male','gcs_total','gcs_unscorable_meds',
+              'temperature','respiratoryrate','heartrate','meanbp','glucose','sodium','creatinine'
+          ]
+          assert m['raw_features']==[
+              'age','sex','gcs_total','gcs_unscorable_meds','temperature',
+              'respiratoryrate','heartrate','meanbp','glucose','sodium','creatinine'
+          ]
+          assert m['dataset']['license']=='Open Data Commons Open Database License v1.0'
+          assert m['metrics_test']['n_test']==402
+          assert m['metrics_test']['confusion_matrix']=={
+              'fn_death':12,'fp_death':62,'tn_survived':305,'tp_death':23
+          }
+          for key in ['hospitalid','hospitaldischargelocation','apachescore','predictedhospitalmortality','actualhospitalmortality']:
+              assert key in m['excluded_source_fields']
+          for f in m['features']:
+              assert math.isfinite(float(m['logistic']['coefficients'][f]))
+              assert float(m['standardization']['scale'][f])>0
+          print('FOURTEEN MODEL STATIC INTEGRITY PASS')
+          PY
+
+      - name: Verify UI and packaging invariants
+        shell: bash
+        run: |
+          set -euxo pipefail
+          grep -q 'HS_INTEGRATED_PREDICTIVE_0540' predictive/integrated-predictive-ui.js
+          grep -q '14 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -q 'hs54EicuDetails' predictive/integrated-predictive-ui.js
+          grep -q 'HS-EICU-DEMO-HOSPDEATH-001' predictive/integrated-predictive-ui.js
+          grep -q "v\['version'\]='0.54.0'" .github/workflows/hs041-repack-pages.yml
+          grep -q 'eicu_demo_hospital_death_integrated' .github/workflows/hs041-repack-pages.yml
+          grep -q "shutil.copytree(main/'predictive',public_predictive)" .github/workflows/hs041-repack-pages.yml
+          grep -q "expected_release='0.54.0'" .github/workflows/hs-published-smoke.yml
+          grep -q "expected_registry='0.54.0'" .github/workflows/hs-published-smoke.yml
+          echo '0.54 PACKAGING INVARIANTS PASS'
