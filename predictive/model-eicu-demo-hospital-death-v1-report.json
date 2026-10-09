@@ -1,0 +1,23 @@
+{
+  "accuracy": 0.8159203980099502,
+  "auprc": 0.3516680940352904,
+  "auroc": 0.8224990268586998,
+  "brier": 0.06929920452285196,
+  "confusion_matrix": {
+    "fn_death": 12,
+    "fp_death": 62,
+    "tn_survived": 305,
+    "tp_death": 23
+  },
+  "n_calibration": 402,
+  "n_source_unique_patients": 1841,
+  "n_source_unit_stays": 2520,
+  "n_test": 402,
+  "n_total": 2004,
+  "n_train": 1200,
+  "n_unique_patients": 1713,
+  "positive_prevalence_hospital_death": 0.08632734530938124,
+  "sensitivity_hospital_death": 0.6571428571428571,
+  "specificity_hospital_survival": 0.8310626702997275,
+  "threshold": 0.09266448469789074
+}

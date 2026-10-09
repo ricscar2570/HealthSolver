@@ -1,0 +1,424 @@
+{
+  "abstention": {
+    "max_missing_features": 2,
+    "max_missing_raw_features": 2,
+    "message": "Prediction withheld when age or sex is missing, or when more than two raw first-APACHE-day inputs are unavailable.",
+    "required_raw_features": [
+      "age",
+      "sex"
+    ]
+  },
+  "calibration": {
+    "intercept": -2.5031286279438505,
+    "method": "Platt scaling on patient-group-disjoint held-out calibration split",
+    "slope": 1.0419948036693913
+  },
+  "cohort_policy": "First ICU stay of each hospital admission (unitvisitnumber=1), known hospital discharge status, and available apacheApsVar row. Multiple hospital admissions from the same unique patient may remain, but all rows for a unique patient are assigned to one split only.",
+  "dataset": {
+    "access": "Open access; anyone may access files subject to the specified license.",
+    "development_cohort_rows": 2004,
+    "development_unique_patients": 1713,
+    "doi": "10.13026/4mxk-na84",
+    "download_base": "https://physionet.org/files/eicu-crd-demo/2.0.1/",
+    "license": "Open Data Commons Open Database License v1.0",
+    "name": "eICU Collaborative Research Database Demo",
+    "source": "https://physionet.org/content/eicu-crd-demo/2.0.1/",
+    "source_description": "Open demo of deidentified critical-care data; PhysioNet describes >2,500 unit stays selected from larger eICU hospitals.",
+    "source_sha256": {
+      "apacheApsVar.csv.gz": "2dc6d63f9807c7e663ffa253998691605d527b702ac1db8cc5dda92308061e78",
+      "patient.csv.gz": "15e1eb52169828e3cfff3b67132a087298de4d0365bbb31bb294f6043bffd474"
+    },
+    "source_unique_patients": 1841,
+    "source_unit_stays": 2520,
+    "version": "2.0.1",
+    "years": "2014-2015"
+  },
+  "encoding_map": {
+    "age_numeric": {
+      "kind": "numeric_transform",
+      "raw_key": "age",
+      "transform": "eICU age string: >89 maps to 90; otherwise numeric years"
+    },
+    "age_over_89": {
+      "kind": "binary_transform",
+      "raw_key": "age",
+      "transform": "1 when age >89, otherwise 0"
+    },
+    "creatinine": {
+      "kind": "numeric",
+      "raw_key": "creatinine"
+    },
+    "gcs_total": {
+      "kind": "numeric",
+      "raw_key": "gcs_total"
+    },
+    "gcs_unscorable_meds": {
+      "kind": "numeric",
+      "raw_key": "gcs_unscorable_meds"
+    },
+    "glucose": {
+      "kind": "numeric",
+      "raw_key": "glucose"
+    },
+    "heartrate": {
+      "kind": "numeric",
+      "raw_key": "heartrate"
+    },
+    "male": {
+      "category": "male",
+      "kind": "category",
+      "raw_key": "sex"
+    },
+    "meanbp": {
+      "kind": "numeric",
+      "raw_key": "meanbp"
+    },
+    "respiratoryrate": {
+      "kind": "numeric",
+      "raw_key": "respiratoryrate"
+    },
+    "sodium": {
+      "kind": "numeric",
+      "raw_key": "sodium"
+    },
+    "temperature": {
+      "kind": "numeric",
+      "raw_key": "temperature"
+    }
+  },
+  "excluded_source_fields": [
+    "ethnicity",
+    "hospitalid",
+    "wardid",
+    "apacheadmissiondx",
+    "hospitaladmittime24",
+    "hospitaladmitoffset",
+    "hospitaladmitsource",
+    "hospitaldischargeyear",
+    "hospitaldischargetime24",
+    "hospitaldischargeoffset",
+    "hospitaldischargelocation",
+    "unitdischargetime24",
+    "unitdischargeoffset",
+    "unitdischargelocation",
+    "unitdischargestatus",
+    "dischargeweight",
+    "acutephysiologyscore",
+    "apachescore",
+    "apacheversion",
+    "predictedicumortality",
+    "actualicumortality",
+    "predictedhospitalmortality",
+    "actualhospitalmortality",
+    "predictediculos",
+    "actualiculos",
+    "predictedhospitallos",
+    "actualhospitallos",
+    "actualventdays",
+    "predventdays",
+    "urine",
+    "wbc",
+    "bun",
+    "ph",
+    "hematocrit",
+    "albumin",
+    "pao2",
+    "pco2",
+    "bilirubin",
+    "fio2",
+    "intubated",
+    "vent",
+    "dialysis"
+  ],
+  "feature_policy": "Predeclared compact first-APACHE-day feature set chosen from source semantics and training-partition missingness only; no feature/outcome association was computed or used for selection. High-missingness urine, WBC and BUN were excluded. APACHE scores/predictions, discharge fields, diagnosis text, treatment fields, hospital identifiers and ethnicity are excluded.",
+  "features": [
+    "age_numeric",
+    "age_over_89",
+    "male",
+    "gcs_total",
+    "gcs_unscorable_meds",
+    "temperature",
+    "respiratoryrate",
+    "heartrate",
+    "meanbp",
+    "glucose",
+    "sodium",
+    "creatinine"
+  ],
+  "field_meta": {
+    "age_numeric": {
+      "median": 65.0,
+      "training_max": 90.0,
+      "training_min": 15.0,
+      "training_missing_fraction": 0.0016666666666666668
+    },
+    "age_over_89": {
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0,
+      "training_missing_fraction": 0.0016666666666666668
+    },
+    "creatinine": {
+      "median": 1.0,
+      "training_max": 14.95,
+      "training_min": 0.1,
+      "training_missing_fraction": 0.26166666666666666
+    },
+    "gcs_total": {
+      "median": 15.0,
+      "training_max": 15.0,
+      "training_min": 3.0,
+      "training_missing_fraction": 0.04833333333333333
+    },
+    "gcs_unscorable_meds": {
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0,
+      "training_missing_fraction": 0.0375
+    },
+    "glucose": {
+      "median": 128.0,
+      "training_max": 975.0,
+      "training_min": 10.0,
+      "training_missing_fraction": 0.1825
+    },
+    "heartrate": {
+      "median": 104.0,
+      "training_max": 202.0,
+      "training_min": 23.0,
+      "training_missing_fraction": 0.02
+    },
+    "male": {
+      "median": 1.0,
+      "training_max": 1.0,
+      "training_min": 0.0,
+      "training_missing_fraction": 0.0008333333333333334
+    },
+    "meanbp": {
+      "median": 66.0,
+      "training_max": 200.0,
+      "training_min": 40.0,
+      "training_missing_fraction": 0.03
+    },
+    "respiratoryrate": {
+      "median": 27.0,
+      "training_max": 60.0,
+      "training_min": 4.0,
+      "training_missing_fraction": 0.0275
+    },
+    "sodium": {
+      "median": 138.0,
+      "training_max": 170.0,
+      "training_min": 103.0,
+      "training_missing_fraction": 0.25833333333333336
+    },
+    "temperature": {
+      "median": 36.44,
+      "training_max": 40.3,
+      "training_min": 22.2,
+      "training_missing_fraction": 0.0975
+    }
+  },
+  "imputation": {
+    "strategy": "training median after source-specific missing-value normalization",
+    "values": {
+      "age_numeric": 65.0,
+      "age_over_89": 0.0,
+      "creatinine": 1.0,
+      "gcs_total": 15.0,
+      "gcs_unscorable_meds": 0.0,
+      "glucose": 128.0,
+      "heartrate": 104.0,
+      "male": 1.0,
+      "meanbp": 66.0,
+      "respiratoryrate": 27.0,
+      "sodium": 138.0,
+      "temperature": 36.44
+    }
+  },
+  "input_timepoint_policy": "Only age and sex may be reused from the common dossier. All GCS and physiologic values must be explicitly supplied as first-APACHE-day values in the eICU panel; generic dossier values are not silently substituted because they do not encode the required first-24-hour time window.",
+  "leakage_review": "Outcome/discharge variables and apachePatientResult scores, actual outcomes and predicted mortality/LOS are never predictors. Patient grouping prevents the same person appearing across development partitions. First-APACHE-day raw physiology is retained because it defines the prediction index.",
+  "logistic": {
+    "C": 0.5,
+    "class_weight": "balanced",
+    "coefficients": {
+      "age_numeric": 0.7418932846084226,
+      "age_over_89": 0.06041136620642303,
+      "creatinine": 0.13612832317551318,
+      "gcs_total": -0.6542022738341464,
+      "gcs_unscorable_meds": 0.3072185729673279,
+      "glucose": 0.0649748704475511,
+      "heartrate": 0.3049914020912003,
+      "male": 0.09650377681368436,
+      "meanbp": -0.26274312453361437,
+      "respiratoryrate": 0.45349361884953165,
+      "sodium": -0.2178660581660062,
+      "temperature": -0.32198518032369466
+    },
+    "intercept": -0.6584318617457939,
+    "solver": "lbfgs"
+  },
+  "metrics_test": {
+    "accuracy": 0.8159203980099502,
+    "auprc": 0.3516680940352904,
+    "auroc": 0.8224990268586998,
+    "brier": 0.06929920452285196,
+    "confusion_matrix": {
+      "fn_death": 12,
+      "fp_death": 62,
+      "tn_survived": 305,
+      "tp_death": 23
+    },
+    "n_calibration": 402,
+    "n_source_unique_patients": 1841,
+    "n_source_unit_stays": 2520,
+    "n_test": 402,
+    "n_total": 2004,
+    "n_train": 1200,
+    "n_unique_patients": 1713,
+    "positive_prevalence_hospital_death": 0.08632734530938124,
+    "sensitivity_hospital_death": 0.6571428571428571,
+    "specificity_hospital_survival": 0.8310626702997275,
+    "threshold": 0.09266448469789074
+  },
+  "missing_value_policy": "APACHE APS continuous source value -1 is treated as missing. Training medians are learned on training only. Source top-coded age >89 maps to numeric 90 with a separate age_over_89 indicator.",
+  "model_id": "HS-EICU-DEMO-HOSPDEATH-001",
+  "not_clinically_validated": true,
+  "raw_feature_schema": [
+    {
+      "key": "age",
+      "kind": "numeric",
+      "label": "Et\u00e0",
+      "note": "Nel source >89 \u00e8 top-coded; HealthSolver replica il top-coding a 90 per il modello.",
+      "unit": "anni"
+    },
+    {
+      "categories": [
+        "female",
+        "male"
+      ],
+      "key": "sex",
+      "kind": "categorical",
+      "label": "Sesso"
+    },
+    {
+      "key": "gcs_total",
+      "kind": "numeric",
+      "label": "GCS totale peggiore nel primo APACHE day",
+      "unit": "3-15"
+    },
+    {
+      "key": "gcs_unscorable_meds",
+      "kind": "binary",
+      "label": "GCS non valutabile per farmaci",
+      "unit": "0=no, 1=s\u00ec"
+    },
+    {
+      "key": "temperature",
+      "kind": "numeric",
+      "label": "Temperatura peggiore nel primo APACHE day",
+      "unit": "\u00b0C"
+    },
+    {
+      "key": "respiratoryrate",
+      "kind": "numeric",
+      "label": "Frequenza respiratoria peggiore nel primo APACHE day",
+      "unit": "atti/min"
+    },
+    {
+      "key": "heartrate",
+      "kind": "numeric",
+      "label": "Frequenza cardiaca peggiore nel primo APACHE day",
+      "unit": "bpm"
+    },
+    {
+      "key": "meanbp",
+      "kind": "numeric",
+      "label": "Pressione arteriosa media peggiore nel primo APACHE day",
+      "unit": "mmHg"
+    },
+    {
+      "key": "glucose",
+      "kind": "numeric",
+      "label": "Glucosio peggiore nel primo APACHE day",
+      "unit": "mg/dL"
+    },
+    {
+      "key": "sodium",
+      "kind": "numeric",
+      "label": "Sodio peggiore nel primo APACHE day",
+      "unit": "mEq/L"
+    },
+    {
+      "key": "creatinine",
+      "kind": "numeric",
+      "label": "Creatinina peggiore nel primo APACHE day",
+      "unit": "mg/dL"
+    }
+  ],
+  "raw_features": [
+    "age",
+    "sex",
+    "gcs_total",
+    "gcs_unscorable_meds",
+    "temperature",
+    "respiratoryrate",
+    "heartrate",
+    "meanbp",
+    "glucose",
+    "sodium",
+    "creatinine"
+  ],
+  "release": "HealthSolver 0.54.0 eICU Demo Hospital Death Integration",
+  "research_only": true,
+  "runtime_environment": {
+    "numpy": "2.5.3",
+    "pandas": "3.0.6",
+    "python": "3.13",
+    "scikit_learn": "1.9.1"
+  },
+  "schema": "healthsolver.predictive_model.v1",
+  "split_policy": "StratifiedGroupKFold with 5 folds, grouped by uniquepid; fold 0 test, fold 1 calibration, folds 2-4 training. No patient overlap among partitions.",
+  "standardization": {
+    "mean": {
+      "age_numeric": 63.100833333333334,
+      "age_over_89": 0.03666666666666667,
+      "creatinine": 1.3470416666666667,
+      "gcs_total": 13.520833333333334,
+      "gcs_unscorable_meds": 0.010833333333333334,
+      "glucose": 157.87333333333333,
+      "heartrate": 99.74916666666667,
+      "male": 0.5775,
+      "meanbp": 84.42333333333333,
+      "respiratoryrate": 24.838333333333335,
+      "sodium": 137.87783333333334,
+      "temperature": 36.410675
+    },
+    "scale": {
+      "age_numeric": 17.724578019581234,
+      "age_over_89": 0.1879420714534727,
+      "creatinine": 1.3401105047459914,
+      "gcs_total": 3.022895847619556,
+      "gcs_unscorable_meds": 0.10351798018809208,
+      "glucose": 94.42571483564328,
+      "heartrate": 31.14955188504144,
+      "male": 0.4939572349910466,
+      "meanbp": 39.471012007407275,
+      "respiratoryrate": 14.67630280039523,
+      "sodium": 5.248165581631569,
+      "temperature": 0.8804382210249999
+    }
+  },
+  "target_definition": {
+    "fixed_horizon": false,
+    "interpretation": "Hospital discharge status after the indexed first ICU stay; not 24-hour, 30-day or 90-day mortality and not a general ICU mortality probability.",
+    "negative": "Alive",
+    "positive": "Expired",
+    "source_name": "hospitaldischargestatus",
+    "survival_probability": false
+  },
+  "temporal_semantics": "Prediction index is the end of the first APACHE day (first 24 hours after ICU admission). APS variables are source-defined worst values during that APACHE day. This is not an admission-time model.",
+  "threshold": 0.09266448469789074,
+  "threshold_selection": "Youden J maximum on held-out calibration split; evaluated once on untouched patient-group-disjoint test split",
+  "version": "1.0.0"
+}
