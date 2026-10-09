@@ -115,6 +115,9 @@ jobs:
           assert m['runtime_environment']=={'python':'3.13','numpy':'2.5.3','pandas':'3.0.6','scikit_learn':'1.9.1'}
           assert m['target_definition']['source_name']=='LET_IS'
           assert m['target_definition']['binary_mapping']=='HealthSolver positive = LET_IS != 0'
+          assert m['target_definition']['negative']=='0 = unknown (alive) in the UCI source coding'
+          assert 'not fully outcome-blind' in m['feature_selection_policy']
+          assert 'feature-screening knowledge' in m['feature_selection_limitation']
           assert m['metrics_test']['n_total']==1700
           assert m['metrics_test']['auroc']>0.82
           assert m['metrics_test']['auprc']>0.58
