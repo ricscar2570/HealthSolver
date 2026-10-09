@@ -1,6 +1,8 @@
 # backend/models/data_training.py
 import logging
 import os
+from pathlib import Path
+
 import pandas as pd
 import joblib
 import mlflow
@@ -11,10 +13,14 @@ from sklearn.metrics import accuracy_score # Aggiungi metriche
 from sqlalchemy.orm import Session
 from backend.database import SessionLocal, Patient # Assumendo che Patient sia definito qui
 
-# Configura MLflow (assicurati che la directory esista o sia creata)
-MLFLOW_TRACKING_URI = "file:///mlflow_data" # O un server MLflow remoto
+# Legacy/local MLflow configuration. Prefer an explicit remote/local URI when supplied;
+# otherwise use a writable repository-local directory rather than /mlflow_data.
 MLFLOW_EXPERIMENT_NAME = "HealthSolver_Therapy_Prediction"
-os.makedirs(MLFLOW_TRACKING_URI.replace("file://", ""), exist_ok=True) # Crea dir locale se non esiste
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "").strip()
+if not MLFLOW_TRACKING_URI:
+    tracking_dir = Path(os.getenv("MLFLOW_TRACKING_DIR", "mlflow_data")).resolve()
+    tracking_dir.mkdir(parents=True, exist_ok=True)
+    MLFLOW_TRACKING_URI = tracking_dir.as_uri()
 mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
 
