@@ -19,7 +19,7 @@ const ReportViewer = () => {
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error || `Failed to fetch alerts (${response.status})`);
+          throw new Error(errorData.error || errorData.detail || `Failed to fetch alerts (${response.status})`);
         }
         const data = await response.json();
         // Assumiamo che la risposta sia {"alerts": ["log line 1", "log line 2", ...]}
