@@ -1,4 +1,5 @@
 name: HealthSolver Published Release Smoke
+# rerun after 0.54.1 Pages propagation
 on:
   push:
     branches: ['main']
