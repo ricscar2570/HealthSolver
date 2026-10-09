@@ -722,8 +722,11 @@ The processed dataset contains **253,680 survey respondents** and **21 health/de
 - UCI ID: **891**
 - DOI: **10.24432/C53919**
 - upstream source: **CDC BRFSS**
-- processed dataset licensing: **CC0 / Public Domain**
-- CDC BRFSS federal survey data/materials: public-domain source material
+- current UCI external record: **“See linked dataset for licensing information”**;
+- linked processed dataset: reported as **CC0 / Public Domain**;
+- CDC BRFSS federal survey data/materials: generally public-domain source material.
+
+HealthSolver retains attribution to **UCI, the linked processed dataset, and CDC BRFSS**. This deliberately avoids treating the UCI external-record page itself as the source of a CC0 grant.
 
 The 0.50 training workflow first uses the UCI interface and includes a public-dataset fallback so a temporary UCI API failure does not prevent reproducible acquisition. The successful release training run used `ucimlrepo:891`.
 
