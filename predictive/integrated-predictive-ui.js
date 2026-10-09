@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.__HS_INTEGRATED_PREDICTIVE_0511__) return;
-window.__HS_INTEGRATED_PREDICTIVE_0511__=true;
+if(window.__HS_INTEGRATED_PREDICTIVE_052__) return;
+window.__HS_INTEGRATED_PREDICTIVE_052__=true;
 
 const BUNDLE=window.__HS_PREDICTIVE_BUNDLE__||null;
 if(!BUNDLE?.registry||!BUNDLE?.models) return;
@@ -15,9 +15,9 @@ document.getElementById('hs-router041')?.remove();
 // while updating only visible application-release branding.
 (function reconcileReleaseBranding(){
   const replacements=[
-    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.51.1'],
+    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.52'],
     [/^HealthSolver\s+0\.38\.0\s*·\s*Massive Public Data \+ Clinical Coach Research Edition\s*·\s*Riccardo Scaringi\s*·\s*Non uso clinico\.?$/i,
-     'HealthSolver 0.51.1 · Sepsis Audit & Scientific Semantics Remediation + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
+     'HealthSolver 0.52.0 · UCI Myocardial Infarction Fatal Outcome Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
   ];
   const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
   const nodes=[];
@@ -120,11 +120,11 @@ wrap.className='card';
 wrap.innerHTML=`
   <div class="hs43-hero">
     <div>
-      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.51.1</div>
+      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.52</div>
       <h2 class="hs43-title">Predizioni cliniche di ricerca</h2>
       <p class="hs43-sub">HealthSolver usa lo stesso dossier che hai già compilato per verificare quali modelli sono applicabili e calcolare le stime disponibili. Le funzioni predittive sono qui, in primo piano. Ogni nuovo database entra nello stesso registry e nello stesso dossier.</p>
     </div>
-    <div class="hs43-badge">11 MODELLI SUPERVISIONATI</div>
+    <div class="hs43-badge">12 MODELLI SUPERVISIONATI</div>
   </div>
   <div id="hs42Coverage" class="metrics"></div>
   <div class="actions" style="margin-top:8px">
@@ -271,6 +271,33 @@ wrap.innerHTML=`
     </div>
     <div class="notice" style="margin-top:10px"><b>Semantica dell'output:</b> il modello stima il label di <b>decesso come esito ospedaliero</b> nella coorte sorgente. Il paper descrive l'orizzonte come “circa 9,351 giorni” perché 9,351 è la <b>durata media</b> del ricovero; la durata individuale varia da 0 a 499 giorni. HealthSolver quindi non interpreta 9,351 giorni come un orizzonte fisso per ogni paziente e non presenta la percentuale come survival/time-to-event.</div>
     <div class="notice" style="margin-top:10px"><b>Validazione esterna debole:</b> sulla coorte sudcoreana indipendente di 137 pazienti, AUROC 0,548. Il risultato va trattato come dimostrazione metodologica di ricerca e non generalizzato clinicamente.</div>
+  </details>
+  <details id="hs52MiFatalDetails">
+    <summary><b>Infarto miocardico acuto · esito letale sorgente</b> · admission-time UCI 579</summary>
+    <p class="hint">Il modello usa 21 variabili predefinite disponibili all'ammissione. Età e sesso vengono riutilizzati dal dossier. Pressione, sodio e potassio vengono riusati solo se presenti nelle stesse unità; in alternativa puoi inserirli qui. Sono escluse le 9 variabili dinamiche dei giorni successivi e tutte le variabili terapeutiche.</p>
+    <div class="grid">
+      <label>Infarti miocardici pregressi<select id="hs52_inf_anam"><option value="">—</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3 o più</option></select></label>
+      <label>Angina da sforzo in anamnesi<select id="hs52_stenok_an"><option value="">—</option><option value="0">Mai</option><option value="1">Nell'ultimo anno</option><option value="2">1 anno fa</option><option value="3">2 anni fa</option><option value="4">3 anni fa</option><option value="5">4–5 anni fa</option><option value="6">&gt;5 anni fa</option></select></label>
+      <label>Classe funzionale angina<select id="hs52_fk_stenok"><option value="">—</option><option value="0">Nessuna</option><option value="1">I</option><option value="2">II</option><option value="3">III</option><option value="4">IV</option></select></label>
+      <label>CHD nelle settimane/giorni precedenti<select id="hs52_ibs_post"><option value="">—</option><option value="0">Nessuna</option><option value="1">Angina da sforzo</option><option value="2">Angina instabile</option></select></label>
+      <label>Ipertensione essenziale<select id="hs52_gb"><option value="">—</option><option value="0">Nessuna</option><option value="1">Stadio 1</option><option value="2">Stadio 2</option><option value="3">Stadio 3</option></select></label>
+      <label>Ipertensione sintomatica<select id="hs52_sim_gipert"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>Scompenso cardiaco cronico pregresso<select id="hs52_zsn_a"><option value="">—</option><option value="0">Nessuno</option><option value="1">Stadio I</option><option value="2">Stadio II · disfunzione destra</option><option value="3">Stadio II · disfunzione sinistra</option><option value="4">Stadio IIB · destra + sinistra</option></select></label>
+      <label>PA sistolica in ICU all'ingresso (mmHg)<input id="hs52_sbp" type="number" min="0" step="any"></label>
+      <label>PA diastolica in ICU all'ingresso (mmHg)<input id="hs52_dbp" type="number" min="0" step="any"></label>
+      <label>Edema polmonare all'ingresso in ICU<select id="hs52_pulm_edema"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>Shock cardiogeno all'ingresso in ICU<select id="hs52_cardiogenic_shock"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>FA parossistica all'ingresso/pre-ospedaliero<select id="hs52_parox_af"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>Fibrillazione ventricolare all'ingresso/pre-ospedaliero<select id="hs52_vf"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>Infarto ventricolare destro<select id="hs52_rv_mi"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>Potassio sierico (mmol/L)<input id="hs52_k" type="number" step="any"></label>
+      <label>Sodio sierico (mmol/L)<input id="hs52_na" type="number" step="any"></label>
+      <label>Leucociti (10^9/L)<input id="hs52_wbc" type="number" min="0" step="any"></label>
+      <label>VES (mm/h)<input id="hs52_esr" type="number" min="0" step="any"></label>
+      <label>Tempo da inizio attacco CHD a ospedale<select id="hs52_time_to_hospital"><option value="">—</option><option value="1">&lt;2 ore</option><option value="2">2–4 ore</option><option value="3">4–6 ore</option><option value="4">6–8 ore</option><option value="5">8–12 ore</option><option value="6">12–24 ore</option><option value="7">&gt;1 giorno</option><option value="8">&gt;2 giorni</option><option value="9">&gt;3 giorni</option></select></label>
+    </div>
+    <div class="notice" style="margin-top:10px"><b>Semantica del target:</b> <code>LET_IS ≠ 0</code> indica che nel record sorgente è registrata una delle sette cause di esito letale. È un classificatore di ricerca nel dominio dei ricoveri per IMA del dataset, non uno score di mortalità clinicamente validato e non una raccomandazione di triage.</div>
+    <div class="notice" style="margin-top:10px"><b>Nota di leakage/causalità:</b> shock cardiogeno, edema polmonare e aritmie presenti già all'ingresso sono mantenuti perché UCI li definisce admission/pre-hospital. Sono forti segnali di gravità e concettualmente vicini ad alcune cause letali finali: per questo la probabilità non va interpretata come rischio eziologico indipendente.</div>
   </details>
   <h3 style="margin:24px 0 10px;font-size:1.25rem">Risultati predittivi</h3>
   <div id="hs42Results" class="grid"></div>
@@ -466,6 +493,29 @@ function dossierCase(){
     sex_0male_1female:sv===1?0:sv===0?1:null,
     episode_number:num('hs51_episode_number')
   };
+  const miFatal={
+    AGE:age,
+    SEX:sv,
+    INF_ANAM:num('hs52_inf_anam'),
+    STENOK_AN:num('hs52_stenok_an'),
+    FK_STENOK:num('hs52_fk_stenok'),
+    IBS_POST:num('hs52_ibs_post'),
+    GB:num('hs52_gb'),
+    SIM_GIPERT:num('hs52_sim_gipert'),
+    ZSN_A:num('hs52_zsn_a'),
+    S_AD_ORIT:first(num('ci_systolic'),num('hs52_sbp')),
+    D_AD_ORIT:first(num('ci_diastolic'),num('hs52_dbp')),
+    O_L_POST:num('hs52_pulm_edema'),
+    K_SH_POST:num('hs52_cardiogenic_shock'),
+    MP_TP_POST:num('hs52_parox_af'),
+    FIB_G_POST:num('hs52_vf'),
+    IM_PG_P:num('hs52_rv_mi'),
+    K_BLOOD:first(num('ci_potassium'),num('hs52_k')),
+    NA_BLOOD:first(num('ci_sodium'),num('hs52_na')),
+    L_BLOOD:num('hs52_wbc'),
+    ROE:num('hs52_esr'),
+    TIME_B_S:num('hs52_time_to_hospital')
+  };
   return {
     'HS-UCI-HD-001':heart,
     'HS-UCI-CKD-001':ckd,
@@ -477,7 +527,8 @@ function dossierCase(){
     'HS-UCI-THYREC-001':thyroid,
     'HS-UCI-HFDEATH-001':heartFailure,
     'HS-CDC-DIABIND-001':cdcDiabetes,
-    'HS-UCI-SEPSISDEATH-001':sepsis
+    'HS-UCI-SEPSISDEATH-001':sepsis,
+    'HS-UCI-MIFATAL-001':miFatal
   };
 }
 function readiness(model,values){
@@ -526,7 +577,9 @@ function renderResult(entry,model,res){
       ? `<div class="notice"><b>Label BRFSS, non diagnosi né rischio futuro.</b> <code>Diabetes_binary=1</code> unisce prediabete e diabete. Questa percentuale non distingue le due condizioni e non stima la probabilità futura di sviluppare diabete.</div>`
       : model.model_id==='HS-UCI-SEPSISDEATH-001'
         ? `<div class="notice"><b>Esito ospedaliero con durata variabile.</b> Il paper usa “circa 9,351 giorni” perché è la durata media del ricovero, ma i ricoveri variano da 0 a 499 giorni: non è un endpoint fisso a 9 giorni né una probabilità di sopravvivenza. <b>Validazione esterna debole:</b> coorte sudcoreana n=137, AUROC 0.548; non generalizzare clinicamente.</div>`
-        : '';
+        : model.model_id==='HS-UCI-MIFATAL-001'
+          ? `<div class="notice"><b>LET_IS sorgente, non score clinico.</b> La classe positiva raggruppa sette cause di esito letale registrate nel dataset UCI 579. Il modello usa soltanto 21 feature predefinite ammesse all'ingresso e non include variabili dinamiche dei giorni successivi né farmaci. La soglia interna privilegia sensibilità e non è un cut-off di triage.</div>`
+          : '';
   d.innerHTML=`
     <div class="eyebrow">${model.model_id}</div>
     <h3>${titleFor(entry)}</h3>

@@ -73,7 +73,7 @@
       },
       "model_id": "HS-UCI-BC-001",
       "task": "Binary research prediction of malignant versus benign FNA-derived breast-mass feature pattern within the UCI WDBC domain.",
-      "title": "Malignità su caratteristiche FNA"
+      "title": "Malignit\u00e0 su caratteristiche FNA"
     },
     {
       "file": "model-hcv-v1.json",
@@ -205,7 +205,7 @@
       "title": "Recidiva carcinoma tiroideo differenziato"
     },
     {
-      "cohort_scope": "Faisalabad 2015 · LV systolic dysfunction · previous NYHA III-IV heart failure",
+      "cohort_scope": "Faisalabad 2015 \u00b7 LV systolic dysfunction \u00b7 previous NYHA III-IV heart failure",
       "file": "model-heart-failure-mortality-v1.json",
       "fixed_horizon": false,
       "metrics_test": {
@@ -231,7 +231,7 @@
       "model_id": "HS-UCI-HFDEATH-001",
       "output_semantics": "Calibrated research probability of the source binary DEATH_EVENT label under the UCI 519 development setup and source-cohort distribution; not a general heart-failure mortality-risk estimate.",
       "task": "Binary research classification of source DEATH_EVENT (0/1) within UCI 519's 2015 Faisalabad cohort of patients with left ventricular systolic dysfunction and previous NYHA III-IV heart failure, excluding follow-up duration (time); this is not a fixed-horizon mortality or survival probability.",
-      "title": "DEATH_EVENT UCI 519 · insufficienza cardiaca"
+      "title": "DEATH_EVENT UCI 519 \u00b7 insufficienza cardiaca"
     },
     {
       "file": "model-cdc-diabetes-indicators-v1.json",
@@ -258,7 +258,7 @@
       "model_id": "HS-CDC-DIABIND-001",
       "target_semantics": "Diabetes_binary=1 merges prediabetes and diabetes; cross-sectional source label, not future risk.",
       "task": "Binary research classification of the processed BRFSS source label Diabetes_binary: 0=no diabetes, 1=prediabetes or diabetes.",
-      "title": "Diabete/prediabete · label BRFSS"
+      "title": "Diabete/prediabete \u00b7 label BRFSS"
     },
     {
       "external_validation": {
@@ -303,9 +303,36 @@
       "model_id": "HS-UCI-SEPSISDEATH-001",
       "target_semantics": "Hospital-outcome death label in a broad Norwegian infection/SIRS/sepsis-potential-precondition primary cohort; no fixed horizon; not a survival probability.",
       "task": "Binary research classification of hospital outcome among admissions in the Norwegian primary cohort of infection/SIRS/sepsis-potential-precondition records; HealthSolver positive class is in-hospital death (source outcome 0=dead), using age, source-encoded sex, and septic episode number. Not every primary-cohort admission can be asserted to satisfy the later Sepsis-3 definition.",
-      "title": "Esito ospedaliero · primary cohort infezioni/SIRS/sepsi"
+      "title": "Esito ospedaliero \u00b7 primary cohort infezioni/SIRS/sepsi"
+    },
+    {
+      "file": "model-mi-fatal-outcome-v1.json",
+      "metrics_test": {
+        "accuracy": 0.5588235294117647,
+        "auprc": 0.5819335960079924,
+        "auroc": 0.8258223258223258,
+        "brier": 0.0980345363742157,
+        "confusion_matrix": {
+          "fn_fatal": 5,
+          "fp_fatal": 145,
+          "tn_nonfatal": 141,
+          "tp_fatal": 49
+        },
+        "n_calibration": 340,
+        "n_test": 340,
+        "n_total": 1700,
+        "n_train": 1020,
+        "positive_prevalence_fatal_outcome": 0.15941176470588236,
+        "sensitivity_fatal": 0.9074074074074074,
+        "specificity_nonfatal": 0.493006993006993,
+        "threshold": 0.09213198859855104
+      },
+      "model_id": "HS-UCI-MIFATAL-001",
+      "target_semantics": "LET_IS != 0 from an admission-time compact feature subset; research source-label classifier, not validated mortality score.",
+      "task": "Binary research classification of the UCI LET_IS lethal-outcome label from a predeclared 21-feature admission-time subset; positive class means LET_IS is one of causes 1-7 rather than source value 0.",
+      "title": "Esito letale acuto post-IMA \u00b7 admission"
     }
   ],
   "schema": "healthsolver.predictive_registry.v2",
-  "version": "0.51.1"
+  "version": "0.52.0"
 }
