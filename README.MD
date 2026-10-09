@@ -1,4 +1,4 @@
-# HealthSolver 0.54.1 — Scientific Semantics Remediation + eICU Demo Hospital Death Integration + Predictive-First UI
+# HealthSolver 0.55.0 — Ensemble Intelligence Layer + Predictive-First UI
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to **HealthSolver 0.54.1**.
+The current public build is deployed from the `gh-pages` branch and corresponds to **HealthSolver 0.55.0**.
 
 ## What HealthSolver does
 
@@ -1301,6 +1301,92 @@ A post-release audit identified two non-numerical issues and one provenance ambi
 
 The model coefficients, preprocessing, calibration, decision threshold and held-out metrics are unchanged from 0.54.0.
 
+## Ensemble Intelligence Layer 0.55
+
+HealthSolver 0.55 adds a deterministic second-level synthesis over the existing **14 supervised model outputs**. It does **not** add a fifteenth predictive model and does not retrain, recalibrate or alter any existing model.
+
+The layer exists because the fourteen models estimate different source labels, cohorts, time horizons and clinical domains. Their raw probabilities therefore cannot be averaged into a scientifically valid “global risk percentage”.
+
+### Research Activation Index (RAI)
+
+For every applicable model, HealthSolver compares the model output `p` with that model's own frozen decision threshold `t` and converts it into a unitless threshold-position value:
+
+- if `p <= t`: `0.5 × p/t`;
+- if `p > t`: `0.5 + 0.5 × (p-t)/(1-t)`.
+
+Properties:
+
+- 0 corresponds to the low end of the model output;
+- 0.5 corresponds exactly to that model's own frozen threshold;
+- 1 corresponds to the high end of the model output.
+
+Within each configured clinical domain, available threshold-position values are averaged with equal weights and displayed as a **Research Activation Index (RAI) from 0 to 100**.
+
+RAI is explicitly **not**:
+
+- a probability;
+- an estimated prevalence;
+- disease severity;
+- mortality probability;
+- diagnostic confidence;
+- a treatment or triage threshold.
+
+### Six descriptive domains
+
+Every current predictive model belongs to exactly one descriptive domain:
+
+1. **Cardiometabolic** — angiographic heart disease, NHANES diabetes, NHIS hypertension and CDC diabetes/prediabetes label;
+2. **Renal** — CKD;
+3. **Hepatic** — HCV/liver-disease pattern;
+4. **Oncologic** — breast FNA malignancy and thyroid recurrence;
+5. **Utilization / readmission** — diabetic readmission;
+6. **Acute / critical-care outcomes** — heart-failure DEATH_EVENT, infection/SIRS/sepsis hospital outcome, MI lethal outcome, SUPPORT2 hospital death and eICU hospital death.
+
+Domains with one applicable model are displayed as single-model signals rather than “agreement”.
+
+### Core hospital-outcome concordance
+
+A narrower concordance panel uses only:
+
+- `HS-UCI-SEPSISDEATH-001`;
+- `HS-SUPPORT2-HOSPDEATH-001`;
+- `HS-EICU-DEMO-HOSPDEATH-001`.
+
+It reports whether the applicable models are above or below their own frozen thresholds:
+
+- concordance above-threshold;
+- concordance below-threshold;
+- mixed/discordant pattern.
+
+Even this is not a combined mortality estimate: the three datasets have different cohorts and index times.
+
+### Coverage, separation and co-activation
+
+The layer also reports:
+
+- number of applicable models;
+- number above their own threshold;
+- number of represented domains;
+- breadth of domain co-activation;
+- per-domain coverage;
+- mean threshold separation;
+- a co-activation map preserving each individual model probability.
+
+Models that abstain contribute neither zero nor an imputed ensemble output.
+
+### Numerical freeze
+
+HealthSolver 0.55 keeps the predictive registry at **0.54.1** because the fourteen predictive models are unchanged. The 0.55 static release audit checks the complete 0.54.1 predictive core byte-for-byte against the frozen remediation baseline. Only the integrated UI and the new `ensemble-intelligence-v1.json` specification are new.
+
+The ensemble specification explicitly sets:
+
+- `global_probability = false`;
+- `clinically_validated = false`;
+- `no_cross_model_probability_averaging = true`;
+- `no_recalibration = true`.
+
+A future true meta-model would require a common patient-level dataset with a predeclared outcome and index time, split-first training and independent validation. HealthSolver 0.55 deliberately does not pretend that such a dataset already exists.
+
 ## Machine learning and predictive research
 
 HealthSolver is being developed toward a broader machine-learning research architecture in which structured symptoms, history, vital signs, laboratory data and observations can be used as model inputs.
@@ -1384,7 +1470,7 @@ The public application is deployed at:
 
 https://ricscar2570.github.io/HealthSolver/
 
-The current deployment uses the native GitHub Pages pipeline and publishes the qualified **0.54.1** Research Edition with the 14-model predictive registry, eICU Demo integration, SUPPORT2 remediation and Predictive-First UI.
+The current deployment uses the native GitHub Pages pipeline and publishes the qualified **0.55.0** Research Edition with the unchanged 14-model predictive registry, Ensemble Intelligence Layer, eICU Demo integration, SUPPORT2 remediation and Predictive-First UI.
 
 The release pipeline preserves the verified standalone payload, and the published-release smoke test compares the public registry, every public predictive model artifact and the integrated predictive UI against the authoritative files on `main`.
 
@@ -1403,9 +1489,9 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.54.1 — Scientific Semantics Remediation / eICU Demo Hospital Death Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
+**HealthSolver 0.55.0 — Ensemble Intelligence Layer / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
 
-The current predictive release is represented by the 0.54.1 scientific-semantics remediation built on the frozen 0.54.0 eICU checkpoint and 0.53.1 remediation baseline, the Predictive-First Expert Mode UI, the versioned predictive registry and **fourteen** supervised model artifacts under `predictive/`.
+The current application release is 0.55.0. Its predictive core is the frozen 0.54.1 registry with **fourteen** unchanged supervised model artifacts; 0.55 adds the deterministic Ensemble Intelligence specification and browser synthesis layer without retraining or modifying those models.
 
 The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
