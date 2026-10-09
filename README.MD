@@ -996,7 +996,9 @@ UCI documents two intended prediction moments: at hospital admission and on the 
 
 HealthSolver also excludes treatment/medication variables from its compact browser model.
 
-The selected feature set was **predeclared before training**. It contains 21 admission-time variables:
+The selected feature set was frozen **before model fitting**, but the exploratory profiling step that preceded the shortlist included descriptive univariate correlations with `LET_IS` on the full dataset. Therefore the feature shortlist was **not fully outcome-blind**. The held-out test remains separate from fitting, calibration and threshold selection, but it is not fully independent of feature-screening knowledge; internal performance may consequently be optimistic and is treated as exploratory until external validation.
+
+The compact set contains 21 admission-time variables:
 
 - age and sex;
 - prior MI count;
@@ -1016,7 +1018,7 @@ The selected feature set was **predeclared before training**. It contains 21 adm
 - ESR;
 - symptom/CHD-attack-to-hospital time category.
 
-No feature was added or removed in response to held-out test performance.
+No feature was added or removed in response to held-out test performance after the 21-feature shortlist was frozen.
 
 Shock, pulmonary edema and arrhythmias present at admission are retained because UCI explicitly defines them as admission/pre-hospital variables. They are strong baseline severity markers and are conceptually close to several eventual lethal causes, so the model must **not** be interpreted causally.
 
@@ -1054,7 +1056,7 @@ Held-out test:
 - specificity for nonfatal outcome: **0.493**
 - threshold: **0.0921**
 
-The threshold deliberately reflects the calibration-set Youden operating point and favors sensitivity. It is **not a clinical intervention or triage cutoff**.
+The threshold deliberately reflects the calibration-set Youden operating point and favors sensitivity. It is **not a clinical intervention or triage cutoff**. Because the exploratory shortlist was informed by full-dataset profiling, the AUROC/AUPRC and other internal held-out metrics should not be presented as a clean external validation result.
 
 ### Independent reproduction
 
