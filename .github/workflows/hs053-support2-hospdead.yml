@@ -182,7 +182,7 @@ jobs:
               'required_raw_features':['sex','dzgroup','ca'],
               'message':'Prediction withheld when more than four raw clinical inputs are unavailable or when a required categorical field (sex, diagnosis group, cancer status) is missing.'
             },
-            'input_timepoint_policy':'Age and sex may be reused from the common dossier. Day-3 physiology (mean blood pressure, WBC, heart rate, respiratory rate, temperature, creatinine, sodium) must be supplied explicitly in the SUPPORT2 panel because the common dossier does not encode the SUPPORT day-3 timepoint.',
+            'input_timepoint_policy':'Age and sex may be reused from the common dossier. Day-3 physiology is never silently substituted from generic dossier fields because those fields do not encode the SUPPORT day-3 timepoint. A day-3 value counts as observed only when explicitly entered in the SUPPORT2 panel; if absent, it is treated as missing under the model abstention/imputation policy.',
             'target_definition':{
               'source_name':'hospdead',
               'negative':'0 = survived hospitalization',
