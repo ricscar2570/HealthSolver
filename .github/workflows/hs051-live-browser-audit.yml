@@ -1,4 +1,4 @@
-name: HealthSolver 0.51 Sepsis Live Browser Audit
+name: HealthSolver 0.51.1 Sepsis Audit Live Browser
 on:
   push:
     branches: ['main']
@@ -25,14 +25,14 @@ jobs:
           cat > audit.mjs <<'JS'
           import { chromium } from 'playwright';
           const base='https://ricscar2570.github.io/HealthSolver/';
-          const meta=await fetch(base+'version.json?audit=051-sepsis').then(r=>r.json());
-          if(meta.version!=='0.51.0') throw new Error('wrong published version '+meta.version);
+          const meta=await fetch(base+'version.json?audit=0511-sepsis').then(r=>r.json());
+          if(meta.version!=='0.51.1') throw new Error('wrong published version '+meta.version);
           if(meta.predictive_model_count!==11) throw new Error('wrong model count');
           if(!meta.predictive_models.includes('HS-UCI-SEPSISDEATH-001')) throw new Error('sepsis model missing');
           if(meta.uci_sepsis_survival_integrated!==true) throw new Error('sepsis integration flag missing');
-          const reg=await fetch(base+'predictive/model-registry-v2.json?audit=051-sepsis').then(r=>r.json());
-          if(reg.version!=='0.51.0'||reg.models.length!==11) throw new Error('wrong registry');
-          const model=await fetch(base+'predictive/model-sepsis-hospital-death-v1.json?audit=051-sepsis').then(r=>r.json());
+          const reg=await fetch(base+'predictive/model-registry-v2.json?audit=0511-sepsis').then(r=>r.json());
+          if(reg.version!=='0.51.1'||reg.models.length!==11) throw new Error('wrong registry');
+          const model=await fetch(base+'predictive/model-sepsis-hospital-death-v1.json?audit=0511-sepsis').then(r=>r.json());
           if(model.dataset.primary_cohort.admissions!==110204) throw new Error('primary cohort metadata wrong');
           if(model.dataset.external_validation_cohort.patients!==137) throw new Error('external cohort metadata wrong');
           if(model.external_validation_status!=='WEAK_GENERALIZATION') throw new Error('weak external validation flag missing');
@@ -43,21 +43,23 @@ jobs:
           const errors=[];
           page.on('pageerror',e=>errors.push('PAGE '+e.message));
           page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
-          await page.goto(base+'?audit=051-sepsis',{waitUntil:'networkidle',timeout:120000});
+          await page.goto(base+'?audit=0511-sepsis',{waitUntil:'networkidle',timeout:120000});
           await page.waitForFunction(()=>document.body.innerText.includes('Clinical Coach')&&document.body.innerText.includes('Expert Mode'),{timeout:30000});
           await page.locator('aside .nav[data-page="intelligence"]').click();
           await page.waitForTimeout(300);
           const block=page.locator('#hs-predictive-integrated');
           const initial=await block.innerText();
           if(!initial.includes('11 MODELLI SUPERVISIONATI')) throw new Error('eleven-model badge missing');
-          if(!initial.includes('Esito ospedaliero · decesso · coorte sepsi')) throw new Error('sepsis coverage card missing');
+          if(!initial.includes('Esito ospedaliero · primary cohort infezioni/SIRS/sepsi')) throw new Error('sepsis coverage card missing');
           const details=page.locator('#hs51SepsisDetails');
           if(await details.count()!==1) throw new Error('sepsis panel missing');
           await details.evaluate(el=>{el.open=true});
           const detail=await details.innerText();
-          if(!detail.toLowerCase().includes('non è mortalità a 9 giorni')) throw new Error('fixed-horizon warning missing');
+          if(!detail.includes('circa 9,351 giorni')||!detail.includes('0 a 499 giorni')) throw new Error('mean-vs-fixed horizon semantics missing');
           if(!detail.includes('Validazione esterna debole')) throw new Error('external warning missing');
           if(!detail.includes('AUROC 0,548')) throw new Error('external AUROC disclosure missing');
+          if(!detail.includes('non tutti i 110.204 ricoveri possono essere qualificati come Sepsis-3')) throw new Error('broad primary cohort warning missing');
+          if((await page.locator('#hs51_episode_number').getAttribute('max'))!=='5') throw new Error('episode max-domain constraint missing');
 
           await page.locator('#ciAge').fill('70');
           const sex=page.locator('#ciSex');
@@ -67,7 +69,7 @@ jobs:
           await sex.selectOption(male.v);
           await page.locator('#hs51_episode_number').fill('1');
           await page.locator('#hs42Refresh').click();await page.waitForTimeout(100);
-          const cov=page.locator('#hs42Coverage .metric').filter({hasText:'Esito ospedaliero · decesso · coorte sepsi'});
+          const cov=page.locator('#hs42Coverage .metric').filter({hasText:'Esito ospedaliero · primary cohort infezioni/SIRS/sepsi'});
           if(await cov.count()!==1) throw new Error('sepsis coverage missing');
           const covText=await cov.innerText();
           if(!/3\/3/.test(covText)||!/PRONTO ALLA PREDIZIONE/i.test(covText)) throw new Error('sepsis not ready '+covText);
@@ -77,9 +79,36 @@ jobs:
           const text=await card.innerText();
           if(!/%/.test(text)||/Astensione/i.test(text)) throw new Error('sepsis probability missing');
           if(!/Test interno: AUROC 0\.704/.test(text)) throw new Error('internal AUROC missing');
-          if(!/Validazione esterna indipendente: n=137 · AUROC 0\.548/.test(text)) throw new Error('external metrics missing');
-          if(!text.includes('non mortalità a 9 giorni')) throw new Error('result horizon warning missing');
+          if(!/Validazione esterna indipendente del dataset: n=137 · AUROC 0\.548/.test(text)) throw new Error('external metrics missing');
+          if(!text.includes('non è un endpoint fisso a 9 giorni')) throw new Error('result horizon warning missing');
           if(!text.includes('non generalizzare clinicamente')) throw new Error('result generalization warning missing');
+          if(!text.includes('non equivale a validazione clinica/prospettica')) throw new Error('external-vs-clinical validation distinction missing');
+
+          const sigmoid=z=>1/(1+Math.exp(-Math.max(-35,Math.min(35,z))));
+          const expected=(sexSource)=>{
+            const vals={age_years:70,sex_0male_1female:sexSource,episode_number:1};
+            let score=model.logistic.intercept;
+            for(const f of model.features){
+              const z=(vals[f]-model.standardization.mean[f])/model.standardization.scale[f];
+              score+=z*model.logistic.coefficients[f];
+            }
+            return sigmoid(model.calibration.intercept+model.calibration.slope*score)*100;
+          };
+          const cardPct=async()=>{
+            const t=await card.innerText();
+            const m=t.match(/([0-9]+(?:\.[0-9]+)?)%/);
+            if(!m) throw new Error('cannot parse sepsis percentage');
+            return Number(m[1]);
+          };
+          const malePct=await cardPct();
+          if(Math.abs(malePct-Number(expected(0).toFixed(1)))>0.05) throw new Error('male sex encoding mismatch '+malePct+' vs '+expected(0).toFixed(1));
+          const female=opts.find(o=>/femmin|female|^f$/i.test(o.t)||/^(f|female|femmina|0|2)$/i.test(o.v));
+          if(!female) throw new Error('female option missing');
+          await sex.selectOption(female.v);
+          await page.locator('#hs42Run').click();await page.waitForTimeout(250);
+          const femalePct=await cardPct();
+          if(Math.abs(femalePct-Number(expected(1).toFixed(1)))>0.05) throw new Error('female sex encoding mismatch '+femalePct+' vs '+expected(1).toFixed(1));
+          console.log('SEX_MAPPING PASS', {malePct,femalePct,expectedMale:expected(0),expectedFemale:expected(1)});
           const serious=errors.filter(e=>!/Failed to load resource.*api\.fda\.gov/i.test(e));
           if(serious.length) throw new Error(serious.join(' | '));
           await page.screenshot({path:'HealthSolver-0.51-Sepsis.png',fullPage:true});
