@@ -50,7 +50,7 @@ const PACSViewer = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `Analysis failed (${response.status})`);
+        throw new Error(errorData.error || errorData.detail || `Analysis failed (${response.status})`);
       }
 
       const result = await response.json();
