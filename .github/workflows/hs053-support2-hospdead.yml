@@ -1,8 +1,6 @@
 name: HealthSolver 0.53 SUPPORT2 Hospital Death
 on:
-  push:
-    branches: ['main']
-    paths: ['.github/workflows/hs053-support2-hospdead.yml']
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
@@ -196,7 +194,7 @@ jobs:
           (out/'model-support2-hospital-death-v1-report.json').write_text(json.dumps(metrics,indent=2,sort_keys=True))
 
           reg=json.loads((out/'model-registry-v2.json').read_text())
-          assert reg['version']=='0.52.0',reg['version']
+          assert reg['version'] in {'0.52.0','0.53.0'},reg['version']
           old=[m for m in reg['models'] if m['model_id']!='HS-SUPPORT2-HOSPDEATH-001']
           assert len(old)==12,[m['model_id'] for m in old]
           reg['version']='0.53.0'
