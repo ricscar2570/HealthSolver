@@ -1,0 +1,64 @@
+name: HealthSolver 0.56 Common Outcome Transport Smoke
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'predictive/common-outcome-transport-v1.json'
+      - 'predictive/common-outcome-transport-v1-report.json'
+      - 'predictive/integrated-predictive-ui.js'
+      - '.github/workflows/hs056-transport-smoke.yml'
+      - '.github/workflows/hs041-repack-pages.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Static and numerical audit
+        shell: bash
+        run: |
+          set -euxo pipefail
+          node --check predictive/integrated-predictive-ui.js
+          python - <<'PY'
+          import json,math
+          reg=json.load(open('predictive/model-registry-v2.json'))
+          m=json.load(open('predictive/common-outcome-transport-v1.json'))
+          r=json.load(open('predictive/common-outcome-transport-v1-report.json'))
+          ids=[x['model_id'] for x in reg['models']]
+          assert reg['version']=='0.54.1' and len(ids)==14 and len(set(ids))==14
+          assert m['model_id']=='HS-COMMON-HOSPDEATH-TRANSPORT-001'
+          assert m['model_id'] not in ids
+          assert m['base_predictive_model_count_preserved']==14
+          assert m['is_base_registry_model'] is False
+          assert m['features']==['age','male']
+          assert m['qualification_status']=='WEAK_TRANSPORT_GENERALIZATION'
+          assert m['clinically_validated'] is False and m['research_only'] is True
+          assert m['metrics']['minimum_loso_auroc'] < .60
+          assert set(m['metrics']['leave_one_source_out_transport'])=={'eicu_demo','sepsis_uci827','support2'}
+          assert r['model_id']==m['model_id']
+          assert r['source_rows_used']=={'eicu_demo':1995,'sepsis_uci827':102389,'support2':9105}
+          assert 0 < m['threshold'] < 1
+          def sigmoid(z): return 1/(1+math.exp(-max(-35,min(35,z))))
+          def infer(age,male):
+              vals={'age':age,'male':male}
+              score=m['logistic']['intercept']
+              for f in m['features']:
+                  z=(vals[f]-m['standardization']['mean'][f])/m['standardization']['scale'][f]
+                  score+=z*m['logistic']['coefficients'][f]
+              return sigmoid(m['calibration']['intercept']+m['calibration']['slope']*score)
+          for age,male in [(18,0),(40,1),(65,0),(65,1),(90,1)]:
+              p=infer(age,male)
+              assert math.isfinite(p) and 0<p<1,(age,male,p)
+          print('HS056 TRANSPORT STATIC PASS')
+          PY
+          grep -q 'HS_INTEGRATED_PREDICTIVE_0560' predictive/integrated-predictive-ui.js
+          grep -q 'COMMON-OUTCOME TRANSPORT · 0.56' predictive/integrated-predictive-ui.js
+          grep -q 'GENERALIZZAZIONE DEBOLE' predictive/integrated-predictive-ui.js
+          grep -q 'window.__HS_COMMON_OUTCOME_TRANSPORT__' .github/workflows/hs041-repack-pages.yml
+          grep -q "v\['version'\]='0.56.0'" .github/workflows/hs041-repack-pages.yml
+          echo 'HS056 PACKAGING PASS'
