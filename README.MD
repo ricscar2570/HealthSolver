@@ -1298,15 +1298,17 @@ The standalone HTML recorded for the 0.38 checkpoint has SHA-256:
 
 These are software qualification results. They are **not clinical validation**.
 
+The current 0.53.1 audit gate additionally verifies repository integrity, Python compilation, legacy React bundling/linting, isolated Python tests, default and optional legacy API behavior, CORS, PACS timeout handling, fail-closed CNN/EHR invariants, dashboard regressions, predictive numerical-core freeze and SUPPORT2 runtime wiring. The separate published-release smoke verifies that the live 0.53.1 registry, all 13 public model artifacts and the integrated predictive UI match `main`.
+
 ## GitHub Pages deployment
 
 The public application is deployed at:
 
 https://ricscar2570.github.io/HealthSolver/
 
-The current deployment uses the native GitHub Pages pipeline, preserves the verified 0.38 standalone base payload, and overlays the 0.40 predictive engine and model registry.
+The current deployment uses the native GitHub Pages pipeline and publishes the qualified **0.53.1** Research Edition with the 13-model predictive registry, SUPPORT2 remediation and Predictive-First UI.
 
-The loader verifies the reconstructed standalone application against its expected SHA-256 before launch.
+The release pipeline preserves the verified standalone payload, and the published-release smoke test compares the public registry, every public predictive model artifact and the integrated predictive UI against the authoritative files on `main`.
 
 ## Repository structure
 
@@ -1323,9 +1325,9 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.53 — SUPPORT2 Hospital Death Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
+**HealthSolver 0.53.1 — Code Audit Remediation / SUPPORT2 Hospital Death Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
 
-Current predictive release is represented by the 0.53 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and thirteen supervised model artifacts under `predictive/`.
+The current predictive release is represented by the 0.53.0 SUPPORT2 checkpoint plus the 0.53.1 code-audit remediation checkpoint, the Predictive-First Expert Mode UI, the versioned predictive registry and thirteen supervised model artifacts under `predictive/`.
 
 The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
