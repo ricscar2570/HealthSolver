@@ -1,0 +1,208 @@
+name: HealthSolver 0.56 Master Release Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs056-master-release-audit.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+
+      - name: Repository syntax and frozen-core integrity
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git fsck --full
+          node --check predictive/integrated-predictive-ui.js
+          node --check predictive/predictive-engine.js
+          node --check predictive/unified-case-router.js
+          python - <<'PY'
+          import json,pathlib,subprocess,math
+          root=pathlib.Path('predictive')
+          for p in root.glob('*.json'): json.loads(p.read_text())
+          reg=json.loads((root/'model-registry-v2.json').read_text())
+          ids=[x['model_id'] for x in reg['models']]
+          assert reg['version']=='0.54.1'
+          assert len(ids)==14 and len(set(ids))==14
+          baseline='b78f9f3b320647a8713877ec8938a517440d29fb'
+          names=subprocess.check_output(['git','ls-tree','-r','--name-only',baseline,'predictive'],text=True).splitlines()
+          frozen=[n for n in names if n.startswith('predictive/') and n!='predictive/integrated-predictive-ui.js']
+          for path in frozen:
+              old=subprocess.check_output(['git','show',f'{baseline}:{path}'])
+              new=pathlib.Path(path).read_bytes()
+              assert old==new,path
+          for entry in reg['models']:
+              m=json.loads((root/entry['file']).read_text())
+              assert m['model_id']==entry['model_id']
+              t=float(m['threshold'])
+              assert math.isfinite(t) and 0<t<1,(entry['model_id'],t)
+          print('MASTER FROZEN CORE PASS',len(frozen),len(ids))
+          PY
+
+      - name: Ensemble and transport scientific invariants
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import json,math
+          reg=json.load(open('predictive/model-registry-v2.json'))
+          ens=json.load(open('predictive/ensemble-intelligence-v1.json'))
+          tr=json.load(open('predictive/common-outcome-transport-v1.json'))
+          rep=json.load(open('predictive/common-outcome-transport-v1-report.json'))
+          ids=[m['model_id'] for m in reg['models']]
+          assigned=[m for d in ens['domains'] for m in d['models']]
+          assert len(ids)==14 and set(assigned)==set(ids) and len(assigned)==14
+          assert ens['global_probability'] is False
+          assert ens['clinically_validated'] is False
+          assert ens['aggregation']['no_cross_model_probability_averaging'] is True
+          assert ens['aggregation']['no_recalibration'] is True
+          assert tr['model_id']=='HS-COMMON-HOSPDEATH-TRANSPORT-001'
+          assert tr['model_id'] not in ids
+          assert tr['base_predictive_model_count_preserved']==14
+          assert tr['is_base_registry_model'] is False
+          assert tr['features']==['age','male']
+          assert tr['qualification_status']=='WEAK_TRANSPORT_GENERALIZATION'
+          assert tr['research_only'] is True and tr['clinically_validated'] is False
+          assert rep['source_rows_used']=={'eicu_demo':1995,'sepsis_uci827':102389,'support2':9105}
+          assert set(tr['metrics']['leave_one_source_out_transport'])=={'eicu_demo','sepsis_uci827','support2'}
+          assert math.isclose(tr['metrics']['minimum_loso_auroc'],0.5298120390496412,rel_tol=1e-12,abs_tol=1e-12)
+          assert tr['metrics']['minimum_loso_auroc']<0.60
+          print('MASTER SCIENTIFIC INVARIANTS PASS')
+          PY
+
+      - name: Public release parity
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import json,pathlib,urllib.request
+          base='https://ricscar2570.github.io/HealthSolver/'
+          def remote(path):
+              with urllib.request.urlopen(base+path+'?audit=056-master',timeout=45) as r:
+                  return r.read()
+          live=json.loads(remote('version.json'))
+          assert live['version']=='0.56.0'
+          assert live['predictive_model_count']==14
+          assert live['common_outcome_transport_integrated'] is True
+          assert live['common_outcome_transport_qualification']=='WEAK_TRANSPORT_GENERALIZATION'
+          paths=['predictive/model-registry-v2.json','predictive/ensemble-intelligence-v1.json',
+                 'predictive/common-outcome-transport-v1.json','predictive/common-outcome-transport-v1-report.json',
+                 'predictive/integrated-predictive-ui.js','predictive/predictive-engine.js',
+                 'predictive/unified-case-router.js']
+          reg=json.load(open('predictive/model-registry-v2.json'))
+          paths += ['predictive/'+x['file'] for x in reg['models']]
+          for path in paths:
+              local=pathlib.Path(path).read_bytes()
+              public=remote(path)
+              assert public==local,path
+          print('MASTER PUBLIC PARITY PASS',len(paths))
+          PY
+
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+
+      - name: Full live browser regression
+        shell: bash
+        run: |
+          cat > audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const base='https://ricscar2570.github.io/HealthSolver/';
+          const ok=(v,m)=>{if(!v)throw new Error(m)};
+          const b=await chromium.launch({headless:true});
+          const p=await b.newPage({viewport:{width:1440,height:2200}});
+          const errors=[];
+          p.on('pageerror',e=>errors.push('PAGE '+e.message));
+          p.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
+          await p.goto(base+'?audit=056-master',{waitUntil:'networkidle',timeout:120000});
+
+          for(const x of ['coach','intelligence','hub','massive','case','data','validation','archive','previous']){
+            const n=p.locator('aside .nav[data-page="'+x+'"]');
+            ok(await n.count()===1,'nav '+x);
+            await n.click(); await p.waitForTimeout(70);
+            ok(await p.locator('#page-'+x).isVisible(),'page '+x);
+          }
+
+          await p.locator('aside .nav[data-page="coach"]').click();
+          await p.locator('#coachNewBlank').click();
+          await p.locator('#coachAge').fill('67');
+          await p.locator('#coachContinue').click();
+
+          await p.locator('aside .nav[data-page="intelligence"]').click();
+          await p.locator('#ciAge').fill('65');
+          const sex=p.locator('#ciSex');
+          const opts=await sex.locator('option').evaluateAll(os=>os.map(o=>({v:o.value,t:o.textContent.trim()})));
+          const male=opts.find(o=>/masch|male|^m$/i.test(o.t)||/^(m|male|maschio|1)$/i.test(o.v));
+          ok(male,'male option'); await sex.selectOption(male.v);
+
+          const set=async(id,v)=>{
+            const q=p.locator('#'+id); ok(await q.count()===1,'missing '+id);
+            await q.evaluate((e,x)=>{e.value=String(x);e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));},v);
+          };
+          await set('hs51_episode_number',1);
+          for(const [id,v] of Object.entries({
+            hs53_dzgroup:'CHF',hs53_numco:2,hs53_scoma:0,hs53_hday:1,hs53_diabetes:0,hs53_dementia:0,hs53_ca:'no',
+            hs53_meanbp:77,hs53_wblc:10.5,hs53_hrt:100,hs53_resp:24,hs53_temp:36.7,hs53_crea:1.2,hs53_sod:137
+          })) await set(id,v);
+          for(const [id,v] of Object.entries({
+            hs54_gcs_total:15,hs54_gcs_meds:0,hs54_temperature:37,hs54_respiratoryrate:18,hs54_heartrate:82,
+            hs54_meanbp:85,hs54_glucose:120,hs54_sodium:140,hs54_creatinine:1.0
+          })) await set(id,v);
+
+          const txt=await p.locator('#hs-predictive-integrated').innerText();
+          ok(txt.includes('MOTORE PREDITTIVO · HEALTHSOLVER 0.56.0'),'brand');
+          ok(txt.includes('14 MODELLI SUPERVISIONATI'),'14 badge');
+          ok(txt.includes('1 TRANSPORT LAYER SPERIMENTALE'),'transport badge');
+          ok(await p.locator('#hs42Coverage .metric').count()===14,'coverage 14');
+          await p.locator('#hs42Run').click(); await p.waitForTimeout(500);
+          ok(await p.locator('#hs42Results>.card').count()===14,'results 14');
+
+          const t=await p.locator('#hs56Transport').innerText();
+          ok(t.includes('WEAK_TRANSPORT_GENERALIZATION'),'weak qualification');
+          ok(t.includes('0.530'),'LOSO value');
+          const ts=await p.evaluate(()=>window.__HS_LAST_TRANSPORT__);
+          ok(ts?.status==='predicted','transport state');
+          ok(ts?.qualification==='WEAK_TRANSPORT_GENERALIZATION','transport qualification state');
+          ok(Math.abs(ts.minimum_loso_auroc-0.5298120390496412)<1e-12,'transport LOSO state');
+
+          const e=await p.locator('#hs55Ensemble').innerText();
+          ok(e.includes('NON È UNA PROBABILITÀ'),'ensemble warning');
+          const es=await p.evaluate(()=>window.__HS_LAST_ENSEMBLE__);
+          ok(es&&es.domains.length===6,'ensemble state');
+
+          await p.locator('aside .nav[data-page="hub"]').click();
+          await p.locator('#hubExample').click();
+          await p.locator('aside .nav[data-page="case"]').click();
+          await p.locator('#loadExample').click();
+          await p.locator('aside .nav[data-page="data"]').click();
+          ok(await p.locator('#train').count()===1,'train control');
+          await p.locator('aside .nav[data-page="validation"]').click();
+          ok(await p.locator('#recompute').count()===1,'validation control');
+
+          const serious=errors.filter(x=>!/api\.fda\.gov/i.test(x));
+          console.log('MASTER_BROWSER_ERRORS',JSON.stringify(errors));
+          ok(serious.length===0,'serious browser errors '+serious.join(' | '));
+          await b.close();
+          console.log('HS056 MASTER LIVE BROWSER PASS',JSON.stringify({transport:ts,ensemble_domains:es.domains.length}));
+          JS
+          node audit.mjs | tee master-audit.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: healthsolver-056-master-release-audit
+          path: master-audit.txt
+          retention-days: 14
