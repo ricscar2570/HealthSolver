@@ -298,6 +298,7 @@ wrap.innerHTML=`
     </div>
     <div class="notice" style="margin-top:10px"><b>Semantica del target:</b> <code>LET_IS ≠ 0</code> indica che nel record sorgente è registrata una delle sette cause di esito letale. È un classificatore di ricerca nel dominio dei ricoveri per IMA del dataset, non uno score di mortalità clinicamente validato e non una raccomandazione di triage.</div>
     <div class="notice" style="margin-top:10px"><b>Nota di leakage/causalità:</b> shock cardiogeno, edema polmonare e aritmie presenti già all'ingresso sono mantenuti perché UCI li definisce admission/pre-hospital. Sono forti segnali di gravità e concettualmente vicini ad alcune cause letali finali: per questo la probabilità non va interpretata come rischio eziologico indipendente.</div>
+    <div class="notice" style="margin-top:10px"><b>Limite della selezione feature:</b> il profiling esplorativo preliminare ha incluso correlazioni univariate con <code>LET_IS</code> sull'intero dataset prima di congelare le 21 feature. Non è stato fatto tuning iterativo sul test, ma il test finale non è completamente indipendente dalla conoscenza usata nello screening; le metriche possono quindi essere ottimistiche e restano esplorative fino a validazione esterna.</div>
   </details>
   <h3 style="margin:24px 0 10px;font-size:1.25rem">Risultati predittivi</h3>
   <div id="hs42Results" class="grid"></div>
@@ -578,7 +579,7 @@ function renderResult(entry,model,res){
       : model.model_id==='HS-UCI-SEPSISDEATH-001'
         ? `<div class="notice"><b>Esito ospedaliero con durata variabile.</b> Il paper usa “circa 9,351 giorni” perché è la durata media del ricovero, ma i ricoveri variano da 0 a 499 giorni: non è un endpoint fisso a 9 giorni né una probabilità di sopravvivenza. <b>Validazione esterna debole:</b> coorte sudcoreana n=137, AUROC 0.548; non generalizzare clinicamente.</div>`
         : model.model_id==='HS-UCI-MIFATAL-001'
-          ? `<div class="notice"><b>LET_IS sorgente, non score clinico.</b> La classe positiva raggruppa sette cause di esito letale registrate nel dataset UCI 579. Il modello usa soltanto 21 feature predefinite ammesse all'ingresso e non include variabili dinamiche dei giorni successivi né farmaci. La soglia interna privilegia sensibilità e non è un cut-off di triage.</div>`
+          ? `<div class="notice"><b>LET_IS sorgente, non score clinico.</b> La classe positiva raggruppa sette cause di esito letale registrate nel dataset UCI 579. Il modello usa 21 feature di ingresso congelate prima del fitting e non include variabili dinamiche dei giorni successivi né farmaci. Il profiling preliminare aveva però visto associazioni univariate con l'outcome: le metriche interne sono esplorative e possono essere ottimistiche. La soglia interna privilegia sensibilità e non è un cut-off di triage.</div>`
           : '';
   d.innerHTML=`
     <div class="eyebrow">${model.model_id}</div>

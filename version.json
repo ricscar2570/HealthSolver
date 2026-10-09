@@ -20,7 +20,7 @@
     "HS-UCI-MIFATAL-001"
   ],
   "payload_parts": 7,
-  "source_sha256": "0763934c2e4b2c2fa7a3d3785c25959f94e142bd80ecfc8c51a1ab488c8d3df1",
+  "source_sha256": "55df7ac97c85ef26055153303262d698fe493ce2839f3b85974a8c8aeb9501e3",
   "predictive_modules_embedded": true,
   "integrated_predictive_ui": true,
   "predictive_first_ui": true,
