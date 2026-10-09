@@ -1,0 +1,80 @@
+name: HealthSolver 0.52 MI Admission Profile
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs052-mi-admission-profile.yml']
+permissions:
+  contents: read
+jobs:
+  profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Profile UCI 579 admission-time feature domain
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install --disable-pip-version-check -q pandas==3.0.6 numpy==2.5.3 ucimlrepo==0.0.7
+          python - <<'PY'
+          import json
+          import numpy as np,pandas as pd
+          from ucimlrepo import fetch_ucirepo
+
+          ds=fetch_ucirepo(id=579)
+          X=ds.data.features.copy()
+          y=ds.data.targets.copy()
+          print('X_SHAPE',X.shape)
+          print('Y_SHAPE',y.shape)
+          print('X_COLUMNS',list(X.columns))
+          print('Y_COLUMNS',list(y.columns))
+          assert len(X)==1700
+          assert X.shape[1]==111
+          assert y.shape[1]==12
+
+          # UCI documentation: columns 2-112 are inputs. For prediction at hospital
+          # admission, exclude original input column numbers 93,94,95,100,101,102,103,104,105.
+          # X is zero-based over original columns 2-112, therefore subtract 2.
+          excluded_original=[93,94,95,100,101,102,103,104,105]
+          excluded_idx=[n-2 for n in excluded_original]
+          excluded_names=[X.columns[i] for i in excluded_idx]
+          admission=[c for i,c in enumerate(X.columns) if i not in excluded_idx]
+          print('EXCLUDED_DYNAMIC',list(zip(excluded_original,excluded_names)))
+          print('ADMISSION_FEATURE_COUNT',len(admission))
+          assert len(admission)==102
+
+          # Outcome: LET_IS 0=alive/unknown lethal cause; 1..7 lethal cause.
+          assert 'LET_IS' in y.columns
+          let=pd.to_numeric(y['LET_IS'],errors='raise').astype(int)
+          death=(let!=0).astype(int)
+          print('LET_IS_COUNTS',let.value_counts().sort_index().to_dict())
+          print('DEATH_COUNT',int(death.sum()),'SURVIVAL_COUNT',int((1-death).sum()),'PREVALENCE',float(death.mean()))
+
+          rows=[]
+          for c in admission:
+              z=pd.to_numeric(X[c],errors='coerce')
+              rows.append({
+                'name':c,
+                'missing_n':int(z.isna().sum()),
+                'missing_pct':float(z.isna().mean()*100),
+                'unique_nonmissing':int(z.nunique(dropna=True)),
+                'min':None if z.dropna().empty else float(z.min()),
+                'max':None if z.dropna().empty else float(z.max()),
+                'median':None if z.dropna().empty else float(z.median()),
+                'death_corr_abs':None if z.notna().sum()<10 or z.nunique(dropna=True)<2 else float(abs(pd.concat([z,death.rename('death')],axis=1).corr(numeric_only=True).iloc[0,1]))
+              })
+          rows=sorted(rows,key=lambda r:(r['missing_pct'], -(r['death_corr_abs'] or 0), r['name']))
+          print('LOW_MISSING_PROFILE')
+          print(json.dumps(rows[:60],indent=2))
+          print('HIGH_MISSING_PROFILE')
+          print(json.dumps(sorted(rows,key=lambda r:r['missing_pct'],reverse=True)[:30],indent=2))
+
+          # Predeclared candidate pool for a compact browser model:
+          # admission-time only, <=25% missing, at least two observed values.
+          pool=[r['name'] for r in rows if r['missing_pct']<=25 and r['unique_nonmissing']>=2]
+          print('CANDIDATE_POOL_COUNT',len(pool))
+          print('CANDIDATE_POOL',pool)
+          PY
