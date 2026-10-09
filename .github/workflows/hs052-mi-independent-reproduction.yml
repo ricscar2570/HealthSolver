@@ -1,0 +1,119 @@
+name: HealthSolver 0.52 MI Independent Reproduction Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs052-mi-independent-reproduction.yml']
+permissions:
+  contents: read
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Re-download UCI 579 and reproduce model
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install --disable-pip-version-check -q numpy==2.5.3 pandas==3.0.6 scikit-learn==1.9.1
+          python - <<'PY'
+          import io,json,math,urllib.request,zipfile
+          import numpy as np,pandas as pd
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import accuracy_score,roc_auc_score,average_precision_score,brier_score_loss,confusion_matrix,roc_curve
+          from sklearn.model_selection import train_test_split
+
+          stored=json.load(open('predictive/model-mi-fatal-outcome-v1.json'))
+          report=json.load(open('predictive/model-mi-fatal-outcome-v1-report.json'))
+          assert stored['runtime_environment']=={'python':'3.13','numpy':'2.5.3','pandas':'3.0.6','scikit_learn':'1.9.1'}
+
+          url='https://archive.ics.uci.edu/static/public/579/myocardial+infarction+complications.zip'
+          req=urllib.request.Request(url,headers={'User-Agent':'HealthSolver/0.52 independent audit'})
+          with urllib.request.urlopen(req,timeout=120) as r: blob=r.read()
+          assert len(blob)>1000
+          with zipfile.ZipFile(io.BytesIO(blob)) as z:
+              names=z.namelist()
+              data_name=next(n for n in names if n.lower().endswith('mi.data'))
+              raw=pd.read_csv(z.open(data_name),header=None,na_values='?')
+          assert raw.shape==(1700,124)
+
+          colnum=stored['source_column_numbers']
+          features=stored['features']
+          X=pd.DataFrame({f:pd.to_numeric(raw.iloc[:,int(colnum[f])-1],errors='coerce') for f in features})
+          let=pd.to_numeric(raw.iloc[:,123],errors='raise').astype(int)
+          y=(let!=0).astype(int)
+          assert let.value_counts().sort_index().to_dict()=={0:1429,1:110,2:18,3:54,4:23,5:12,6:27,7:27}
+          assert int(y.sum())==271
+          assert not set(stored['excluded_dynamic_source_columns']) & set(colnum.values())
+
+          idx=np.arange(len(y))
+          tr,tmp=train_test_split(idx,test_size=.40,random_state=5201,stratify=y)
+          cal,te=train_test_split(tmp,test_size=.50,random_state=5202,stratify=y.iloc[tmp])
+          assert (len(tr),len(cal),len(te))==(1020,340,340)
+          Xtr,Xca,Xte=X.iloc[tr].copy(),X.iloc[cal].copy(),X.iloc[te].copy()
+          ytr,yca,yte=y.iloc[tr].to_numpy(),y.iloc[cal].to_numpy(),y.iloc[te].to_numpy()
+
+          med=Xtr.median().reindex(features)
+          miss=Xtr.isna().mean().reindex(features)
+          Xtr=Xtr.fillna(med);Xca=Xca.fillna(med);Xte=Xte.fillna(med)
+          mu=Xtr.mean().reindex(features)
+          sd=Xtr.std(ddof=0).replace(0,1).reindex(features)
+          Ztr=(Xtr-mu)/sd;Zca=(Xca-mu)/sd;Zte=(Xte-mu)/sd
+
+          base=LogisticRegression(max_iter=5000,C=.5,solver='lbfgs',class_weight='balanced',random_state=5203)
+          base.fit(Ztr,ytr)
+          platt=LogisticRegression(max_iter=5000,C=1e6,solver='lbfgs',random_state=5204)
+          cs=base.decision_function(Zca).reshape(-1,1)
+          platt.fit(cs,yca)
+          pca=platt.predict_proba(cs)[:,1]
+          fpr,tpr,thr=roc_curve(yca,pca)
+          valid=np.isfinite(thr)
+          threshold=float(thr[valid][np.argmax((tpr-fpr)[valid])])
+          p=platt.predict_proba(base.decision_function(Zte).reshape(-1,1))[:,1]
+          pred=(p>=threshold).astype(int)
+          tn,fp,fn,tp=confusion_matrix(yte,pred,labels=[0,1]).ravel()
+          q={
+            'accuracy':float(accuracy_score(yte,pred)),
+            'auprc':float(average_precision_score(yte,p)),
+            'auroc':float(roc_auc_score(yte,p)),
+            'brier':float(brier_score_loss(yte,p)),
+            'confusion_matrix':{'fn_fatal':int(fn),'fp_fatal':int(fp),'tn_nonfatal':int(tn),'tp_fatal':int(tp)},
+            'n_calibration':340,'n_test':340,'n_total':1700,'n_train':1020,
+            'positive_prevalence_fatal_outcome':float(y.mean()),
+            'sensitivity_fatal':float(tp/(tp+fn)),
+            'specificity_nonfatal':float(tn/(tn+fp)),
+            'threshold':threshold
+          }
+
+          def close(a,b,tol=1e-10):
+              assert math.isclose(float(a),float(b),rel_tol=tol,abs_tol=tol),(a,b)
+          close(base.intercept_[0],stored['logistic']['intercept'])
+          for f,v in zip(features,base.coef_[0]): close(v,stored['logistic']['coefficients'][f])
+          for f in features:
+              close(med[f],stored['imputation']['values'][f])
+              close(mu[f],stored['standardization']['mean'][f])
+              close(sd[f],stored['standardization']['scale'][f])
+              close(miss[f],stored['field_meta'][f]['training_missing_fraction'])
+          close(platt.intercept_[0],stored['calibration']['intercept'])
+          close(platt.coef_[0,0],stored['calibration']['slope'])
+          close(threshold,stored['threshold'])
+          for k in ['accuracy','auprc','auroc','brier','positive_prevalence_fatal_outcome','sensitivity_fatal','specificity_nonfatal','threshold']:
+              close(q[k],stored['metrics_test'][k])
+          assert q['confusion_matrix']==stored['metrics_test']['confusion_matrix']
+          assert report==stored['metrics_test']
+
+          print('SOURCE_SHAPE PASS',raw.shape)
+          print('LET_IS_COUNTS PASS',let.value_counts().sort_index().to_dict())
+          print('ADMISSION_FEATURE_POLICY PASS',features)
+          print('MODEL_COEFFICIENTS PASS')
+          print('IMPUTATION_STANDARDIZATION PASS')
+          print('CALIBRATION PASS')
+          print('THRESHOLD PASS')
+          print('METRICS PASS',q)
+          print('MI INDEPENDENT REPRODUCTION PASS')
+          PY
