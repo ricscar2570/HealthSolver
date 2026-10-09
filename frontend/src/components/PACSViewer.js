@@ -1,5 +1,5 @@
 // frontend/src/components/PACSViewer.js
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 // Potresti voler usare una libreria come react-dropzone per un'esperienza di upload migliore
 // import { useDropzone } from 'react-dropzone';
 
