@@ -1,0 +1,211 @@
+name: HealthSolver 0.50 CDC Diabetes Health Indicators
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs050-cdc-diabetes-indicators.yml']
+permissions:
+  contents: write
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Train calibrated CDC diabetes/prediabetes source-label model
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install --disable-pip-version-check -q numpy pandas scikit-learn ucimlrepo
+          python - <<'PY'
+          import json,pathlib,math
+          import numpy as np,pandas as pd
+          from ucimlrepo import fetch_ucirepo
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import accuracy_score,roc_auc_score,average_precision_score,brier_score_loss,confusion_matrix,roc_curve
+          from sklearn.model_selection import train_test_split
+
+          ds=fetch_ucirepo(id=891)
+          Xraw=ds.data.features.copy()
+          ydf=ds.data.targets.copy()
+          print('RAW_FEATURE_COLUMNS',list(Xraw.columns))
+          print('RAW_TARGET_COLUMNS',list(ydf.columns))
+          print('N',len(Xraw))
+
+          expected=[
+            'HighBP','HighChol','CholCheck','BMI','Smoker','Stroke','HeartDiseaseorAttack',
+            'PhysActivity','Fruits','Veggies','HvyAlcoholConsump','AnyHealthcare','NoDocbcCost',
+            'GenHlth','MentHlth','PhysHlth','DiffWalk','Sex','Age','Education','Income'
+          ]
+          assert list(Xraw.columns)==expected,(list(Xraw.columns),expected)
+          assert len(Xraw)==253680,len(Xraw)
+          assert not Xraw.isna().any().any()
+          assert ydf.shape[1]==1,ydf.columns
+          y=pd.to_numeric(ydf.iloc[:,0],errors='raise').astype(int)
+          assert set(y.unique())=={0,1},set(y.unique())
+
+          # Normalize feature keys for browser/runtime consistency.
+          rename={
+            'HighBP':'high_bp','HighChol':'high_chol','CholCheck':'chol_check','BMI':'bmi',
+            'Smoker':'smoker_100','Stroke':'stroke_history','HeartDiseaseorAttack':'heart_disease_or_attack',
+            'PhysActivity':'physical_activity','Fruits':'fruits_daily','Veggies':'veggies_daily',
+            'HvyAlcoholConsump':'heavy_alcohol','AnyHealthcare':'any_healthcare','NoDocbcCost':'no_doctor_due_cost',
+            'GenHlth':'general_health','MentHlth':'mental_health_days','PhysHlth':'physical_health_days',
+            'DiffWalk':'difficulty_walking','Sex':'sex','Age':'age_category','Education':'education','Income':'income'
+          }
+          X=Xraw.rename(columns=rename).apply(pd.to_numeric,errors='raise')
+          features=list(X.columns)
+          assert len(features)==21
+
+          idx=np.arange(len(y))
+          tr,tmp=train_test_split(idx,test_size=.40,random_state=5001,stratify=y)
+          cal,te=train_test_split(tmp,test_size=.50,random_state=5002,stratify=y.iloc[tmp])
+          Xtr,Xca,Xte=X.iloc[tr].copy(),X.iloc[cal].copy(),X.iloc[te].copy()
+          ytr,yca,yte=y.iloc[tr].to_numpy(),y.iloc[cal].to_numpy(),y.iloc[te].to_numpy()
+
+          med=Xtr.median().reindex(features)
+          Xtr=Xtr.fillna(med);Xca=Xca.fillna(med);Xte=Xte.fillna(med)
+          mu=Xtr.mean().reindex(features)
+          sd=Xtr.std(ddof=0).replace(0,1).reindex(features)
+          lo=Xtr.min().reindex(features);hi=Xtr.max().reindex(features)
+          Ztr=(Xtr-mu)/sd; Zca=(Xca-mu)/sd; Zte=(Xte-mu)/sd
+
+          base=LogisticRegression(max_iter=4000,C=.5,solver='lbfgs',class_weight='balanced',random_state=5003)
+          base.fit(Ztr,ytr)
+
+          platt=LogisticRegression(max_iter=4000,C=1e6,solver='lbfgs',random_state=5004)
+          cal_scores=base.decision_function(Zca).reshape(-1,1)
+          platt.fit(cal_scores,yca)
+          pca=platt.predict_proba(cal_scores)[:,1]
+          fpr,tpr,thr=roc_curve(yca,pca)
+          valid=np.isfinite(thr)
+          threshold=float(thr[valid][np.argmax((tpr-fpr)[valid])])
+
+          p=platt.predict_proba(base.decision_function(Zte).reshape(-1,1))[:,1]
+          pred=(p>=threshold).astype(int)
+          tn,fp,fn,tp=confusion_matrix(yte,pred,labels=[0,1]).ravel()
+          prevalence=float(y.mean())
+          metrics={
+            'n_total':int(len(y)),'n_train':int(len(tr)),'n_calibration':int(len(cal)),'n_test':int(len(te)),
+            'positive_prevalence':prevalence,
+            'auroc':float(roc_auc_score(yte,p)),
+            'auprc':float(average_precision_score(yte,p)),
+            'accuracy':float(accuracy_score(yte,pred)),
+            'brier':float(brier_score_loss(yte,p)),
+            'sensitivity':float(tp/(tp+fn)) if tp+fn else None,
+            'specificity':float(tn/(tn+fp)) if tn+fp else None,
+            'decision_threshold_from_calibration':threshold,
+            'confusion_matrix':{'tn':int(tn),'fp':int(fp),'fn':int(fn),'tp':int(tp)}
+          }
+
+          labels={
+            'high_bp':('Pressione alta riferita','0=no, 1=sì'),
+            'high_chol':('Colesterolo alto riferito','0=no, 1=sì'),
+            'chol_check':('Controllo colesterolo negli ultimi 5 anni','0=no, 1=sì'),
+            'bmi':('BMI','kg/m²'),
+            'smoker_100':('≥100 sigarette nella vita','0=no, 1=sì'),
+            'stroke_history':('Ictus riferito','0=no, 1=sì'),
+            'heart_disease_or_attack':('CHD o infarto riferito','0=no, 1=sì'),
+            'physical_activity':('Attività fisica negli ultimi 30 giorni','0=no, 1=sì'),
+            'fruits_daily':('Frutta ≥1 volta/giorno','0=no, 1=sì'),
+            'veggies_daily':('Verdura ≥1 volta/giorno','0=no, 1=sì'),
+            'heavy_alcohol':('Consumo elevato di alcol','0=no, 1=sì'),
+            'any_healthcare':('Copertura sanitaria','0=no, 1=sì'),
+            'no_doctor_due_cost':('Rinuncia al medico per costo','0=no, 1=sì'),
+            'general_health':('Salute generale riferita','1=ottima ... 5=scarsa'),
+            'mental_health_days':('Giorni salute mentale non buona','0-30'),
+            'physical_health_days':('Giorni salute fisica non buona','0-30'),
+            'difficulty_walking':('Difficoltà a camminare/salire scale','0=no, 1=sì'),
+            'sex':('Sesso','0=donna, 1=uomo'),
+            'age_category':('Categoria età BRFSS','1=18-24 ... 13=80+'),
+            'education':('Istruzione BRFSS','1-6'),
+            'income':('Reddito BRFSS','1-8')
+          }
+          field_meta={}
+          for f in features:
+              label,unit=labels[f]
+              field_meta[f]={
+                'label':label,'unit':unit,
+                'training_min':float(lo[f]),'training_max':float(hi[f]),'median':float(med[f])
+              }
+
+          model={
+            'schema':'healthsolver.predictive_model.v1',
+            'model_id':'HS-CDC-DIABIND-001',
+            'version':'1.0.0',
+            'release':'HealthSolver 0.50 CDC Diabetes Health Indicators Integration',
+            'task':'Binary research classification of the processed BRFSS source label Diabetes_binary: 0=no diabetes, 1=prediabetes or diabetes.',
+            'research_only':True,
+            'not_clinically_validated':True,
+            'dataset':{
+              'name':'CDC Diabetes Health Indicators',
+              'uci_id':891,
+              'doi':'10.24432/C53919',
+              'instances':int(len(y)),
+              'features':21,
+              'source':'https://archive.ics.uci.edu/dataset/891/cdc+diabetes+health+indicators',
+              'upstream_source':'CDC Behavioral Risk Factor Surveillance System (BRFSS)',
+              'license':'CC0 / Public Domain for processed dataset; upstream CDC BRFSS public-domain data',
+              'missing_values':False,
+              'survey_semantics':'Cross-sectional/self-reported health-indicator dataset derived from BRFSS; not a prospective clinical cohort.'
+            },
+            'features':features,
+            'field_meta':field_meta,
+            'imputation':{'strategy':'training median','values':{f:float(med[f]) for f in features}},
+            'standardization':{'mean':{f:float(mu[f]) for f in features},'scale':{f:float(sd[f]) for f in features}},
+            'logistic':{'intercept':float(base.intercept_[0]),'coefficients':{f:float(v) for f,v in zip(features,base.coef_[0])}},
+            'calibration':{'method':'Platt scaling on held-out calibration split','intercept':float(platt.intercept_[0]),'slope':float(platt.coef_[0,0])},
+            'threshold':threshold,
+            'threshold_selection':'Youden J maximum on held-out calibration split; evaluated once on independent held-out test split',
+            'metrics_test':metrics,
+            'abstention':{
+              'max_missing_features':2,
+              'message':'Prediction withheld when more than two source-domain indicators are missing.'
+            },
+            'target_definition':{
+              'source_name':'Diabetes_binary',
+              'negative':'0 = no diabetes in the processed source label',
+              'positive':'1 = prediabetes or diabetes combined in the processed source label',
+              'prediabetes_and_diabetes_combined':True,
+              'future_risk':False,
+              'clinical_diagnosis':False,
+              'interpretation':'Source-label classification only; not a diagnosis and not a probability of developing diabetes in the future.'
+            },
+            'temporal_semantics':'Cross-sectional source-label classification. No prospective follow-up or fixed future-risk horizon is modeled.',
+            'leakage_review':'No direct target field is present among predictors. Healthcare-use and comorbidity indicators may partly reflect consequences of existing diagnosis; therefore the output is deliberately framed as source-label classification rather than etiologic or prospective diabetes risk.'
+          }
+
+          out=pathlib.Path('predictive')
+          (out/'model-cdc-diabetes-indicators-v1.json').write_text(json.dumps(model,indent=2,sort_keys=True))
+          (out/'model-cdc-diabetes-indicators-v1-report.json').write_text(json.dumps(metrics,indent=2,sort_keys=True))
+
+          reg=json.loads((out/'model-registry-v2.json').read_text())
+          assert reg['version']=='0.49.1',reg['version']
+          old_ids=[m['model_id'] for m in reg['models']]
+          assert len(old_ids)==9 and 'HS-CDC-DIABIND-001' not in old_ids
+          reg['version']='0.50.0'
+          reg['models'].append({
+            'model_id':model['model_id'],
+            'title':'Diabete/prediabete · label BRFSS',
+            'file':'model-cdc-diabetes-indicators-v1.json',
+            'task':model['task'],
+            'metrics_test':metrics,
+            'target_semantics':'Diabetes_binary=1 merges prediabetes and diabetes; cross-sectional source label, not future risk.'
+          })
+          (out/'model-registry-v2.json').write_text(json.dumps(reg,indent=2,sort_keys=True))
+          print(json.dumps({'features':features,'metrics':metrics,'registry_models':len(reg['models'])},indent=2))
+          PY
+      - name: Commit model and registry
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name "healthsolver-bot"
+          git config user.email "healthsolver-bot@users.noreply.github.com"
+          git add predictive/model-cdc-diabetes-indicators-v1.json predictive/model-cdc-diabetes-indicators-v1-report.json predictive/model-registry-v2.json
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: add CDC diabetes indicators model HS-CDC-DIABIND-001"
+          git push
