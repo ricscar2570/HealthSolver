@@ -3,7 +3,7 @@ name: HealthSolver 0.55 Full Browser E2E
 on:
   push:
     branches: ['main']
-    paths: ['.github/workflows/hs054-full-browser-audit.yml']
+    paths: ['.github/workflows/hs055-full-browser-audit.yml']
   workflow_dispatch:
 
 permissions:
