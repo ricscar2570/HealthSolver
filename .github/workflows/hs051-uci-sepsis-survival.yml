@@ -182,6 +182,8 @@ jobs:
             'threshold_selection':'Youden J maximum on held-out Norwegian calibration split; unchanged for internal test and external South Korean validation',
             'metrics_test':metrics,
             'external_validation':external_metrics,
+            'external_validation_interpretation':'External South Korean discrimination is weak (AUROC 0.548; death-positive AUPRC 0.209 with death prevalence 0.175). Treat the model as a research/methodological demonstration and do not generalize its probability clinically outside the development domain.',
+            'external_validation_status':'WEAK_GENERALIZATION',
             'abstention':{
               'max_missing_features':0,
               'message':'Prediction withheld unless age, sex and septic episode number are all available.'
@@ -218,6 +220,7 @@ jobs:
             'task':model['task'],
             'metrics_test':metrics,
             'external_validation':external_metrics,
+            'external_validation_status':'WEAK_GENERALIZATION',
             'target_semantics':'Hospital-outcome death label; no fixed time horizon; not survival probability.'
           })
           (out/'model-registry-v2.json').write_text(json.dumps(reg,indent=2,sort_keys=True))
