@@ -302,7 +302,7 @@ wrap.innerHTML=`
   </details>
   <details id="hs53Support2Details">
     <summary><b>SUPPORT2 · decesso intraospedaliero</b> · stato clinico giorno 3</summary>
-    <p class="hint">Coorte multicentrica di 9.105 pazienti critici in 5 centri USA. Il modello usa un set split-first di variabili baseline/giorno 3. Solo età e sesso vengono riutilizzati automaticamente dal dossier; tutti i parametri fisiologici del giorno 3 devono essere inseriti esplicitamente qui perché il dossier generale non codifica il timepoint SUPPORT.</p>
+    <p class="hint">Coorte multicentrica di 9.105 pazienti critici in 5 centri USA. Il modello usa un set split-first di variabili baseline/giorno 3. Solo età e sesso vengono riutilizzati automaticamente dal dossier. I parametri fisiologici del giorno 3 contano come osservati solo se inseriti esplicitamente qui; se assenti restano missing e possono essere imputati soltanto entro la policy di astensione del modello.</p>
     <div class="grid">
       <label>Gruppo diagnostico SUPPORT<select id="hs53_dzgroup"><option value="">—</option><option>ARF/MOSF w/Sepsis</option><option>COPD</option><option>CHF</option><option>Cirrhosis</option><option>Coma</option><option>Colon Cancer</option><option>Lung Cancer</option><option>MOSF w/Malig</option></select></label>
       <label>Numero comorbidità<input id="hs53_numco" type="number" min="0" step="1"></label>
