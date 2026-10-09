@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/hs-published-smoke.yml'
       - 'predictive/**'
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
