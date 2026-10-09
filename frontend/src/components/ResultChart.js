@@ -1,10 +1,19 @@
 // frontend/src/components/ResultChart.js
-// Modifica per accettare un dataTransformer opzionale
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Bar, Line, Pie } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
 
-// Registra i componenti necessari di Chart.js
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -17,86 +26,103 @@ ChartJS.register(
   Legend
 );
 
-/**
- * ResultChart Component
- * Visualizza grafici (Bar, Line, Pie) da un endpoint API,
- * con trasformazione dati opzionale.
- */
+const identityDataTransformer = (data) => data;
+
 const ResultChart = ({
   apiEndpoint,
   defaultChartType = 'bar',
   title = 'Results Chart',
-  dataTransformer = (data) => data // Funzione identità di default
+  dataTransformer = identityDataTransformer
 }) => {
   const [chartType, setChartType] = useState(defaultChartType);
   const [chartData, setChartData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(apiEndpoint));
   const [error, setError] = useState(null);
+  const chartTypeId = `chartType-${String(title).replace(/[^A-Za-z0-9_-]+/g, '-')}`;
 
   useEffect(() => {
     if (!apiEndpoint) {
-        setError("API endpoint is not defined.");
-        setLoading(false);
-        return;
+      setChartData(null);
+      setError('API endpoint is not defined.');
+      setLoading(false);
+      return undefined;
     }
+
+    const controller = new AbortController();
 
     const fetchData = async () => {
       setLoading(true);
       setError(null);
       setChartData(null);
+
       try {
-        const response = await fetch(apiEndpoint);
+        const response = await fetch(apiEndpoint, { signal: controller.signal });
         if (!response.ok) {
           throw new Error(`Failed to fetch chart data (${response.status})`);
         }
-        const rawData = await response.json();
 
-        // Applica la trasformazione ai dati ricevuti
+        const rawData = await response.json();
         const transformedData = dataTransformer(rawData);
 
-        if (!transformedData || !transformedData.labels || !transformedData.datasets) {
-             console.error("Transformed data is not in the expected Chart.js format:", transformedData);
-             throw new Error("Invalid data format received after transformation.");
+        if (
+          !transformedData ||
+          !Array.isArray(transformedData.labels) ||
+          !Array.isArray(transformedData.datasets)
+        ) {
+          throw new Error('Invalid data format received after transformation.');
         }
 
-        setChartData(transformedData); // Usa i dati trasformati
-
+        if (!controller.signal.aborted) {
+          setChartData(transformedData);
+        }
       } catch (err) {
+        if (err?.name === 'AbortError') {
+          return;
+        }
         console.error('Error fetching or processing chart data:', err);
-        setError(`Could not load chart data: ${err.message}`);
+        if (!controller.signal.aborted) {
+          setError(`Could not load chart data: ${err.message}`);
+        }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchData();
-  }, [apiEndpoint, dataTransformer]); // Aggiungi dataTransformer alle dipendenze
+    return () => controller.abort();
+  }, [apiEndpoint, dataTransformer]);
 
-  // Funzione per renderizzare il grafico selezionato
   const renderChart = () => {
-     const options = {
-        responsive: true,
-        plugins: {
-            legend: { position: 'top' },
-            title: { display: true, text: title }
-        }
+    const options = {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' },
+        title: { display: true, text: title }
+      }
     };
+
     switch (chartType) {
       case 'line':
         return <Line data={chartData} options={options} />;
       case 'pie':
-        // Pie chart options might differ
-        return <Pie data={chartData} options={{ ...options, plugins: { ...options.plugins, legend: { position: 'right' }}}} />;
-      default: // bar
+        return (
+          <Pie
+            data={chartData}
+            options={{
+              ...options,
+              plugins: { ...options.plugins, legend: { position: 'right' } }
+            }}
+          />
+        );
+      default:
         return <Bar data={chartData} options={options} />;
     }
   };
 
   return (
     <div style={{ margin: '20px 0', padding: '15px', border: '1px dashed #eee' }}>
-      {/* Titolo spostato nelle opzioni del grafico */}
-      {/* <h4>{title}</h4> */}
-
       {loading && <p>Loading chart data...</p>}
       {error && <p style={{ color: 'red' }}>{error}</p>}
 
@@ -104,11 +130,11 @@ const ResultChart = ({
         <>
           {renderChart()}
           <div style={{ marginTop: '20px', textAlign: 'center' }}>
-            <label htmlFor={`chartType-${title}`} style={{ marginRight: '10px' }}>
+            <label htmlFor={chartTypeId} style={{ marginRight: '10px' }}>
               Chart Type:
             </label>
             <select
-              id={`chartType-${title}`} // Usa ID univoco se ci sono più grafici
+              id={chartTypeId}
               value={chartType}
               onChange={(e) => setChartType(e.target.value)}
               style={{ padding: '5px' }}
