@@ -1,0 +1,407 @@
+name: HealthSolver 0.54 eICU Demo Hospital Death
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs054-eicu-demo-hospital-death.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install pinned scientific stack
+        run: |
+          python -m pip install --disable-pip-version-check -q             numpy==2.5.3 pandas==3.0.6 scikit-learn==1.9.1
+      - name: Acquire and verify eICU demo source
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p /tmp/eicu054
+          cd /tmp/eicu054
+          base='https://physionet.org/files/eicu-crd-demo/2.0.1'
+          for f in patient.csv.gz apacheApsVar.csv.gz; do
+            curl -L --fail --retry 5 --retry-delay 2 --connect-timeout 15 --max-time 180               -o "$f" "$base/$f"
+          done
+          curl -L --fail --retry 5 --retry-delay 2 -o LICENSE.txt "$base/LICENSE.txt"
+          curl -L --fail --retry 5 --retry-delay 2 -o SHA256SUMS.txt "$base/SHA256SUMS.txt"
+          grep -E '(^|[[:space:]])(patient|apacheApsVar)\.csv\.gz$' SHA256SUMS.txt > subset.sha256
+          test "$(wc -l < subset.sha256)" -eq 2
+          sha256sum -c subset.sha256
+          grep -qi 'Open Database License' LICENSE.txt
+          sha256sum patient.csv.gz apacheApsVar.csv.gz > acquired.sha256
+          echo 'EICU SOURCE + LICENSE PASS'
+
+      - name: Train group-aware first-APACHE-day model
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import math
+          import pathlib
+
+          import numpy as np
+          import pandas as pd
+          import sklearn
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import (
+              accuracy_score,
+              average_precision_score,
+              brier_score_loss,
+              confusion_matrix,
+              roc_auc_score,
+              roc_curve,
+          )
+          from sklearn.model_selection import StratifiedGroupKFold
+
+          src=pathlib.Path('/tmp/eicu054')
+          patient=pd.read_csv(src/'patient.csv.gz',low_memory=False)
+          aps=pd.read_csv(src/'apacheApsVar.csv.gz',low_memory=False)
+
+          assert patient.shape==(2520,29),patient.shape
+          assert aps.shape==(2205,26),aps.shape
+          assert patient['patientunitstayid'].nunique()==2520
+          assert patient['uniquepid'].nunique()==1841
+          assert {'patientunitstayid','uniquepid','unitvisitnumber','hospitaldischargestatus','age','gender'}<=set(patient.columns)
+
+          # Cohort policy fixed before modelling: first ICU stay of each hospital admission,
+          # known hospital-discharge outcome, and an APACHE APS input row.
+          first=patient.loc[patient['unitvisitnumber'].eq(1)].copy()
+          cohort=first.merge(aps,on='patientunitstayid',how='inner',validate='one_to_one')
+          target_text=cohort['hospitaldischargestatus'].astype('string').str.strip().str.lower()
+          cohort['target']=target_text.map({'alive':0,'expired':1})
+          cohort=cohort.loc[cohort['target'].notna()].copy()
+          cohort['target']=cohort['target'].astype(int)
+          assert len(cohort)==2004,len(cohort)
+          assert cohort['patienthealthsystemstayid'].nunique()==2004
+          assert cohort['uniquepid'].nunique()==1713
+          assert cohort['target'].value_counts().sort_index().to_dict()=={0:1831,1:173}
+
+          # Source missing-value semantics: the distributed APACHE APS files use -1
+          # for unavailable continuous values. Binary flags retain 0/1 as source-coded.
+          continuous=['temperature','respiratoryrate','heartrate','meanbp','glucose','sodium','creatinine']
+          for c in continuous:
+              cohort[c]=pd.to_numeric(cohort[c],errors='coerce')
+              cohort.loc[cohort[c] < 0,c]=np.nan
+
+          meds=pd.to_numeric(cohort['meds'],errors='coerce')
+          eyes=pd.to_numeric(cohort['eyes'],errors='coerce')
+          motor=pd.to_numeric(cohort['motor'],errors='coerce')
+          verbal=pd.to_numeric(cohort['verbal'],errors='coerce')
+          valid_gcs=(meds.eq(0)&eyes.between(1,4)&motor.between(1,6)&verbal.between(1,5))
+          cohort['gcs_total']=np.where(valid_gcs,eyes+motor+verbal,np.nan)
+          cohort['gcs_unscorable_meds']=np.where(meds.lt(0)|meds.isna(),np.nan,meds.eq(1).astype(float))
+
+          age_raw=cohort['age'].astype('string').str.strip()
+          cohort['age_numeric']=pd.to_numeric(age_raw.replace({'> 89':'90'}),errors='coerce')
+          cohort['age_over_89']=np.where(age_raw.isna(),np.nan,(age_raw=='> 89').astype(float))
+          gender=cohort['gender'].astype('string').str.strip().str.lower()
+          cohort['male']=gender.map({'male':1.0,'female':0.0})
+
+          raw_features=[
+              'age','sex','gcs_total','gcs_unscorable_meds','temperature',
+              'respiratoryrate','heartrate','meanbp','glucose','sodium','creatinine'
+          ]
+          features=[
+              'age_numeric','age_over_89','male','gcs_total','gcs_unscorable_meds',
+              'temperature','respiratoryrate','heartrate','meanbp','glucose','sodium','creatinine'
+          ]
+          assert not any(x in features for x in ['apachescore','acutephysiologyscore','predictedhospitalmortality','actualhospitalmortality'])
+
+          # Five-fold group-aware assignment: folds 0 and 1 are untouched test and
+          # calibration; folds 2-4 are training. The same unique patient never crosses splits.
+          y=cohort['target'].to_numpy()
+          groups=cohort['uniquepid'].astype(str).to_numpy()
+          sgkf=StratifiedGroupKFold(n_splits=5,shuffle=True,random_state=5401)
+          folds=np.full(len(cohort),-1,dtype=int)
+          dummy=np.zeros((len(cohort),1))
+          for fold,(_,idx) in enumerate(sgkf.split(dummy,y,groups)):
+              folds[idx]=fold
+          assert (folds>=0).all()
+          cohort['partition']=np.where(folds==0,'test',np.where(folds==1,'calibration','train'))
+
+          for a,b in [('train','calibration'),('train','test'),('calibration','test')]:
+              ga=set(cohort.loc[cohort.partition.eq(a),'uniquepid'].astype(str))
+              gb=set(cohort.loc[cohort.partition.eq(b),'uniquepid'].astype(str))
+              assert not (ga&gb),(a,b,len(ga&gb))
+
+          train=cohort.loc[cohort.partition.eq('train')].copy()
+          cal=cohort.loc[cohort.partition.eq('calibration')].copy()
+          test=cohort.loc[cohort.partition.eq('test')].copy()
+          assert (len(train),len(cal),len(test))==(1200,402,402)
+          assert (int(train.target.sum()),int(cal.target.sum()),int(test.target.sum()))==(103,35,35)
+
+          # Feature policy is source-semantic plus training-only missingness. This compact
+          # set was declared before inspecting any feature/outcome association.
+          train_missing={c:float(train[c].isna().mean()) for c in features}
+          assert train_missing['temperature']<0.11
+          assert train_missing['glucose']<0.20
+          assert train_missing['sodium']<0.27
+          assert train_missing['creatinine']<0.27
+          # High-missingness alternatives were excluded before fitting.
+          for excluded in ['urine','wbc','bun']:
+              s=pd.to_numeric(train[excluded],errors='coerce')
+              s=s.mask(s<0)
+              assert float(s.isna().mean())>0.25,excluded
+
+          medians={f:float(train[f].median()) for f in features}
+          assert all(math.isfinite(v) for v in medians.values())
+
+          def matrix(df):
+              out=pd.DataFrame(index=df.index)
+              for f in features:
+                  out[f]=pd.to_numeric(df[f],errors='coerce').fillna(medians[f]).astype(float)
+              return out
+
+          Xtr=matrix(train);Xca=matrix(cal);Xte=matrix(test)
+          mean={f:float(Xtr[f].mean()) for f in features}
+          scale={f:float(Xtr[f].std(ddof=0)) for f in features}
+          for f in features:
+              if not math.isfinite(scale[f]) or scale[f]<=0:
+                  scale[f]=1.0
+
+          def standardize(X):
+              Z=X.copy()
+              for f in features:
+                  Z[f]=(Z[f]-mean[f])/scale[f]
+              return Z
+
+          Ztr=standardize(Xtr);Zca=standardize(Xca);Zte=standardize(Xte)
+
+          clf=LogisticRegression(
+              C=0.5,
+              class_weight='balanced',
+              solver='lbfgs',
+              max_iter=5000,
+              random_state=5403,
+          )
+          clf.fit(Ztr,train.target.to_numpy())
+
+          # Platt calibration is learned only from calibration rows.
+          raw_cal=clf.decision_function(Zca).reshape(-1,1)
+          platt=LogisticRegression(C=1e6,solver='lbfgs',max_iter=5000,random_state=5404)
+          platt.fit(raw_cal,cal.target.to_numpy())
+          pcal=platt.predict_proba(raw_cal)[:,1]
+
+          fpr,tpr,thresholds=roc_curve(cal.target.to_numpy(),pcal)
+          finite=np.isfinite(thresholds)
+          j=tpr[finite]-fpr[finite]
+          threshold=float(thresholds[finite][int(np.argmax(j))])
+          assert 0<threshold<1
+
+          raw_test=clf.decision_function(Zte).reshape(-1,1)
+          ptest=platt.predict_proba(raw_test)[:,1]
+          pred=(ptest>=threshold).astype(int)
+          tn,fp,fn,tp=confusion_matrix(test.target.to_numpy(),pred,labels=[0,1]).ravel()
+
+          metrics={
+              'n_source_unit_stays':2520,
+              'n_source_unique_patients':1841,
+              'n_total':int(len(cohort)),
+              'n_unique_patients':int(cohort['uniquepid'].nunique()),
+              'n_train':int(len(train)),
+              'n_calibration':int(len(cal)),
+              'n_test':int(len(test)),
+              'positive_prevalence_hospital_death':float(cohort.target.mean()),
+              'auroc':float(roc_auc_score(test.target,ptest)),
+              'auprc':float(average_precision_score(test.target,ptest)),
+              'brier':float(brier_score_loss(test.target,ptest)),
+              'accuracy':float(accuracy_score(test.target,pred)),
+              'sensitivity_hospital_death':float(tp/(tp+fn)),
+              'specificity_hospital_survival':float(tn/(tn+fp)),
+              'threshold':threshold,
+              'confusion_matrix':{
+                  'tn_survived':int(tn),'fp_death':int(fp),
+                  'fn_death':int(fn),'tp_death':int(tp)
+              }
+          }
+
+          encoding_map={
+              'age_numeric':{'kind':'numeric_transform','raw_key':'age','transform':'eICU age string: >89 maps to 90; otherwise numeric years'},
+              'age_over_89':{'kind':'binary_transform','raw_key':'age','transform':'1 when age >89, otherwise 0'},
+              'male':{'kind':'category','raw_key':'sex','category':'male'},
+          }
+          for f in features:
+              if f not in encoding_map:
+                  encoding_map[f]={'kind':'numeric','raw_key':f}
+
+          raw_schema=[
+              {'key':'age','kind':'numeric','label':'Età','unit':'anni','note':'Nel source >89 è top-coded; HealthSolver replica il top-coding a 90 per il modello.'},
+              {'key':'sex','kind':'categorical','categories':['female','male'],'label':'Sesso'},
+              {'key':'gcs_total','kind':'numeric','label':'GCS totale peggiore nel primo APACHE day','unit':'3-15'},
+              {'key':'gcs_unscorable_meds','kind':'binary','label':'GCS non valutabile per farmaci','unit':'0=no, 1=sì'},
+              {'key':'temperature','kind':'numeric','label':'Temperatura peggiore nel primo APACHE day','unit':'°C'},
+              {'key':'respiratoryrate','kind':'numeric','label':'Frequenza respiratoria peggiore nel primo APACHE day','unit':'atti/min'},
+              {'key':'heartrate','kind':'numeric','label':'Frequenza cardiaca peggiore nel primo APACHE day','unit':'bpm'},
+              {'key':'meanbp','kind':'numeric','label':'Pressione arteriosa media peggiore nel primo APACHE day','unit':'mmHg'},
+              {'key':'glucose','kind':'numeric','label':'Glucosio peggiore nel primo APACHE day','unit':'mg/dL'},
+              {'key':'sodium','kind':'numeric','label':'Sodio peggiore nel primo APACHE day','unit':'mEq/L'},
+              {'key':'creatinine','kind':'numeric','label':'Creatinina peggiore nel primo APACHE day','unit':'mg/dL'},
+          ]
+
+          field_meta={}
+          for f in features:
+              observed=pd.to_numeric(train[f],errors='coerce').dropna()
+              field_meta[f]={
+                  'median':medians[f],
+                  'training_min':float(observed.min()),
+                  'training_max':float(observed.max()),
+                  'training_missing_fraction':train_missing[f],
+              }
+
+          acquired={}
+          for line in (src/'acquired.sha256').read_text().splitlines():
+              sha,name=line.split(maxsplit=1)
+              acquired[name.strip()] = sha
+
+          model={
+              'schema':'healthsolver.predictive_model.v1',
+              'model_id':'HS-EICU-DEMO-HOSPDEATH-001',
+              'version':'1.0.0',
+              'release':'HealthSolver 0.54.0 eICU Demo Hospital Death Integration',
+              'research_only':True,
+              'not_clinically_validated':True,
+              'dataset':{
+                  'name':'eICU Collaborative Research Database Demo',
+                  'version':'2.0.1',
+                  'doi':'10.13026/4mxk-na84',
+                  'source':'https://physionet.org/content/eicu-crd-demo/2.0.1/',
+                  'download_base':'https://physionet.org/files/eicu-crd-demo/2.0.1/',
+                  'license':'Open Data Commons Open Database License v1.0',
+                  'access':'Open access; anyone may access files subject to the specified license.',
+                  'years':'2014-2015',
+                  'source_unit_stays':2520,
+                  'source_unique_patients':1841,
+                  'development_cohort_rows':int(len(cohort)),
+                  'development_unique_patients':int(cohort['uniquepid'].nunique()),
+                  'source_description':'Open demo of deidentified critical-care data; PhysioNet describes >2,500 unit stays selected from larger eICU hospitals.',
+                  'source_sha256':acquired,
+              },
+              'target_definition':{
+                  'source_name':'hospitaldischargestatus',
+                  'negative':'Alive',
+                  'positive':'Expired',
+                  'fixed_horizon':False,
+                  'survival_probability':False,
+                  'interpretation':'Hospital discharge status after the indexed first ICU stay; not 24-hour, 30-day or 90-day mortality and not a general ICU mortality probability.'
+              },
+              'temporal_semantics':'Prediction index is the end of the first APACHE day (first 24 hours after ICU admission). APS variables are source-defined worst values during that APACHE day. This is not an admission-time model.',
+              'cohort_policy':'First ICU stay of each hospital admission (unitvisitnumber=1), known hospital discharge status, and available apacheApsVar row. Multiple hospital admissions from the same unique patient may remain, but all rows for a unique patient are assigned to one split only.',
+              'split_policy':'StratifiedGroupKFold with 5 folds, grouped by uniquepid; fold 0 test, fold 1 calibration, folds 2-4 training. No patient overlap among partitions.',
+              'feature_policy':'Predeclared compact first-APACHE-day feature set chosen from source semantics and training-partition missingness only; no feature/outcome association was computed or used for selection. High-missingness urine, WBC and BUN were excluded. APACHE scores/predictions, discharge fields, diagnosis text, treatment fields, hospital identifiers and ethnicity are excluded.',
+              'missing_value_policy':'APACHE APS continuous source value -1 is treated as missing. Training medians are learned on training only. Source top-coded age >89 maps to numeric 90 with a separate age_over_89 indicator.',
+              'input_timepoint_policy':'Only age and sex may be reused from the common dossier. All GCS and physiologic values must be explicitly supplied as first-APACHE-day values in the eICU panel; generic dossier values are not silently substituted because they do not encode the required first-24-hour time window.',
+              'excluded_source_fields':[
+                  'ethnicity','hospitalid','wardid','apacheadmissiondx','hospitaladmittime24',
+                  'hospitaladmitoffset','hospitaladmitsource','hospitaldischargeyear',
+                  'hospitaldischargetime24','hospitaldischargeoffset','hospitaldischargelocation',
+                  'unitdischargetime24','unitdischargeoffset','unitdischargelocation',
+                  'unitdischargestatus','dischargeweight',
+                  'acutephysiologyscore','apachescore','apacheversion',
+                  'predictedicumortality','actualicumortality','predictedhospitalmortality',
+                  'actualhospitalmortality','predictediculos','actualiculos',
+                  'predictedhospitallos','actualhospitallos','actualventdays','predventdays',
+                  'urine','wbc','bun','ph','hematocrit','albumin','pao2','pco2','bilirubin','fio2',
+                  'intubated','vent','dialysis'
+              ],
+              'raw_features':raw_features,
+              'raw_feature_schema':raw_schema,
+              'features':features,
+              'encoding_map':encoding_map,
+              'abstention':{
+                  'max_missing_features':2,
+                  'max_missing_raw_features':2,
+                  'required_raw_features':['age','sex'],
+                  'message':'Prediction withheld when age or sex is missing, or when more than two raw first-APACHE-day inputs are unavailable.'
+              },
+              'field_meta':field_meta,
+              'imputation':{
+                  'strategy':'training median after source-specific missing-value normalization',
+                  'values':medians
+              },
+              'standardization':{'mean':mean,'scale':scale},
+              'logistic':{
+                  'intercept':float(clf.intercept_[0]),
+                  'coefficients':{f:float(c) for f,c in zip(features,clf.coef_[0])},
+                  'C':0.5,
+                  'class_weight':'balanced',
+                  'solver':'lbfgs'
+              },
+              'calibration':{
+                  'method':'Platt scaling on patient-group-disjoint held-out calibration split',
+                  'intercept':float(platt.intercept_[0]),
+                  'slope':float(platt.coef_[0][0])
+              },
+              'threshold':threshold,
+              'threshold_selection':'Youden J maximum on held-out calibration split; evaluated once on untouched patient-group-disjoint test split',
+              'metrics_test':metrics,
+              'runtime_environment':{
+                  'python':'3.13',
+                  'numpy':np.__version__,
+                  'pandas':pd.__version__,
+                  'scikit_learn':sklearn.__version__
+              },
+              'leakage_review':'Outcome/discharge variables and apachePatientResult scores, actual outcomes and predicted mortality/LOS are never predictors. Patient grouping prevents the same person appearing across development partitions. First-APACHE-day raw physiology is retained because it defines the prediction index.'
+          }
+
+          out=pathlib.Path('predictive')
+          model_path=out/'model-eicu-demo-hospital-death-v1.json'
+          report_path=out/'model-eicu-demo-hospital-death-v1-report.json'
+          model_path.write_text(json.dumps(model,indent=2,sort_keys=True))
+          report_path.write_text(json.dumps(metrics,indent=2,sort_keys=True))
+
+          reg=json.loads((out/'model-registry-v2.json').read_text())
+          assert reg['schema']=='healthsolver.predictive_registry.v2'
+          assert reg['version']=='0.53.1',reg['version']
+          assert len(reg['models'])==13
+          assert all(e['model_id']!='HS-EICU-DEMO-HOSPDEATH-001' for e in reg['models'])
+          reg['version']='0.54.0'
+          reg['models'].append({
+              'model_id':model['model_id'],
+              'title':'eICU Demo · decesso ospedaliero · first APACHE day',
+              'file':model_path.name,
+              'task':'Binary research classification of eICU Demo hospital discharge status after a first ICU stay using a compact first-APACHE-day feature set and patient-group-disjoint split.',
+              'metrics_test':metrics,
+              'target_semantics':'hospitalDischargeStatus Expired vs Alive; first-APACHE-day index, variable hospital follow-up, research only and not clinically validated.'
+          })
+          (out/'model-registry-v2.json').write_text(json.dumps(reg,indent=2,sort_keys=True))
+
+          # Sanity inference at training medians.
+          score=float(model['logistic']['intercept'])
+          for f in features:
+              z=(medians[f]-mean[f])/scale[f]
+              score+=z*model['logistic']['coefficients'][f]
+          calibrated=1/(1+math.exp(-(model['calibration']['intercept']+model['calibration']['slope']*score)))
+          assert math.isfinite(calibrated) and 0<calibrated<1
+
+          print(json.dumps({
+              'metrics':metrics,
+              'features':features,
+              'train_missingness':train_missing,
+              'median_probability':calibrated,
+              'registry_models':len(reg['models'])
+          },indent=2,sort_keys=True))
+          print('EICU 0.54 TRAINING PASS')
+          PY
+
+      - name: Commit model, report and registry
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name "healthsolver-bot"
+          git config user.email "healthsolver-bot@users.noreply.github.com"
+          git add             predictive/model-eicu-demo-hospital-death-v1.json             predictive/model-eicu-demo-hospital-death-v1-report.json             predictive/model-registry-v2.json
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: add eICU demo first-day hospital-death model"
+          git push
