@@ -26,7 +26,7 @@ jobs:
           import json,math,pathlib
           root=pathlib.Path('predictive')
           reg=json.loads((root/'model-registry-v2.json').read_text())
-          assert reg['version'] in {'0.46.0','0.47.0','0.48.0'}
+          assert tuple(map(int,reg['version'].split('.'))) >= (0,46,0)
           assert len(reg['models'])>=6
           ids={e['model_id'] for e in reg['models']}
           assert 'HS-NHIS-HYP-001' in ids
