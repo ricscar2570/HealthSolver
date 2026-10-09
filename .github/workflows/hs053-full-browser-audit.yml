@@ -1,4 +1,4 @@
-name: HealthSolver 0.53 Compact Full Browser E2E
+name: HealthSolver 0.53.1 Full Browser E2E
 on:
   push:
     branches: ['main']
@@ -29,9 +29,9 @@ jobs:
           const ok=(v,m)=>{if(!v)throw new Error(m)};
           const nav=async x=>{const n=p.locator('aside .nav[data-page="'+x+'"]');ok(await n.count()===1,'nav '+x);await n.click();await p.waitForTimeout(80);ok(await p.locator('#page-'+x).isVisible(),'page '+x)};
           const set=async(id,v)=>{const q=p.locator('#'+id);ok(await q.count()===1,'missing '+id);await q.evaluate((e,x)=>{e.value=String(x);e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}))},v)};
-          await p.goto(base+'?audit=053-full',{waitUntil:'networkidle',timeout:120000});
-          const meta=await fetch(base+'version.json?audit=053-full').then(r=>r.json());
-          ok(meta.version==='0.53.0'&&meta.predictive_model_count===13,'release metadata');
+          await p.goto(base+'?audit=0531-full',{waitUntil:'networkidle',timeout:120000});
+          const meta=await fetch(base+'version.json?audit=0531-full').then(r=>r.json());
+          ok(meta.version==='0.53.1'&&meta.predictive_model_count===13&&meta.code_audit_remediation===true,'release metadata');
           for(const x of ['coach','intelligence','hub','massive','case','data','validation','archive','previous']) await nav(x);
           console.log('navigation PASS');
 
@@ -42,14 +42,17 @@ jobs:
           const sex=p.locator('#ciSex');
           const os=await sex.locator('option').evaluateAll(a=>a.map(o=>({v:o.value,t:o.textContent.trim()})));
           const male=os.find(o=>/masch|male|^m$/i.test(o.t)||/^(m|male|maschio|1)$/i.test(o.v));ok(male,'male option');await sex.selectOption(male.v);
-          await set('ci_pulse',100);await set('ci_creatinine',1.2);await set('ci_sodium',137);
-          for(const [id,v] of Object.entries({hs53_dzgroup:'CHF',hs53_numco:2,hs53_scoma:0,hs53_hday:1,hs53_diabetes:0,hs53_dementia:0,hs53_ca:'no',hs53_meanbp:77,hs53_wblc:10.5,hs53_resp:24,hs53_temp:36.7}))await set(id,v);
+          await set('ci_pulse',111);await set('ci_creatinine',9.9);await set('ci_sodium',111);
+          for(const [id,v] of Object.entries({hs53_dzgroup:'CHF',hs53_numco:2,hs53_scoma:0,hs53_hday:1,hs53_diabetes:0,hs53_dementia:0,hs53_ca:'no',hs53_meanbp:77,hs53_wblc:10.5,hs53_hrt:100,hs53_resp:24,hs53_temp:36.7,hs53_crea:1.2,hs53_sod:137}))await set(id,v);
           ok((await p.locator('#hs-predictive-integrated').innerText()).includes('13 MODELLI SUPERVISIONATI'),'13 badge');
           ok(await p.locator('#hs42Coverage .metric').count()===13,'13 coverage');
+          const supportCov=p.locator('#hs42Coverage .metric').filter({hasText:'SUPPORT2 · decesso intraospedaliero · day 3'});
+          ok(/25\/25/.test(await supportCov.innerText()),'SUPPORT2 complete coverage missing');
           await p.locator('#hs42Run').click();await p.waitForTimeout(350);
           ok(await p.locator('#hs42Results>.card').count()===13,'13 result cards');
           const c=p.locator('#hs42Results>.card').filter({hasText:'HS-SUPPORT2-HOSPDEATH-001'});
           ok(await c.count()===1,'support result');const t=await c.innerText();ok(/%/.test(t)&&!/Astensione/i.test(t),'support numeric result');
+          ok(!t.includes('Imputati con mediana training: hrt')&&!t.includes('Imputati con mediana training: crea')&&!t.includes('Imputati con mediana training: sod'),'explicit SUPPORT2 day-3 values unexpectedly imputed');
           console.log('13-model registry/result surface PASS');
 
           await nav('hub');await p.locator('#hubExample').click();console.log('Hub PASS');
@@ -67,6 +70,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: healthsolver-053-full-browser-audit
+          name: healthsolver-0531-full-browser-audit
           path: full-browser-audit.txt
           retention-days: 14
