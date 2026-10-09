@@ -1,0 +1,20 @@
+{
+  "accuracy": 0.6833333333333333,
+  "auprc": 0.6591610310576945,
+  "auroc": 0.7437499999999999,
+  "brier": 0.18833361962853365,
+  "confusion_matrix": {
+    "fn": 6,
+    "fp": 13,
+    "tn": 27,
+    "tp": 14
+  },
+  "decision_threshold_from_calibration": 0.29957634624408275,
+  "n_calibration": 60,
+  "n_test": 60,
+  "n_total": 299,
+  "n_train": 179,
+  "positive_prevalence": 0.3210702341137124,
+  "sensitivity": 0.7,
+  "specificity": 0.675
+}

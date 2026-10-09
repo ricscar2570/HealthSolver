@@ -1,0 +1,210 @@
+{
+  "abstention": {
+    "max_missing_features": 1,
+    "message": "Prediction withheld when more than one required baseline feature is missing."
+  },
+  "calibration": {
+    "intercept": -0.7371882689581539,
+    "method": "Platt scaling on held-out calibration split",
+    "slope": 0.4661365283331826
+  },
+  "dataset": {
+    "doi": "10.24432/C5Z89R",
+    "instances": 299,
+    "license": "CC BY 4.0",
+    "name": "UCI Heart Failure Clinical Records",
+    "source": "https://archive.ics.uci.edu/dataset/519/heart+failure+clinical+records",
+    "source_note": "Medical records of 299 patients with heart failure collected during follow-up.",
+    "uci_id": 519
+  },
+  "excluded_source_features": [
+    "time"
+  ],
+  "features": [
+    "age",
+    "anaemia",
+    "creatinine_phosphokinase",
+    "diabetes",
+    "ejection_fraction",
+    "high_blood_pressure",
+    "platelets",
+    "serum_creatinine",
+    "serum_sodium",
+    "sex",
+    "smoking"
+  ],
+  "field_meta": {
+    "age": {
+      "label": "Et\u00e0",
+      "median": 60.0,
+      "training_max": 95.0,
+      "training_min": 40.0,
+      "unit": "anni"
+    },
+    "anaemia": {
+      "label": "Anemia",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0,
+      "unit": "0=no, 1=s\u00ec"
+    },
+    "creatinine_phosphokinase": {
+      "label": "Creatinfosfochinasi (CPK)",
+      "median": 233.0,
+      "training_max": 7861.0,
+      "training_min": 23.0,
+      "unit": "mcg/L"
+    },
+    "diabetes": {
+      "label": "Diabete",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0,
+      "unit": "0=no, 1=s\u00ec"
+    },
+    "ejection_fraction": {
+      "label": "Frazione di eiezione",
+      "median": 38.0,
+      "training_max": 80.0,
+      "training_min": 14.0,
+      "unit": "%"
+    },
+    "high_blood_pressure": {
+      "label": "Ipertensione",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0,
+      "unit": "0=no, 1=s\u00ec"
+    },
+    "platelets": {
+      "label": "Piastrine",
+      "median": 259000.0,
+      "training_max": 742000.0,
+      "training_min": 25100.0,
+      "unit": "kiloplatelets/mL"
+    },
+    "serum_creatinine": {
+      "label": "Creatinina sierica",
+      "median": 1.1,
+      "training_max": 9.4,
+      "training_min": 0.6,
+      "unit": "mg/dL"
+    },
+    "serum_sodium": {
+      "label": "Sodio sierico",
+      "median": 137.0,
+      "training_max": 148.0,
+      "training_min": 116.0,
+      "unit": "mEq/L"
+    },
+    "sex": {
+      "label": "Sesso",
+      "median": 1.0,
+      "training_max": 1.0,
+      "training_min": 0.0,
+      "unit": "0=donna, 1=uomo"
+    },
+    "smoking": {
+      "label": "Fumo",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0,
+      "unit": "0=no, 1=s\u00ec"
+    }
+  },
+  "imputation": {
+    "strategy": "training median",
+    "values": {
+      "age": 60.0,
+      "anaemia": 0.0,
+      "creatinine_phosphokinase": 233.0,
+      "diabetes": 0.0,
+      "ejection_fraction": 38.0,
+      "high_blood_pressure": 0.0,
+      "platelets": 259000.0,
+      "serum_creatinine": 1.1,
+      "serum_sodium": 137.0,
+      "sex": 1.0,
+      "smoking": 0.0
+    }
+  },
+  "leakage_control": "The source variable time is follow-up duration and is excluded from browser inference to avoid using post-index observation duration.",
+  "logistic": {
+    "coefficients": {
+      "age": 0.6777850286966922,
+      "anaemia": 0.057641899414111956,
+      "creatinine_phosphokinase": 0.19938910475661867,
+      "diabetes": -0.012963691145400915,
+      "ejection_fraction": -1.0418176139715518,
+      "high_blood_pressure": 0.4276683253548818,
+      "platelets": -0.1166025562634805,
+      "serum_creatinine": 0.7005594979390278,
+      "serum_sodium": -0.2746507635601802,
+      "sex": -0.13654219574791826,
+      "smoking": 0.04255324529937011
+    },
+    "intercept": -0.33429943905448095
+  },
+  "metrics_test": {
+    "accuracy": 0.6833333333333333,
+    "auprc": 0.6591610310576945,
+    "auroc": 0.7437499999999999,
+    "brier": 0.18833361962853365,
+    "confusion_matrix": {
+      "fn": 6,
+      "fp": 13,
+      "tn": 27,
+      "tp": 14
+    },
+    "decision_threshold_from_calibration": 0.29957634624408275,
+    "n_calibration": 60,
+    "n_test": 60,
+    "n_total": 299,
+    "n_train": 179,
+    "positive_prevalence": 0.3210702341137124,
+    "sensitivity": 0.7,
+    "specificity": 0.675
+  },
+  "model_id": "HS-UCI-HFDEATH-001",
+  "not_clinically_validated": true,
+  "release": "HealthSolver 0.49 UCI Heart Failure Clinical Records Integration",
+  "research_only": true,
+  "schema": "healthsolver.predictive_model.v1",
+  "standardization": {
+    "mean": {
+      "age": 61.642458100558656,
+      "anaemia": 0.4301675977653631,
+      "creatinine_phosphokinase": 488.98324022346367,
+      "diabetes": 0.4022346368715084,
+      "ejection_fraction": 37.910614525139664,
+      "high_blood_pressure": 0.3240223463687151,
+      "platelets": 261946.7622905028,
+      "serum_creatinine": 1.4478212290502794,
+      "serum_sodium": 136.74301675977654,
+      "sex": 0.6703910614525139,
+      "smoking": 0.33519553072625696
+    },
+    "scale": {
+      "age": 11.956419308171885,
+      "anaemia": 0.4950994199129502,
+      "creatinine_phosphokinase": 759.1610811976226,
+      "diabetes": 0.4903487878769093,
+      "ejection_fraction": 11.511124042304944,
+      "high_blood_pressure": 0.468008403153648,
+      "platelets": 98191.9157873097,
+      "serum_creatinine": 1.1578188178503241,
+      "serum_sodium": 4.0939925814176,
+      "sex": 0.47007115012206996,
+      "smoking": 0.4720587748441923
+    }
+  },
+  "target_definition": {
+    "excluded_feature": "time excluded because it is follow-up duration rather than a baseline predictor",
+    "negative": "DEATH_EVENT=0, no death recorded during source follow-up",
+    "positive": "DEATH_EVENT=1, patient died during source follow-up"
+  },
+  "task": "Binary research prediction of death during the source follow-up period among patients with heart failure in UCI 519, excluding follow-up duration (time) from predictors.",
+  "threshold": 0.29957634624408275,
+  "threshold_selection": "Youden J maximum on held-out calibration split; evaluated once on independent test split",
+  "version": "1.0.0"
+}
