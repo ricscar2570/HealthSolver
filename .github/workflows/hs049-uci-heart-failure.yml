@@ -1,0 +1,172 @@
+name: HealthSolver 0.49 UCI Heart Failure Mortality
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs049-uci-heart-failure.yml']
+permissions:
+  contents: write
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Train calibrated heart-failure mortality model
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install --disable-pip-version-check -q numpy pandas scikit-learn ucimlrepo
+          python - <<'PY'
+          import json,pathlib,math
+          import numpy as np,pandas as pd
+          from ucimlrepo import fetch_ucirepo
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import accuracy_score,roc_auc_score,average_precision_score,brier_score_loss,confusion_matrix,roc_curve
+          from sklearn.model_selection import train_test_split
+
+          ds=fetch_ucirepo(id=519)
+          Xraw=ds.data.features.copy()
+          yraw=ds.data.targets.iloc[:,0]
+          Xraw.columns=[str(c).strip().lower() for c in Xraw.columns]
+          print('FEATURE_COLUMNS',list(Xraw.columns))
+          print('TARGET_NAME',ds.data.targets.columns.tolist())
+          expected=['age','anaemia','creatinine_phosphokinase','diabetes','ejection_fraction',
+                    'high_blood_pressure','platelets','serum_creatinine','serum_sodium','sex','smoking','time']
+          assert list(Xraw.columns)==expected,(list(Xraw.columns),expected)
+          assert len(Xraw)==299
+          assert not Xraw.isna().any().any()
+          y=pd.to_numeric(yraw,errors='raise').astype(int)
+          assert set(y.unique())=={0,1}
+
+          # "time" is the follow-up duration. It is deliberately excluded so the
+          # browser model does not use post-index observation duration to predict
+          # whether death occurred during follow-up.
+          excluded=['time']
+          X=Xraw.drop(columns=excluded).apply(pd.to_numeric,errors='raise')
+          features=list(X.columns)
+
+          idx=np.arange(len(y))
+          tr,tmp=train_test_split(idx,test_size=.40,random_state=4901,stratify=y)
+          cal,te=train_test_split(tmp,test_size=.50,random_state=4902,stratify=y.iloc[tmp])
+          Xtr,Xca,Xte=X.iloc[tr].copy(),X.iloc[cal].copy(),X.iloc[te].copy()
+          ytr,yca,yte=y.iloc[tr].to_numpy(),y.iloc[cal].to_numpy(),y.iloc[te].to_numpy()
+
+          med=Xtr.median().reindex(features)
+          Xtr=Xtr.fillna(med);Xca=Xca.fillna(med);Xte=Xte.fillna(med)
+          mu=Xtr.mean().reindex(features)
+          sd=Xtr.std(ddof=0).replace(0,1).reindex(features)
+          lo=Xtr.min().reindex(features);hi=Xtr.max().reindex(features)
+          Ztr=(Xtr-mu)/sd;Zca=(Xca-mu)/sd;Zte=(Xte-mu)/sd
+
+          base=LogisticRegression(max_iter=5000,C=.5,solver='lbfgs',class_weight='balanced',random_state=4903)
+          base.fit(Ztr,ytr)
+          platt=LogisticRegression(max_iter=5000,C=1e6,solver='lbfgs',random_state=4904)
+          cals=base.decision_function(Zca).reshape(-1,1)
+          platt.fit(cals,yca)
+          pca=platt.predict_proba(cals)[:,1]
+          fpr,tpr,thr=roc_curve(yca,pca)
+          valid=np.isfinite(thr)
+          threshold=float(thr[valid][np.argmax((tpr-fpr)[valid])])
+
+          p=platt.predict_proba(base.decision_function(Zte).reshape(-1,1))[:,1]
+          pred=(p>=threshold).astype(int)
+          tn,fp,fn,tp=confusion_matrix(yte,pred,labels=[0,1]).ravel()
+          metrics={
+            'n_total':int(len(y)),'n_train':int(len(tr)),'n_calibration':int(len(cal)),'n_test':int(len(te)),
+            'positive_prevalence':float(y.mean()),
+            'auroc':float(roc_auc_score(yte,p)),
+            'auprc':float(average_precision_score(yte,p)),
+            'accuracy':float(accuracy_score(yte,pred)),
+            'brier':float(brier_score_loss(yte,p)),
+            'sensitivity':float(tp/(tp+fn)) if tp+fn else None,
+            'specificity':float(tn/(tn+fp)) if tn+fp else None,
+            'decision_threshold_from_calibration':threshold,
+            'confusion_matrix':{'tn':int(tn),'fp':int(fp),'fn':int(fn),'tp':int(tp)}
+          }
+
+          labels={
+            'age':('Età','anni'),
+            'anaemia':('Anemia','0=no, 1=sì'),
+            'creatinine_phosphokinase':('Creatinfosfochinasi (CPK)','mcg/L'),
+            'diabetes':('Diabete','0=no, 1=sì'),
+            'ejection_fraction':('Frazione di eiezione','%'),
+            'high_blood_pressure':('Ipertensione','0=no, 1=sì'),
+            'platelets':('Piastrine','kiloplatelets/mL'),
+            'serum_creatinine':('Creatinina sierica','mg/dL'),
+            'serum_sodium':('Sodio sierico','mEq/L'),
+            'sex':('Sesso','0=donna, 1=uomo'),
+            'smoking':('Fumo','0=no, 1=sì')
+          }
+          field_meta={}
+          for f in features:
+              label,unit=labels[f]
+              field_meta[f]={
+                'label':label,'unit':unit,
+                'training_min':float(lo[f]),'training_max':float(hi[f]),'median':float(med[f])
+              }
+
+          model={
+            'schema':'healthsolver.predictive_model.v1',
+            'model_id':'HS-UCI-HFDEATH-001','version':'1.0.0',
+            'release':'HealthSolver 0.49 UCI Heart Failure Clinical Records Integration',
+            'task':'Binary research prediction of death during the source follow-up period among patients with heart failure in UCI 519, excluding follow-up duration (time) from predictors.',
+            'research_only':True,'not_clinically_validated':True,
+            'dataset':{
+              'name':'UCI Heart Failure Clinical Records','uci_id':519,'doi':'10.24432/C5Z89R',
+              'license':'CC BY 4.0','source':'https://archive.ics.uci.edu/dataset/519/heart+failure+clinical+records',
+              'instances':int(len(y)),
+              'source_note':'Medical records of 299 patients with heart failure collected during follow-up.'
+            },
+            'features':features,
+            'field_meta':field_meta,
+            'excluded_source_features':excluded,
+            'leakage_control':'The source variable time is follow-up duration and is excluded from browser inference to avoid using post-index observation duration.',
+            'imputation':{'strategy':'training median','values':{f:float(med[f]) for f in features}},
+            'standardization':{'mean':{f:float(mu[f]) for f in features},'scale':{f:float(sd[f]) for f in features}},
+            'logistic':{'intercept':float(base.intercept_[0]),'coefficients':{f:float(v) for f,v in zip(features,base.coef_[0])}},
+            'calibration':{'method':'Platt scaling on held-out calibration split','intercept':float(platt.intercept_[0]),'slope':float(platt.coef_[0,0])},
+            'threshold':threshold,
+            'threshold_selection':'Youden J maximum on held-out calibration split; evaluated once on independent test split',
+            'metrics_test':metrics,
+            'abstention':{
+              'max_missing_features':1,
+              'message':'Prediction withheld when more than one required baseline feature is missing.'
+            },
+            'target_definition':{
+              'positive':'DEATH_EVENT=1, patient died during source follow-up',
+              'negative':'DEATH_EVENT=0, no death recorded during source follow-up',
+              'excluded_feature':'time excluded because it is follow-up duration rather than a baseline predictor'
+            }
+          }
+
+          out=pathlib.Path('predictive')
+          (out/'model-heart-failure-mortality-v1.json').write_text(json.dumps(model,indent=2,sort_keys=True))
+          (out/'model-heart-failure-mortality-v1-report.json').write_text(json.dumps(metrics,indent=2,sort_keys=True))
+          reg=json.loads((out/'model-registry-v2.json').read_text())
+          reg['version']='0.49.0'
+          reg['models']=[m for m in reg['models'] if m['model_id']!='HS-UCI-HFDEATH-001']
+          reg['models'].append({
+            'model_id':model['model_id'],
+            'title':'Mortalità nel follow-up · insufficienza cardiaca',
+            'file':'model-heart-failure-mortality-v1.json',
+            'task':model['task'],
+            'metrics_test':metrics
+          })
+          (out/'model-registry-v2.json').write_text(json.dumps(reg,indent=2,sort_keys=True))
+          print(json.dumps({'excluded':excluded,'features':features,'metrics':metrics},indent=2))
+          PY
+      - name: Commit model and registry
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name "healthsolver-bot"
+          git config user.email "healthsolver-bot@users.noreply.github.com"
+          git add predictive/model-heart-failure-mortality-v1.json predictive/model-heart-failure-mortality-v1-report.json predictive/model-registry-v2.json
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: add UCI heart failure mortality model HS-UCI-HFDEATH-001"
+          git push
