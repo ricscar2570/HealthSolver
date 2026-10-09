@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.__HS_INTEGRATED_PREDICTIVE_053__) return;
-window.__HS_INTEGRATED_PREDICTIVE_053__=true;
+if(window.__HS_INTEGRATED_PREDICTIVE_0531__) return;
+window.__HS_INTEGRATED_PREDICTIVE_0531__=true;
 
 const BUNDLE=window.__HS_PREDICTIVE_BUNDLE__||null;
 if(!BUNDLE?.registry||!BUNDLE?.models) return;
@@ -15,9 +15,9 @@ document.getElementById('hs-router041')?.remove();
 // while updating only visible application-release branding.
 (function reconcileReleaseBranding(){
   const replacements=[
-    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.53'],
+    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.53.1'],
     [/^HealthSolver\s+0\.38\.0\s*·\s*Massive Public Data \+ Clinical Coach Research Edition\s*·\s*Riccardo Scaringi\s*·\s*Non uso clinico\.?$/i,
-     'HealthSolver 0.53.0 · SUPPORT2 Hospital Death Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
+     'HealthSolver 0.53.1 · Code Audit Remediation + SUPPORT2 Hospital Death Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
   ];
   const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
   const nodes=[];
@@ -120,7 +120,7 @@ wrap.className='card';
 wrap.innerHTML=`
   <div class="hs43-hero">
     <div>
-      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.53</div>
+      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.53.1</div>
       <h2 class="hs43-title">Predizioni cliniche di ricerca</h2>
       <p class="hs43-sub">HealthSolver usa lo stesso dossier che hai già compilato per verificare quali modelli sono applicabili e calcolare le stime disponibili. Le funzioni predittive sono qui, in primo piano. Ogni nuovo database entra nello stesso registry e nello stesso dossier.</p>
     </div>
@@ -302,7 +302,7 @@ wrap.innerHTML=`
   </details>
   <details id="hs53Support2Details">
     <summary><b>SUPPORT2 · decesso intraospedaliero</b> · stato clinico giorno 3</summary>
-    <p class="hint">Coorte multicentrica di 9.105 pazienti critici in 5 centri USA. Il modello usa un set split-first di variabili baseline/giorno 3. Età e sesso vengono riutilizzati dal dossier; frequenza cardiaca, creatinina e sodio vengono riutilizzati solo se presenti nelle unità compatibili.</p>
+    <p class="hint">Coorte multicentrica di 9.105 pazienti critici in 5 centri USA. Il modello usa un set split-first di variabili baseline/giorno 3. Solo età e sesso vengono riutilizzati automaticamente dal dossier; tutti i parametri fisiologici del giorno 3 devono essere inseriti esplicitamente qui perché il dossier generale non codifica il timepoint SUPPORT.</p>
     <div class="grid">
       <label>Gruppo diagnostico SUPPORT<select id="hs53_dzgroup"><option value="">—</option><option>ARF/MOSF w/Sepsis</option><option>COPD</option><option>CHF</option><option>Cirrhosis</option><option>Coma</option><option>Colon Cancer</option><option>Lung Cancer</option><option>MOSF w/Malig</option></select></label>
       <label>Numero comorbidità<input id="hs53_numco" type="number" min="0" step="1"></label>
@@ -315,9 +315,9 @@ wrap.innerHTML=`
       <label>Leucociti giorno 3 (10³/µL)<input id="hs53_wblc" type="number" min="0" step="any"></label>
       <label>Frequenza respiratoria giorno 3 (atti/min)<input id="hs53_resp" type="number" min="0" step="any"></label>
       <label>Temperatura giorno 3 (°C)<input id="hs53_temp" type="number" step="any"></label>
-      <label>Frequenza cardiaca giorno 3 (bpm, se non già nel dossier)<input id="hs53_hrt" type="number" min="0" step="any"></label>
-      <label>Creatinina giorno 3 (mg/dL, se non già nel dossier)<input id="hs53_crea" type="number" min="0" step="any"></label>
-      <label>Sodio giorno 3 (mEq/L, se non già nel dossier)<input id="hs53_sod" type="number" min="0" step="any"></label>
+      <label>Frequenza cardiaca giorno 3 (bpm)<input id="hs53_hrt" type="number" min="0" step="any"></label>
+      <label>Creatinina giorno 3 (mg/dL)<input id="hs53_crea" type="number" min="0" step="any"></label>
+      <label>Sodio giorno 3 (mEq/L)<input id="hs53_sod" type="number" min="0" step="any"></label>
     </div>
     <div class="notice" style="margin-top:10px"><b>Target:</b> <code>hospdead=1</code> significa decesso durante il ricovero nella coorte SUPPORT2. Non è mortalità a 30/90 giorni, non è una survival probability e non è uno score clinicamente validato.</div>
     <div class="notice" style="margin-top:10px"><b>Leakage control:</b> esclusi outcome/follow-up, costi e utilizzo futuro, TISS giorni 3–25, punteggi SUPPORT/APACHE, probabilità di sopravvivenza già calcolate, prognosi del medico e variabili DNR. Il modello usa la fisiologia grezza del giorno 3 come index time.</div>
@@ -419,11 +419,11 @@ function support2EncodedCase(model,age,sex){
     ca:raw('hs53_ca')||null,
     meanbp:num('hs53_meanbp'),
     wblc:num('hs53_wblc'),
-    hrt:first(num('ci_pulse'),num('hs53_hrt')),
+    hrt:num('hs53_hrt'),
     resp:num('hs53_resp'),
     temp:num('hs53_temp'),
-    crea:first(num('ci_creatinine'),num('hs53_crea')),
-    sod:first(num('ci_sodium'),num('hs53_sod'))
+    crea:num('hs53_crea'),
+    sod:num('hs53_sod')
   };
   const out={};
   for(const feature of model.features){
@@ -594,7 +594,21 @@ function dossierCase(){
 }
 function readiness(model,values){
   const missing=model.features.filter(f=>values[f]===null||values[f]===undefined||!Number.isFinite(Number(values[f])));
-  return {missing,provided:model.features.length-missing.length,ready:missing.length<=model.abstention.max_missing_features};
+  const base={missing,provided:model.features.length-missing.length};
+  if(Array.isArray(model.raw_features)&&model.encoding_map&&Number.isFinite(Number(model.abstention?.max_missing_raw_features))){
+    const rawMissing=model.raw_features.filter(rawKey=>{
+      const encoded=model.features.filter(f=>model.encoding_map?.[f]?.raw_key===rawKey);
+      return encoded.length===0||encoded.every(f=>missing.includes(f));
+    });
+    const requiredRawMissing=(model.abstention?.required_raw_features||[]).filter(k=>rawMissing.includes(k));
+    return {
+      ...base,
+      rawMissing,
+      requiredRawMissing,
+      ready:rawMissing.length<=Number(model.abstention.max_missing_raw_features)&&requiredRawMissing.length===0
+    };
+  }
+  return {...base,ready:missing.length<=model.abstention.max_missing_features};
 }
 const sigmoid=z=>1/(1+Math.exp(-Math.max(-35,Math.min(35,z))));
 function infer(model,values){
@@ -618,7 +632,8 @@ function renderCoverage(){
   for(const {entry,model} of models){
     const r=readiness(model,values[model.model_id]||{});
     const d=document.createElement('div');d.className='metric';
-    d.innerHTML=`<b>${r.provided}/${model.features.length}</b><span><strong>${titleFor(entry)}</strong><br><small>${r.ready?'✓ PRONTO ALLA PREDIZIONE':'mancano '+r.missing.length+' dati'}</small></span>`;
+    const missCount=r.rawMissing?.length??r.missing.length;
+    d.innerHTML=`<b>${r.provided}/${model.features.length}</b><span><strong>${titleFor(entry)}</strong><br><small>${r.ready?'✓ PRONTO ALLA PREDIZIONE':'mancano '+missCount+' dati'}</small></span>`;
     box.append(d);
   }
   $('hs42Status').textContent='Copertura aggiornata dai campi correnti dell’Expert Mode.';
@@ -627,7 +642,9 @@ function renderResult(entry,model,res){
   const d=document.createElement('div');d.className='card';
   d.style.margin='0';
   if(res.status==='abstain'){
-    d.innerHTML=`<div class="eyebrow">${model.model_id}</div><h3>${titleFor(entry)}</h3><div class="notice"><b>Astensione.</b> Mancano ${res.missing.length} dati richiesti. Compila il dossier o i dati specialistici pertinenti.</div>`;
+    const missCount=res.rawMissing?.length??res.missing.length;
+    const required=res.requiredRawMissing?.length?` Campi categoriali obbligatori mancanti: ${res.requiredRawMissing.join(', ')}.`:'';
+    d.innerHTML=`<div class="eyebrow">${model.model_id}</div><h3>${titleFor(entry)}</h3><div class="notice"><b>Astensione.</b> Mancano ${missCount} dati clinici richiesti.${required} Compila il dossier o i dati specialistici pertinenti.</div>`;
     return d;
   }
   const pct=res.p*100;
@@ -641,7 +658,7 @@ function renderResult(entry,model,res){
         : model.model_id==='HS-UCI-MIFATAL-001'
           ? `<div class="notice"><b>LET_IS sorgente, non score clinico.</b> La classe positiva raggruppa sette cause di esito letale registrate nel dataset UCI 579. Il modello usa 21 feature di ingresso congelate prima del fitting e non include variabili dinamiche dei giorni successivi né farmaci. Il profiling preliminare aveva però visto associazioni univariate con l'outcome: le metriche interne sono esplorative e possono essere ottimistiche. La soglia interna privilegia sensibilità e non è un cut-off di triage.</div>`
           : model.model_id==='HS-SUPPORT2-HOSPDEATH-001'
-            ? `<div class="notice"><b>SUPPORT2 hospdead, stato clinico giorno 3.</b> Stima del label di decesso intraospedaliero nella coorte SUPPORT2. Non è mortalità a 30/90 giorni e non è una survival probability. Il protocollo ha effettuato lo split prima di qualunque screening e ha escluso score/probabilità prognostiche preesistenti, prognosi del medico e DNR. Validazione interna storica, non validazione clinica contemporanea.</div>`
+            ? `<div class="notice"><b>SUPPORT2 hospdead, stato clinico giorno 3.</b> Stima del label di decesso intraospedaliero nella coorte SUPPORT2. I parametri fisiologici usati sono esplicitamente quelli del giorno 3; non vengono sostituiti con valori generici del dossier. Non è mortalità a 30/90 giorni e non è una survival probability. Il protocollo ha effettuato lo split prima di qualunque screening e ha escluso score/probabilità prognostiche preesistenti, prognosi del medico e DNR. Validazione interna storica, non validazione clinica contemporanea.</div>`
             : '';
   d.innerHTML=`
     <div class="eyebrow">${model.model_id}</div>
