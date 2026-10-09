@@ -1,0 +1,121 @@
+name: HealthSolver 0.52 MI Live Browser Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs052-live-browser-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Verify live MI integration
+        shell: bash
+        run: |
+          cat > audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const base='https://ricscar2570.github.io/HealthSolver/';
+          const meta=await fetch(base+'version.json?audit=052-mi').then(r=>r.json());
+          if(meta.version!=='0.52.0') throw new Error('wrong published version '+meta.version);
+          if(meta.predictive_model_count!==12) throw new Error('wrong model count');
+          if(!meta.predictive_models.includes('HS-UCI-MIFATAL-001')) throw new Error('MI model missing');
+          if(meta.uci_mi_fatal_outcome_integrated!==true) throw new Error('MI integration flag missing');
+
+          const reg=await fetch(base+'predictive/model-registry-v2.json?audit=052-mi').then(r=>r.json());
+          if(reg.version!=='0.52.0'||reg.models.length!==12) throw new Error('wrong registry');
+          const model=await fetch(base+'predictive/model-mi-fatal-outcome-v1.json?audit=052-mi').then(r=>r.json());
+          if(model.dataset.uci_id!==579||model.dataset.instances!==1700) throw new Error('MI provenance mismatch');
+          if(model.features.length!==21) throw new Error('wrong MI feature count');
+          if(model.target_definition.source_name!=='LET_IS') throw new Error('wrong MI target');
+          if(model.excluded_dynamic_source_columns.join(',')!=='93,94,95,100,101,102,103,104,105') throw new Error('dynamic exclusion mismatch');
+
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:2100}});
+          const errors=[];
+          page.on('pageerror',e=>errors.push('PAGE '+e.message));
+          page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
+          await page.goto(base+'?audit=052-mi',{waitUntil:'networkidle',timeout:120000});
+          await page.waitForFunction(()=>document.body.innerText.includes('Clinical Coach')&&document.body.innerText.includes('Expert Mode'),{timeout:30000});
+          await page.locator('aside .nav[data-page="intelligence"]').click();
+          await page.waitForTimeout(300);
+
+          const block=page.locator('#hs-predictive-integrated');
+          const initial=await block.innerText();
+          if(!initial.includes('12 MODELLI SUPERVISIONATI')) throw new Error('twelve-model badge missing');
+          if(!initial.includes('Esito letale acuto post-IMA · admission')) throw new Error('MI coverage card missing');
+
+          const details=page.locator('#hs52MiFatalDetails');
+          if(await details.count()!==1) throw new Error('MI panel missing');
+          await details.evaluate(el=>{el.open=true});
+          const detail=await details.innerText();
+          if(!detail.includes('21 variabili predefinite disponibili all’ammissione')) throw new Error('admission feature disclosure missing');
+          if(!detail.includes('LET_IS ≠ 0')) throw new Error('LET_IS semantics missing');
+          if(!detail.includes('non uno score di mortalità clinicamente validato')) throw new Error('validation warning missing');
+          if(!detail.includes('9 variabili dinamiche')) throw new Error('dynamic-exclusion warning missing');
+          if(!detail.includes('non va interpretata come rischio eziologico indipendente')) throw new Error('causal warning missing');
+
+          const set=async(id,v)=>{
+            const loc=page.locator('#'+id);
+            if(await loc.count()!==1) throw new Error('missing control '+id);
+            await loc.evaluate((e,val)=>{e.value=String(val);e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));},v);
+          };
+          await set('ciAge',63);
+          const sex=page.locator('#ciSex');
+          const opts=await sex.locator('option').evaluateAll(os=>os.map(o=>({v:o.value,t:o.textContent.trim()})));
+          const male=opts.find(o=>/masch|male|^m$/i.test(o.t)||/^(m|male|maschio|1)$/i.test(o.v));
+          if(!male) throw new Error('male option missing');
+          await sex.selectOption(male.v);
+          await set('ci_systolic',130);
+          await set('ci_diastolic',80);
+          await set('ci_potassium',4.1);
+          await set('ci_sodium',136);
+
+          const vals={
+            hs52_inf_anam:0,hs52_stenok_an:2,hs52_fk_stenok:2,hs52_ibs_post:1,hs52_gb:2,
+            hs52_sim_gipert:0,hs52_zsn_a:0,hs52_pulm_edema:0,hs52_cardiogenic_shock:0,
+            hs52_parox_af:0,hs52_vf:0,hs52_rv_mi:0,hs52_wbc:8.1,hs52_esr:10,hs52_time_to_hospital:4
+          };
+          for(const [id,v] of Object.entries(vals)) await set(id,v);
+
+          await page.locator('#hs42Refresh').click();await page.waitForTimeout(120);
+          const cov=page.locator('#hs42Coverage .metric').filter({hasText:'Esito letale acuto post-IMA · admission'});
+          if(await cov.count()!==1) throw new Error('MI coverage missing');
+          const covText=await cov.innerText();
+          if(!/21\/21/.test(covText)||!/PRONTO ALLA PREDIZIONE/i.test(covText)) throw new Error('MI not ready '+covText);
+
+          await page.locator('#hs42Run').click();await page.waitForTimeout(400);
+          const card=page.locator('#hs42Results .card').filter({hasText:'HS-UCI-MIFATAL-001'});
+          if(await card.count()!==1) throw new Error('MI result missing');
+          const text=await card.innerText();
+          if(!/%/.test(text)||/Astensione/i.test(text)) throw new Error('MI probability missing');
+          if(!/Test interno: AUROC 0\.826 · Brier 0\.098/.test(text)) throw new Error('MI internal metrics missing');
+          if(!text.includes('LET_IS sorgente, non score clinico')) throw new Error('MI result semantics missing');
+          if(!text.includes('non è un cut-off di triage')) throw new Error('threshold warning missing');
+
+          const serious=errors.filter(e=>!/Failed to load resource.*api\.fda\.gov/i.test(e));
+          if(serious.length) throw new Error(serious.join(' | '));
+          await page.screenshot({path:'HealthSolver-0.52-MI.png',fullPage:true});
+          console.log('MI_COVERAGE\n'+covText);
+          console.log('MI_RESULT\n'+text);
+          console.log('MI LIVE PASS');
+          await browser.close();
+          JS
+          node audit.mjs | tee audit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: healthsolver-052-mi-live
+          path: |
+            HealthSolver-0.52-MI.png
+            audit.txt
+          retention-days: 14
