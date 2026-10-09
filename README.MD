@@ -1,4 +1,4 @@
-# HealthSolver 0.54 — eICU Demo Hospital Death Integration + Predictive-First UI
+# HealthSolver 0.54.1 — Scientific Semantics Remediation + eICU Demo Hospital Death Integration + Predictive-First UI
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to **HealthSolver 0.54.0**.
+The current public build is deployed from the `gh-pages` branch and corresponds to **HealthSolver 0.54.1**.
 
 ## What HealthSolver does
 
