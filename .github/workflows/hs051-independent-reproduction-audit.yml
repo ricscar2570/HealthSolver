@@ -1,0 +1,151 @@
+name: HealthSolver 0.51 Independent Reproduction Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs051-independent-reproduction-audit.yml']
+permissions:
+  contents: read
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Re-download source and independently reproduce 0.51 model
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install --disable-pip-version-check -q numpy pandas scikit-learn
+          python - <<'PY'
+          import io,json,math,urllib.request,zipfile
+          import numpy as np,pandas as pd
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import accuracy_score,roc_auc_score,average_precision_score,brier_score_loss,confusion_matrix,roc_curve
+          from sklearn.model_selection import train_test_split
+
+          stored=json.load(open('predictive/model-sepsis-hospital-death-v1.json'))
+          report=json.load(open('predictive/model-sepsis-hospital-death-v1-report.json'))
+
+          url='https://archive.ics.uci.edu/static/public/827/sepsis+survival+minimal+clinical+records.zip'
+          req=urllib.request.Request(url,headers={'User-Agent':'HealthSolver/0.51 independent audit'})
+          with urllib.request.urlopen(req,timeout=120) as r:
+              blob=r.read()
+          assert len(blob)>1000
+          with zipfile.ZipFile(io.BytesIO(blob)) as outer:
+              names=outer.namelist()
+              assert names==['s41598-020-73558-3_sepsis_survival_dataset.zip'],names
+              inner_blob=outer.read(names[0])
+          with zipfile.ZipFile(io.BytesIO(inner_blob)) as z:
+              names=sorted(z.namelist())
+              expected_names=sorted([
+                  's41598-020-73558-3_sepsis_survival_primary_cohort.csv',
+                  's41598-020-73558-3_sepsis_survival_study_cohort.csv',
+                  's41598-020-73558-3_sepsis_survival_validation_cohort.csv'
+              ])
+              assert names==expected_names,(names,expected_names)
+              primary=pd.read_csv(z.open(expected_names[0]))
+              study=pd.read_csv(z.open(expected_names[1]))
+              external=pd.read_csv(z.open(expected_names[2]))
+
+          cols=['age_years','sex_0male_1female','episode_number','hospital_outcome_1alive_0dead']
+          assert list(primary.columns)==cols
+          assert list(study.columns)==cols
+          assert list(external.columns)==cols
+          assert primary.shape==(110204,4)
+          assert study.shape==(19051,4)
+          assert external.shape==(137,4)
+          assert not primary.isna().any().any()
+          assert not study.isna().any().any()
+          assert not external.isna().any().any()
+
+          # Direct source-distribution checks against the associated paper.
+          assert int((primary.hospital_outcome_1alive_0dead==0).sum())==8105
+          assert int((primary.hospital_outcome_1alive_0dead==1).sum())==102099
+          assert int((primary.sex_0male_1female==0).sum())==57973
+          assert int((primary.sex_0male_1female==1).sum())==52231
+          assert int((external.hospital_outcome_1alive_0dead==0).sum())==24
+          assert int((external.hospital_outcome_1alive_0dead==1).sum())==113
+
+          features=cols[:3]
+          X=primary[features].apply(pd.to_numeric,errors='raise')
+          y=(1-primary['hospital_outcome_1alive_0dead'].astype(int)).astype(int)
+          Xe=external[features].apply(pd.to_numeric,errors='raise')
+          ye=(1-external['hospital_outcome_1alive_0dead'].astype(int)).astype(int)
+
+          idx=np.arange(len(y))
+          tr,tmp=train_test_split(idx,test_size=.40,random_state=5101,stratify=y)
+          cal,te=train_test_split(tmp,test_size=.50,random_state=5102,stratify=y.iloc[tmp])
+          assert (len(tr),len(cal),len(te))==(66122,22041,22041)
+
+          Xtr,Xca,Xte=X.iloc[tr].copy(),X.iloc[cal].copy(),X.iloc[te].copy()
+          ytr,yca,yte=y.iloc[tr].to_numpy(),y.iloc[cal].to_numpy(),y.iloc[te].to_numpy()
+          med=Xtr.median().reindex(features)
+          mu=Xtr.mean().reindex(features)
+          sd=Xtr.std(ddof=0).replace(0,1).reindex(features)
+          Ztr=(Xtr-med*0-mu)/sd
+          Zca=(Xca-med*0-mu)/sd
+          Zte=(Xte-med*0-mu)/sd
+          Ze=(Xe-med*0-mu)/sd
+
+          base=LogisticRegression(max_iter=4000,C=.5,solver='lbfgs',class_weight='balanced',random_state=5103)
+          base.fit(Ztr,ytr)
+          platt=LogisticRegression(max_iter=4000,C=1e6,solver='lbfgs',random_state=5104)
+          cals=base.decision_function(Zca).reshape(-1,1)
+          platt.fit(cals,yca)
+          pca=platt.predict_proba(cals)[:,1]
+          fpr,tpr,thr=roc_curve(yca,pca)
+          valid=np.isfinite(thr)
+          threshold=float(thr[valid][np.argmax((tpr-fpr)[valid])])
+
+          def metrics(ytrue,p):
+              pred=(p>=threshold).astype(int)
+              tn,fp,fn,tp=confusion_matrix(ytrue,pred,labels=[0,1]).ravel()
+              return {
+                'auroc':float(roc_auc_score(ytrue,p)),
+                'auprc':float(average_precision_score(ytrue,p)),
+                'accuracy':float(accuracy_score(ytrue,pred)),
+                'brier':float(brier_score_loss(ytrue,p)),
+                'sensitivity_death':float(tp/(tp+fn)),
+                'specificity_survival':float(tn/(tn+fp)),
+                'confusion_matrix':{'tn_survived':int(tn),'fp_death':int(fp),'fn_death':int(fn),'tp_death':int(tp)}
+              }
+
+          pi=platt.predict_proba(base.decision_function(Zte).reshape(-1,1))[:,1]
+          pe=platt.predict_proba(base.decision_function(Ze).reshape(-1,1))[:,1]
+          mi=metrics(yte,pi); me=metrics(ye.to_numpy(),pe)
+
+          def close(a,b,tol=1e-10):
+              assert math.isclose(float(a),float(b),rel_tol=tol,abs_tol=tol),(a,b)
+          close(base.intercept_[0],stored['logistic']['intercept'])
+          for f,v in zip(features,base.coef_[0]): close(v,stored['logistic']['coefficients'][f])
+          for f in features:
+              close(mu[f],stored['standardization']['mean'][f])
+              close(sd[f],stored['standardization']['scale'][f])
+              close(med[f],stored['imputation']['values'][f])
+          close(platt.intercept_[0],stored['calibration']['intercept'])
+          close(platt.coef_[0,0],stored['calibration']['slope'])
+          close(threshold,stored['threshold'])
+          for k in ['auroc','auprc','accuracy','brier','sensitivity_death','specificity_survival']:
+              close(mi[k],stored['metrics_test'][k])
+              close(me[k],stored['external_validation'][k])
+          assert mi['confusion_matrix']==stored['metrics_test']['confusion_matrix']
+          assert me['confusion_matrix']==stored['external_validation']['confusion_matrix']
+          assert report['internal_test']==stored['metrics_test']
+          assert report['external_validation']==stored['external_validation']
+
+          # Explicitly verify the browser sex inversion convention.
+          assert stored['field_meta']['sex_0male_1female']['unit']=='0=uomo, 1=donna'
+
+          print('SOURCE_COUNTS PASS')
+          print('MODEL_COEFFICIENTS PASS')
+          print('CALIBRATION PASS')
+          print('THRESHOLD PASS')
+          print('INTERNAL_METRICS PASS',mi)
+          print('EXTERNAL_METRICS PASS',me)
+          print('INDEPENDENT REPRODUCTION PASS')
+          PY
