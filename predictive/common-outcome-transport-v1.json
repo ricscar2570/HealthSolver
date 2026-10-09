@@ -137,7 +137,7 @@
     }
   },
   "model_id": "HS-COMMON-HOSPDEATH-TRANSPORT-001",
-  "qualification_status": "RESEARCH_TRANSPORT_BASELINE",
+  "qualification_status": "WEAK_TRANSPORT_GENERALIZATION",
   "release": "HealthSolver 0.56.0 Common-Outcome Transport Layer",
   "research_only": true,
   "schema": "healthsolver.common_outcome_transport.v1",
