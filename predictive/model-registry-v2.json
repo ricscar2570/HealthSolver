@@ -259,8 +259,53 @@
       "target_semantics": "Diabetes_binary=1 merges prediabetes and diabetes; cross-sectional source label, not future risk.",
       "task": "Binary research classification of the processed BRFSS source label Diabetes_binary: 0=no diabetes, 1=prediabetes or diabetes.",
       "title": "Diabete/prediabete \u00b7 label BRFSS"
+    },
+    {
+      "external_validation": {
+        "accuracy": 0.6642335766423357,
+        "auprc": 0.20949205455985004,
+        "auroc": 0.5484882005899706,
+        "brier": 0.15793181873895518,
+        "confusion_matrix": {
+          "fn_death": 14,
+          "fp_death": 32,
+          "tn_survived": 81,
+          "tp_death": 10
+        },
+        "n": 137,
+        "positive_prevalence_death": 0.17518248175182483,
+        "sensitivity_death": 0.4166666666666667,
+        "specificity_survival": 0.7168141592920354,
+        "threshold": 0.06872795821072762
+      },
+      "file": "model-sepsis-hospital-death-v1.json",
+      "metrics_test": {
+        "accuracy": 0.5422621478154349,
+        "auprc": 0.13346066542506296,
+        "auroc": 0.7039151900164407,
+        "brier": 0.06584055395345341,
+        "confusion_matrix": {
+          "fn_death": 353,
+          "fp_death": 9736,
+          "tn_survived": 10684,
+          "tp_death": 1268
+        },
+        "n_calibration": 22041,
+        "n_test": 22041,
+        "n_total_primary": 110204,
+        "n_train": 66122,
+        "positive_prevalence_death": 0.07354475749739123,
+        "positive_prevalence_death_primary": 0.07354542484846285,
+        "sensitivity_death": 0.7822331893892659,
+        "specificity_survival": 0.5232125367286974,
+        "threshold": 0.06872795821072762
+      },
+      "model_id": "HS-UCI-SEPSISDEATH-001",
+      "target_semantics": "Hospital-outcome death label; no fixed time horizon; not survival probability.",
+      "task": "Binary research classification of the source hospital outcome among admissions in the Norwegian primary cohort; HealthSolver positive class is in-hospital death (source outcome 0=dead), using age, source-encoded sex, and septic episode number.",
+      "title": "Esito ospedaliero \u00b7 decesso \u00b7 coorte sepsi"
     }
   ],
   "schema": "healthsolver.predictive_registry.v2",
-  "version": "0.50.0"
+  "version": "0.51.0"
 }

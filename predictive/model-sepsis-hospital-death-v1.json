@@ -1,0 +1,153 @@
+{
+  "abstention": {
+    "max_missing_features": 0,
+    "message": "Prediction withheld unless age, sex and septic episode number are all available."
+  },
+  "calibration": {
+    "intercept": -2.498609088868302,
+    "method": "Platt scaling on held-out calibration split from Norwegian primary cohort",
+    "slope": 0.8802896181015318
+  },
+  "dataset": {
+    "doi": "10.24432/C53C8N",
+    "external_validation_cohort": {
+      "country": "South Korea",
+      "patients": 137,
+      "period": "2007-2015",
+      "scope": "Independent critically ill validation cohort with compatible age, sex, episode-number and hospital-outcome fields."
+    },
+    "introductory_paper_doi": "10.1038/s41598-020-73558-3",
+    "license": "CC BY 4.0",
+    "missing_values": false,
+    "name": "Sepsis Survival Minimal Clinical Records",
+    "primary_cohort": {
+      "admissions": 110204,
+      "country": "Norway",
+      "period": "2011-2012",
+      "scope": "Admissions with infections, SIRS, sepsis by causative microbes, or septic shock under pre-Sepsis-3-era definitions.",
+      "subjects": 84811
+    },
+    "source": "https://archive.ics.uci.edu/dataset/827/sepsis+survival+minimal+clinical+records",
+    "study_cohort": {
+      "admissions": 19051,
+      "country": "Norway",
+      "scope": "Sepsis-3-compatible subset of the primary cohort; not appended to training because it is nested in primary."
+    },
+    "uci_id": 827
+  },
+  "external_validation": {
+    "accuracy": 0.6642335766423357,
+    "auprc": 0.20949205455985004,
+    "auroc": 0.5484882005899706,
+    "brier": 0.15793181873895518,
+    "confusion_matrix": {
+      "fn_death": 14,
+      "fp_death": 32,
+      "tn_survived": 81,
+      "tp_death": 10
+    },
+    "n": 137,
+    "positive_prevalence_death": 0.17518248175182483,
+    "sensitivity_death": 0.4166666666666667,
+    "specificity_survival": 0.7168141592920354,
+    "threshold": 0.06872795821072762
+  },
+  "features": [
+    "age_years",
+    "sex_0male_1female",
+    "episode_number"
+  ],
+  "field_meta": {
+    "age_years": {
+      "label": "Et\u00e0",
+      "median": 69.0,
+      "training_max": 100.0,
+      "training_min": 0.0,
+      "unit": "anni"
+    },
+    "episode_number": {
+      "label": "Numero episodio settico",
+      "median": 1.0,
+      "training_max": 5.0,
+      "training_min": 1.0,
+      "unit": "1=primo episodio, 2=secondo, ..."
+    },
+    "sex_0male_1female": {
+      "label": "Sesso sorgente",
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0,
+      "unit": "0=uomo, 1=donna"
+    }
+  },
+  "imputation": {
+    "strategy": "training median",
+    "values": {
+      "age_years": 69.0,
+      "episode_number": 1.0,
+      "sex_0male_1female": 0.0
+    }
+  },
+  "leakage_review": "Only age, sex and septic episode number are predictors; length of stay and hospital outcome are not predictors. The minimal released table lacks a patient identifier, so the internal split is admission-level and repeated admissions from one subject cannot be group-separated. External South Korean validation is reported separately to mitigate, not eliminate, this limitation.",
+  "logistic": {
+    "coefficients": {
+      "age_years": 1.1087073891316908,
+      "episode_number": 0.058800962671869905,
+      "sex_0male_1female": -0.08246819462004917
+    },
+    "intercept": -0.38980989530506377
+  },
+  "metrics_test": {
+    "accuracy": 0.5422621478154349,
+    "auprc": 0.13346066542506296,
+    "auroc": 0.7039151900164407,
+    "brier": 0.06584055395345341,
+    "confusion_matrix": {
+      "fn_death": 353,
+      "fp_death": 9736,
+      "tn_survived": 10684,
+      "tp_death": 1268
+    },
+    "n_calibration": 22041,
+    "n_test": 22041,
+    "n_total_primary": 110204,
+    "n_train": 66122,
+    "positive_prevalence_death": 0.07354475749739123,
+    "positive_prevalence_death_primary": 0.07354542484846285,
+    "sensitivity_death": 0.7822331893892659,
+    "specificity_survival": 0.5232125367286974,
+    "threshold": 0.06872795821072762
+  },
+  "model_id": "HS-UCI-SEPSISDEATH-001",
+  "not_clinically_validated": true,
+  "release": "HealthSolver 0.51 UCI Sepsis Survival Integration",
+  "research_only": true,
+  "schema": "healthsolver.predictive_model.v1",
+  "split_limitation": "Primary cohort has 110,204 admissions from 84,811 subjects, but the minimal released model table exposes no patient identifier. Internal train/calibration/test splitting is therefore admission-level rather than subject-grouped.",
+  "standardization": {
+    "mean": {
+      "age_years": 62.8193793291189,
+      "episode_number": 1.3479931036568766,
+      "sex_0male_1female": 0.4720970327576298
+    },
+    "scale": {
+      "age_years": 24.086901391801185,
+      "episode_number": 0.7491026732780336,
+      "sex_0male_1female": 0.499220817293381
+    }
+  },
+  "target_definition": {
+    "fixed_horizon": false,
+    "healthsolver_positive": "death = 1 (inversion of source 0=dead for risk-oriented display)",
+    "interpretation": "Hospital-outcome death label in the source cohort; not mortality at a fixed number of days and not a time-to-event/survival probability.",
+    "source_name": "hospital_outcome_1alive_0dead",
+    "source_negative": "0 = dead at hospital outcome",
+    "source_positive": "1 = alive at hospital outcome",
+    "survival_probability": false
+  },
+  "task": "Binary research classification of the source hospital outcome among admissions in the Norwegian primary cohort; HealthSolver positive class is in-hospital death (source outcome 0=dead), using age, source-encoded sex, and septic episode number.",
+  "temporal_semantics": "Hospital length of stay in the source spans 0-499 days with mean about 9.351 days. Length of stay was excluded by the published study because it relates to survival. The HealthSolver output therefore must not be described as 9-day mortality.",
+  "threshold": 0.06872795821072762,
+  "threshold_selection": "Youden J maximum on held-out Norwegian calibration split; unchanged for internal test and external South Korean validation",
+  "version": "1.0.0"
+}
