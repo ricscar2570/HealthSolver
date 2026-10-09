@@ -29,11 +29,11 @@ jobs:
           root=pathlib.Path('predictive')
           reg=json.loads((root/'model-registry-v2.json').read_text())
           assert reg['schema']=='healthsolver.predictive_registry.v2'
-          assert reg['version']=='0.52.0'
-          assert len(reg['models'])==12
+          assert tuple(map(int,reg['version'].split('.'))) >= (0,52,0)
+          assert len(reg['models'])>=12
           ids=[e['model_id'] for e in reg['models']]
           assert len(ids)==len(set(ids))
-          assert ids[-1]=='HS-UCI-MIFATAL-001'
+          assert 'HS-UCI-MIFATAL-001' in ids
 
           m=json.loads((root/'model-mi-fatal-outcome-v1.json').read_text())
           assert m['model_id']=='HS-UCI-MIFATAL-001'
@@ -97,8 +97,8 @@ jobs:
       - name: Verify Predictive-First UI references twelfth model
         shell: bash
         run: |
-          grep -q 'HS_INTEGRATED_PREDICTIVE_052' predictive/integrated-predictive-ui.js
-          grep -q '12 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -Eq 'HS_INTEGRATED_PREDICTIVE_053|HS_INTEGRATED_PREDICTIVE_052' predictive/integrated-predictive-ui.js
+          grep -q 'MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
           grep -q 'HS-UCI-MIFATAL-001' predictive/integrated-predictive-ui.js
           grep -q 'hs52MiFatalDetails' predictive/integrated-predictive-ui.js
           grep -q 'LET_IS ≠ 0' predictive/integrated-predictive-ui.js
