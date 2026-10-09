@@ -106,6 +106,7 @@ jobs:
           must(/%/.test(miText)&&!/Astensione/i.test(miText),'MI numeric prediction missing');
           must(miText.includes('LET_IS sorgente, non score clinico'),'MI semantic warning missing');
           must(miText.includes('non è un cut-off di triage'),'MI threshold warning missing');
+          must(miText.includes('metriche interne sono esplorative'),'MI feature-screening warning missing');
           console.log('12-model registry/result surface PASS');
 
           await nav('hub');
