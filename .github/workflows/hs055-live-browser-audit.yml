@@ -104,16 +104,15 @@ jobs:
             'Sopra soglia interna',
             'Ampiezza co-attivazione',
             'Concordanza core esito ospedaliero',
-            'Mappa di co-attivazione'
+            'Mappa di co-attivazione',
+            'non produce una nuova probabilità clinica globale'
           ]){
             if(!text.includes(needle)) throw new Error('ensemble text missing '+needle);
           }
           const methodology=page.locator('#hs55Methodology');
           await methodology.evaluate(el=>{el.open=true});
           const methodologyText=await methodology.innerText();
-          for(const needle of ['Research Activation Index (RAI)','non produce una nuova probabilità clinica globale']){
-            if(!methodologyText.includes(needle)) throw new Error('ensemble methodology missing '+needle);
-          }
+          if(!methodologyText.includes('Research Activation Index (RAI)')) throw new Error('ensemble methodology missing RAI definition');
 
           const domains=page.locator('#hs55DomainGrid .hs55-domain');
           if(await domains.count()!==6) throw new Error('expected six ensemble domains');
