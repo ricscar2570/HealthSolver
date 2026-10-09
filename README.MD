@@ -1,4 +1,4 @@
-# HealthSolver 0.52 — UCI Myocardial Infarction Fatal Outcome Integration + Predictive-First UI
+# HealthSolver 0.53 — SUPPORT2 Hospital Death Integration + Predictive-First UI
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.52 line.
+The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.53 line.
 
 ## What HealthSolver does
 
@@ -44,7 +44,7 @@ For the deployed GitHub Pages build:
 - core application state, backup and recovery workflows are handled client-side;
 - large static resources are packaged for browser delivery.
 
-The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.52 application.
+The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.53 application.
 
 ## Clinical Coach
 
@@ -1082,6 +1082,147 @@ The new panel:
 
 reuses compatible dossier fields for age, sex, blood pressure, sodium and potassium and exposes source-specific admission fields for the remaining predictors. The result card explicitly identifies the output as the `LET_IS` source label and warns that the threshold is not a triage cutoff.
 
+## SUPPORT2 integration 0.53
+
+HealthSolver 0.53 adds one complete database macrostep based on **SUPPORT2**, a multicenter cohort of **9,105 seriously ill hospitalized adults** from **five U.S. academic medical centers**. The cohort spans study periods 1989–1991 and 1992–1994 and includes major diagnostic groups such as acute respiratory failure/MOSF with sepsis, COPD, CHF, cirrhosis, coma and cancer.
+
+### Source and permission
+
+The data are distributed by the Vanderbilt University Department of Biostatistics as `support2.csv`. The Vanderbilt dataset page explicitly grants permission to anyone wishing to use the datasets, asks users to cite the original paper and to acknowledge the Vanderbilt/hbiostat.org source.
+
+Primary release source:
+
+- https://hbiostat.org/data/
+- `support2csv.zip`
+
+UCI also exposes an external SUPPORT2 record (dataset 880), but HealthSolver records Vanderbilt/hbiostat.org as the actual download and permission source.
+
+### Target
+
+New model:
+
+**HS-SUPPORT2-HOSPDEATH-001 — SUPPORT2 · decesso intraospedaliero · day 3**
+
+Target:
+
+`hospdead`
+
+- 0 = survived hospitalization;
+- 1 = death in hospital.
+
+Source distribution:
+
+- survived hospitalization: **6,745**
+- died in hospital: **2,360**
+- prevalence of hospital death: **25.92%**
+
+This is a source in-hospital outcome label. It is **not** 30-day or 90-day mortality and it is not a survival probability.
+
+### Time index
+
+The SUPPORT prognostic work used diagnosis, age, days in hospital before study entry and physiologic measurements recorded on **study day 3**. HealthSolver therefore labels this model explicitly as a **day-3/baseline hospital-outcome classifier**, not an admission-time model.
+
+### Split-first protocol
+
+The 0.53 development protocol fixes the split before any data-driven feature screening:
+
+- training: **5,463**
+- calibration: **1,821**
+- untouched held-out test: **1,821**
+
+Only the training partition is used to inspect missingness and derive numeric imputations.
+
+Unlike the exploratory MI 0.52 shortlist, SUPPORT2 feature selection uses source semantics and training-partition missingness only; **no target association from calibration/test or full-dataset outcome profiling is used to choose the 0.53 feature set**.
+
+### Predictor policy
+
+The browser model uses **16 raw clinical variables**, encoded into **25 numeric model features**:
+
+- age;
+- sex;
+- SUPPORT diagnosis group;
+- number of comorbidities;
+- SUPPORT coma score day 3;
+- day in hospital at study entry;
+- diabetes;
+- dementia;
+- cancer status;
+- mean arterial pressure day 3;
+- white blood cell count day 3;
+- heart rate day 3;
+- respiratory rate day 3;
+- temperature day 3;
+- creatinine day 3;
+- sodium day 3.
+
+HealthSolver deliberately excludes:
+
+- `death`, `slos`, `d.time`;
+- charges and costs;
+- average TISS days 3–25;
+- 2-month functional outcome;
+- SUPPORT and APACHE physiology scores (`sps`, `aps`);
+- precomputed SUPPORT survival probabilities (`surv2m`, `surv6m`);
+- physician survival estimates (`prg2m`, `prg6m`);
+- DNR variables;
+- race, income and education;
+- high-missing auxiliary physiologic fields not needed by the compact browser model.
+
+Race, income and education are excluded for portability/fairness rather than because of their outcome association.
+
+### Training
+
+Pinned environment:
+
+- Python **3.13**
+- NumPy **2.5.3**
+- pandas **3.0.6**
+- scikit-learn **1.9.1**
+
+Model:
+
+- class-balanced regularized logistic regression;
+- training-only numeric median imputation;
+- training-only standardization;
+- deterministic one-hot encoding for sex, disease group and cancer status;
+- held-out Platt calibration;
+- decision threshold selected on calibration only using Youden J.
+
+Held-out test metrics:
+
+- AUROC: **0.819**
+- AUPRC: **0.622**
+- Brier: **0.142**
+- Accuracy: **0.738**
+- Sensitivity for hospital death: **0.769**
+- Specificity for hospital survival: **0.727**
+- threshold: **0.243**
+
+These are internal held-out measurements from the historical SUPPORT cohort, not contemporary external clinical validation.
+
+### Independent reproduction
+
+A separate release workflow re-downloads `support2csv.zip` from hbiostat.org and reproduces the source counts, split, encoding, numeric imputation, standardization, coefficients, calibration, threshold and final test metrics.
+
+### Browser integration
+
+HealthSolver 0.53 exposes **13 supervised predictive models**.
+
+The new panel:
+
+**SUPPORT2 · decesso intraospedaliero · stato clinico giorno 3**
+
+reuses compatible age, sex, pulse, creatinine and sodium values from the common dossier and asks for the remaining source-specific day-3 variables.
+
+Both the panel and result card state that:
+
+- the index is study day 3;
+- the target is `hospdead`;
+- there is no fixed 30/90-day horizon;
+- prior prognostic scores and predictions are excluded;
+- race/income/education are not predictors;
+- performance is an internal historical validation only.
+
 ## Machine learning and predictive research
 
 HealthSolver is being developed toward a broader machine-learning research architecture in which structured symptoms, history, vital signs, laboratory data and observations can be used as model inputs.
@@ -1182,9 +1323,9 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.52 — UCI Myocardial Infarction Fatal Outcome Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
+**HealthSolver 0.53 — SUPPORT2 Hospital Death Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
 
-Current predictive release is represented by the 0.52 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and twelve supervised model artifacts under `predictive/`.
+Current predictive release is represented by the 0.53 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and thirteen supervised model artifacts under `predictive/`.
 
 The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
