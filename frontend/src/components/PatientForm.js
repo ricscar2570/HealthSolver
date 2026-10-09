@@ -1,5 +1,6 @@
 // frontend/src/components/PatientForm.js
 import React, { useState } from 'react';
+import { apiUrl } from '../apiBase';
 
 const PatientForm = () => {
   // Aggiungi campi necessari per il modello (es. comorbidities_count)
@@ -42,7 +43,7 @@ const PatientForm = () => {
     try {
       // Chiama l'endpoint corretto registrato in backend/main.py
       // Assumendo che predict_router sia stato incluso con prefix="/predict"
-      const response = await fetch('http://localhost:8000/predict/predict', { // URL aggiornato
+      const response = await fetch(apiUrl('/predict/predict'), { // URL aggiornato
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload), // Invia il payload convertito
