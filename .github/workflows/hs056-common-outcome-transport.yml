@@ -161,7 +161,7 @@ jobs:
                 'auroc':float(roc_auc_score(y,p,sample_weight=w)),
                 'auprc':float(average_precision_score(y,p,sample_weight=w)),
                 'brier':float(brier_score_loss(y,p,sample_weight=w)),
-                'accuracy':float(accuracy_score(y,p,sample_weight=w)),
+                'accuracy':float(accuracy_score(y,pred,sample_weight=w)),
                 'sensitivity_death':float(tp/(tp+fn)),
                 'specificity_survival':float(tn/(tn+fp)),
                 'threshold':float(threshold)
