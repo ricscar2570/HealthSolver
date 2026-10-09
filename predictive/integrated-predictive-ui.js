@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.__HS_INTEGRATED_PREDICTIVE_049__) return;
-window.__HS_INTEGRATED_PREDICTIVE_049__=true;
+if(window.__HS_INTEGRATED_PREDICTIVE_0491__) return;
+window.__HS_INTEGRATED_PREDICTIVE_0491__=true;
 
 const BUNDLE=window.__HS_PREDICTIVE_BUNDLE__||null;
 if(!BUNDLE?.registry||!BUNDLE?.models) return;
@@ -15,9 +15,9 @@ document.getElementById('hs-router041')?.remove();
 // while updating only visible application-release branding.
 (function reconcileReleaseBranding(){
   const replacements=[
-    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.49'],
+    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.49.1'],
     [/^HealthSolver\s+0\.38\.0\s*·\s*Massive Public Data \+ Clinical Coach Research Edition\s*·\s*Riccardo Scaringi\s*·\s*Non uso clinico\.?$/i,
-     'HealthSolver 0.49.0 · UCI Heart Failure Clinical Records Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
+     'HealthSolver 0.49.1 · Scientific Semantics Remediation + UCI Heart Failure Clinical Records Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
   ];
   const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
   const nodes=[];
@@ -103,7 +103,7 @@ wrap.className='card';
 wrap.innerHTML=`
   <div class="hs43-hero">
     <div>
-      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.49</div>
+      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.49.1</div>
       <h2 class="hs43-title">Predizioni cliniche di ricerca</h2>
       <p class="hs43-sub">HealthSolver usa lo stesso dossier che hai già compilato per verificare quali modelli sono applicabili e calcolare le stime disponibili. Le funzioni predittive sono qui, in primo piano. Ogni nuovo database entra nello stesso registry e nello stesso dossier.</p>
     </div>
@@ -198,8 +198,8 @@ wrap.innerHTML=`
     <div class="notice" style="margin-top:10px"><b>Target del modello:</b> appartenenza al gruppo con recidiva del carcinoma tiroideo differenziato nella coorte UCI. Non è una previsione clinica validata né una raccomandazione terapeutica.</div>
   </details>
   <details id="hs49HeartFailureDetails">
-    <summary><b>Insufficienza cardiaca · mortalità nel follow-up</b> · dati clinici di base UCI 519</summary>
-    <p class="hint">Età e sesso vengono riutilizzati dal dossier. Creatinina e sodio possono essere riutilizzati dai campi generali se presenti nelle stesse unità. La variabile <code>time</code> (durata del follow-up) è esclusa dal modello per evitare leakage temporale.</p>
+    <summary><b>Insufficienza cardiaca · DEATH_EVENT coorte UCI 519</b> · dati clinici di base</summary>
+    <p class="hint">Dominio sorgente: 299 pazienti raccolti nel 2015 in due ospedali di Faisalabad (Pakistan); tutti con disfunzione sistolica ventricolare sinistra e precedenti episodi di scompenso NYHA III–IV. Età e sesso vengono riutilizzati dal dossier. Creatinina e sodio possono essere riutilizzati dai campi generali se presenti nelle stesse unità. La variabile <code>time</code> è esclusa dai predittori per evitare leakage temporale.</p>
     <div class="grid">
       <label>Anemia
         <select id="hs49_anaemia"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select>
@@ -219,7 +219,7 @@ wrap.innerHTML=`
         <select id="hs49_smoking"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select>
       </label>
     </div>
-    <div class="notice" style="margin-top:10px"><b>Target del modello:</b> decesso registrato durante il follow-up nella coorte UCI Heart Failure Clinical Records. È una stima di ricerca nel dominio della coorte sorgente, non un punteggio prognostico clinicamente validato.</div>
+    <div class="notice" style="margin-top:10px"><b>Semantica dell'output:</b> stima del label binario <code>DEATH_EVENT</code> nella coorte sorgente UCI 519. Il follow-up varia da 4 a 285 giorni (media circa 130): la percentuale <b>non</b> rappresenta mortalità a 30/90/365 giorni, non ha un orizzonte temporale fisso e non è una probabilità di sopravvivenza. Il modello non è una survival analysis né uno score prognostico clinicamente validato.</div>
   </details>
   <h3 style="margin:24px 0 10px;font-size:1.25rem">Risultati predittivi</h3>
   <div id="hs42Results" class="grid"></div>
@@ -438,10 +438,14 @@ function renderResult(entry,model,res){
   }
   const pct=res.p*100;
   const contrib=res.contributions.slice(0,4).map(([f,c])=>`<li><b>${f}</b>: ${c>=0?'+':''}${c.toFixed(3)}</li>`).join('');
+  const semanticNotice=model.model_id==='HS-UCI-HFDEATH-001'
+    ? `<div class="notice"><b>DEATH_EVENT UCI 519, non rischio a tempo fisso.</b> Coorte Faisalabad 2015 con disfunzione sistolica ventricolare sinistra e NYHA III–IV; follow-up 4–285 giorni (media ~130). Questa percentuale non è mortalità a 30/90/365 giorni e non è una probabilità di sopravvivenza.</div>`
+    : '';
   d.innerHTML=`
     <div class="eyebrow">${model.model_id}</div>
     <h3>${titleFor(entry)}</h3>
     <div class="metric"><b>${pct.toFixed(1)}%</b><span>STIMA PREDITTIVA DEL MODELLO</span></div>
+    ${semanticNotice}
     ${res.imputed.length?`<p class="hint">Imputati con mediana training: ${res.imputed.join(', ')}</p>`:''}
     ${res.ood.length?`<div class="notice">Fuori dal range osservato nel training: ${res.ood.join(', ')}</div>`:''}
     <p class="hint"><b>Contributi principali</b></p><ul>${contrib}</ul>

@@ -14,8 +14,31 @@
     "license": "CC BY 4.0",
     "name": "UCI Heart Failure Clinical Records",
     "source": "https://archive.ics.uci.edu/dataset/519/heart+failure+clinical+records",
-    "source_note": "Medical records of 299 patients with heart failure collected during follow-up.",
-    "uci_id": 519
+    "source_note": "Medical records of 299 patients collected at Faisalabad Institute of Cardiology and Allied Hospital in Faisalabad, Punjab, Pakistan, during April-December 2015.",
+    "uci_id": 519,
+    "cohort_scope": {
+      "location": "Faisalabad, Punjab, Pakistan",
+      "sites": [
+        "Faisalabad Institute of Cardiology",
+        "Allied Hospital"
+      ],
+      "collection_period": "April-December 2015",
+      "clinical_domain": "All 299 patients had left ventricular systolic dysfunction and previous heart failure classified NYHA III or IV.",
+      "sex_counts": {
+        "women": 105,
+        "men": 194
+      },
+      "age_range_years": [
+        40,
+        95
+      ]
+    },
+    "follow_up": {
+      "min_days": 4,
+      "max_days": 285,
+      "mean_days": 130,
+      "variable_duration": true
+    }
   },
   "excluded_source_features": [
     "time"
@@ -35,52 +58,52 @@
   ],
   "field_meta": {
     "age": {
-      "label": "Et\u00e0",
-      "median": 60.0,
-      "training_max": 95.0,
-      "training_min": 40.0,
+      "label": "Età",
+      "median": 60,
+      "training_max": 95,
+      "training_min": 40,
       "unit": "anni"
     },
     "anaemia": {
       "label": "Anemia",
-      "median": 0.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
-      "unit": "0=no, 1=s\u00ec"
+      "median": 0,
+      "training_max": 1,
+      "training_min": 0,
+      "unit": "0=no, 1=sì"
     },
     "creatinine_phosphokinase": {
       "label": "Creatinfosfochinasi (CPK)",
-      "median": 233.0,
-      "training_max": 7861.0,
-      "training_min": 23.0,
+      "median": 233,
+      "training_max": 7861,
+      "training_min": 23,
       "unit": "mcg/L"
     },
     "diabetes": {
       "label": "Diabete",
-      "median": 0.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
-      "unit": "0=no, 1=s\u00ec"
+      "median": 0,
+      "training_max": 1,
+      "training_min": 0,
+      "unit": "0=no, 1=sì"
     },
     "ejection_fraction": {
       "label": "Frazione di eiezione",
-      "median": 38.0,
-      "training_max": 80.0,
-      "training_min": 14.0,
+      "median": 38,
+      "training_max": 80,
+      "training_min": 14,
       "unit": "%"
     },
     "high_blood_pressure": {
       "label": "Ipertensione",
-      "median": 0.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
-      "unit": "0=no, 1=s\u00ec"
+      "median": 0,
+      "training_max": 1,
+      "training_min": 0,
+      "unit": "0=no, 1=sì"
     },
     "platelets": {
       "label": "Piastrine",
-      "median": 259000.0,
-      "training_max": 742000.0,
-      "training_min": 25100.0,
+      "median": 259000,
+      "training_max": 742000,
+      "training_min": 25100,
       "unit": "kiloplatelets/mL"
     },
     "serum_creatinine": {
@@ -92,43 +115,43 @@
     },
     "serum_sodium": {
       "label": "Sodio sierico",
-      "median": 137.0,
-      "training_max": 148.0,
-      "training_min": 116.0,
+      "median": 137,
+      "training_max": 148,
+      "training_min": 116,
       "unit": "mEq/L"
     },
     "sex": {
       "label": "Sesso",
-      "median": 1.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
+      "median": 1,
+      "training_max": 1,
+      "training_min": 0,
       "unit": "0=donna, 1=uomo"
     },
     "smoking": {
       "label": "Fumo",
-      "median": 0.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
-      "unit": "0=no, 1=s\u00ec"
+      "median": 0,
+      "training_max": 1,
+      "training_min": 0,
+      "unit": "0=no, 1=sì"
     }
   },
   "imputation": {
     "strategy": "training median",
     "values": {
-      "age": 60.0,
-      "anaemia": 0.0,
-      "creatinine_phosphokinase": 233.0,
-      "diabetes": 0.0,
-      "ejection_fraction": 38.0,
-      "high_blood_pressure": 0.0,
-      "platelets": 259000.0,
+      "age": 60,
+      "anaemia": 0,
+      "creatinine_phosphokinase": 233,
+      "diabetes": 0,
+      "ejection_fraction": 38,
+      "high_blood_pressure": 0,
+      "platelets": 259000,
       "serum_creatinine": 1.1,
-      "serum_sodium": 137.0,
-      "sex": 1.0,
-      "smoking": 0.0
+      "serum_sodium": 137,
+      "sex": 1,
+      "smoking": 0
     }
   },
-  "leakage_control": "The source variable time is follow-up duration and is excluded from browser inference to avoid using post-index observation duration.",
+  "leakage_control": "The source variable time is follow-up duration and is excluded from browser predictors to avoid post-index observation-time leakage. Excluding time makes this a binary source-label classifier, not a time-to-event model.",
   "logistic": {
     "coefficients": {
       "age": 0.6777850286966922,
@@ -167,7 +190,7 @@
   },
   "model_id": "HS-UCI-HFDEATH-001",
   "not_clinically_validated": true,
-  "release": "HealthSolver 0.49 UCI Heart Failure Clinical Records Integration",
+  "release": "HealthSolver 0.49.1 Scientific Semantics Remediation",
   "research_only": true,
   "schema": "healthsolver.predictive_model.v1",
   "standardization": {
@@ -201,10 +224,16 @@
   "target_definition": {
     "excluded_feature": "time excluded because it is follow-up duration rather than a baseline predictor",
     "negative": "DEATH_EVENT=0, no death recorded during source follow-up",
-    "positive": "DEATH_EVENT=1, patient died during source follow-up"
+    "positive": "DEATH_EVENT=1, patient died during source follow-up",
+    "fixed_horizon": false,
+    "time_horizon": "variable source follow-up: 4-285 days, mean about 130 days",
+    "survival_model": false,
+    "interpretation": "Source-cohort DEATH_EVENT classification only; not mortality by a defined time horizon."
   },
-  "task": "Binary research prediction of death during the source follow-up period among patients with heart failure in UCI 519, excluding follow-up duration (time) from predictors.",
+  "task": "Binary research classification of source DEATH_EVENT (0/1) within UCI 519's 2015 Faisalabad cohort of patients with left ventricular systolic dysfunction and previous NYHA III-IV heart failure, excluding follow-up duration (time); this is not a fixed-horizon mortality or survival probability.",
   "threshold": 0.29957634624408275,
   "threshold_selection": "Youden J maximum on held-out calibration split; evaluated once on independent test split",
-  "version": "1.0.0"
+  "version": "1.0.1",
+  "time_to_event_limitation": "DEATH_EVENT was observed over variable follow-up (4-285 days; mean about 130 days). The classifier does not model censoring or time-to-event, so its output is not mortality at 30, 90, 365 days, any other fixed horizon, or a survival probability.",
+  "output_semantics": "Calibrated research probability of the source binary DEATH_EVENT label under the UCI 519 development setup and source-cohort distribution; not a general heart-failure mortality-risk estimate."
 }
