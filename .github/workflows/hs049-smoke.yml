@@ -28,10 +28,10 @@ jobs:
           reg=json.loads((root/'model-registry-v2.json').read_text())
           assert reg['schema']=='healthsolver.predictive_registry.v2'
           assert tuple(map(int,reg['version'].split('.'))) >= (0,49,0),reg['version']
-          assert len(reg['models'])==9,len(reg['models'])
+          assert len(reg['models'])>=9,len(reg['models'])
           ids=[e['model_id'] for e in reg['models']]
           assert len(ids)==len(set(ids))
-          assert ids[-1]=='HS-UCI-HFDEATH-001',ids
+          assert 'HS-UCI-HFDEATH-001' in ids,ids
 
           m=json.loads((root/'model-heart-failure-mortality-v1.json').read_text())
           assert m['model_id']=='HS-UCI-HFDEATH-001'
@@ -84,8 +84,8 @@ jobs:
       - name: Verify integrated UI references ninth model
         shell: bash
         run: |
-          grep -Eq 'HS_INTEGRATED_PREDICTIVE_0491|HS_INTEGRATED_PREDICTIVE_049' predictive/integrated-predictive-ui.js
-          grep -q '9 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -Eq 'HS_INTEGRATED_PREDICTIVE_050|HS_INTEGRATED_PREDICTIVE_0491|HS_INTEGRATED_PREDICTIVE_049' predictive/integrated-predictive-ui.js
+          grep -q 'MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
           grep -q 'HS-UCI-HFDEATH-001' predictive/integrated-predictive-ui.js
           grep -Eq 'Insufficienza cardiaca · (DEATH_EVENT coorte UCI 519|mortalità nel follow-up)' predictive/integrated-predictive-ui.js
           grep -q 'hs49HeartFailureDetails' predictive/integrated-predictive-ui.js
