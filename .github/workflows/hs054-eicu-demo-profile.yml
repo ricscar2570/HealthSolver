@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: '3.13'
       - name: Install profiling dependencies
-        run: python -m pip install --disable-pip-version-check -q pandas
+        run: python -m pip install --disable-pip-version-check -q pandas scikit-learn
       - name: Download and profile eICU demo
         shell: bash
         run: |
@@ -34,7 +34,9 @@ jobs:
 
           python - <<'PY'
           import json, pathlib
+          import numpy as np
           import pandas as pd
+          from sklearn.model_selection import StratifiedGroupKFold
 
           root=pathlib.Path('out')
           patient=pd.read_csv(root/'patient.csv.gz',low_memory=False)
@@ -43,73 +45,121 @@ jobs:
           adm=pd.read_csv(root/'admissionDx.csv.gz',low_memory=False)
           hospital=pd.read_csv(root/'hospital.csv.gz',low_memory=False)
 
-          def cols(df):
-              return [str(x) for x in df.columns]
-
           print('PATIENT_SHAPE',patient.shape)
-          print('PATIENT_COLUMNS',json.dumps(cols(patient)))
           print('APS_SHAPE',aps.shape)
-          print('APS_COLUMNS',json.dumps(cols(aps)))
           print('APACHE_RESULT_SHAPE',apr.shape)
-          print('APACHE_RESULT_COLUMNS',json.dumps(cols(apr)))
           print('ADMISSION_DX_SHAPE',adm.shape)
-          print('ADMISSION_DX_COLUMNS',json.dumps(cols(adm)))
           print('HOSPITAL_SHAPE',hospital.shape)
-          print('HOSPITAL_COLUMNS',json.dumps(cols(hospital)))
+          print('PATIENT_COLUMNS',json.dumps(patient.columns.tolist()))
+          print('APS_COLUMNS',json.dumps(aps.columns.tolist()))
+          print('APACHE_RESULT_COLUMNS',json.dumps(apr.columns.tolist()))
 
-          assert 'patientunitstayid' in patient.columns
-          assert 'hospitaldischargestatus' in patient.columns
-          target=patient['hospitaldischargestatus'].astype(str).str.strip().str.lower()
-          print('HOSPITAL_DISCHARGE_STATUS_COUNTS',target.value_counts(dropna=False).to_dict())
+          status=patient['hospitaldischargestatus'].astype('string').str.strip().str.lower()
+          print('ALL_TARGET_COUNTS',status.value_counts(dropna=False).to_dict())
+          print('UNIT_VISIT_COUNTS',patient['unitvisitnumber'].value_counts(dropna=False).sort_index().to_dict())
+          print('UNIQUE_PATIENTS',int(patient['uniquepid'].nunique()))
+          print('UNIQUE_HOSPITAL_STAYS',int(patient['patienthealthsystemstayid'].nunique()))
+          print('UNIQUE_HOSPITAL_IDS',int(patient['hospitalid'].nunique()))
+          print('AGE_RAW_COUNTS_TOP',patient['age'].astype('string').value_counts(dropna=False).head(12).to_dict())
+          print('GENDER_COUNTS',patient['gender'].astype('string').value_counts(dropna=False).to_dict())
 
-          print('PATIENT_UNIQUE_STAYS',int(patient['patientunitstayid'].nunique()))
-          if 'uniquepid' in patient.columns:
-              print('UNIQUE_PATIENTS',int(patient['uniquepid'].nunique()))
-          if 'hospitalid' in patient.columns:
-              print('HOSPITAL_IDS',int(patient['hospitalid'].nunique()))
+          # Cohort is fixed before outcome-aware modelling: first ICU stay in each hospital admission,
+          # known hospital outcome, and an APACHE APS input row.
+          first=patient.loc[patient['unitvisitnumber'].eq(1)].copy()
+          cohort=first.merge(aps,on='patientunitstayid',how='inner',validate='one_to_one')
+          cohort['target']=cohort['hospitaldischargestatus'].astype('string').str.strip().str.lower().map({'alive':0,'expired':1})
+          cohort=cohort.loc[cohort['target'].notna()].copy()
+          cohort['target']=cohort['target'].astype(int)
+          print('COHORT_SHAPE',cohort.shape)
+          print('COHORT_TARGET_COUNTS',cohort['target'].value_counts().sort_index().to_dict())
+          print('COHORT_UNIQUE_PATIENTS',int(cohort['uniquepid'].nunique()))
+          print('COHORT_UNIQUE_HOSP_STAYS',int(cohort['patienthealthsystemstayid'].nunique()))
+          print('COHORT_HOSPITALS',int(cohort['hospitalid'].nunique()))
 
-          joined=patient.merge(aps,on='patientunitstayid',how='inner',suffixes=('_patient','_aps'))
-          print('PATIENT_APS_JOIN_SHAPE',joined.shape)
-          print('PATIENT_APS_JOIN_UNIQUE_STAYS',int(joined['patientunitstayid'].nunique()))
-          tgt=joined['hospitaldischargestatus'].astype(str).str.strip().str.lower()
-          print('JOIN_TARGET_COUNTS',tgt.value_counts(dropna=False).to_dict())
+          # Predeclared raw feature policy. APACHE APS numeric missing values in distributed files
+          # are represented by -1; binary 0/1 flags retain zero as a valid value.
+          continuous=['urine','wbc','temperature','respiratoryrate','sodium','heartrate','meanbp','ph','hematocrit','creatinine','bun','glucose']
+          binary=['intubated','vent','dialysis','meds']
+          gcs=['eyes','motor','verbal']
 
-          candidate=[
-              'age','gender','admissionheight','admissionweight',
-              'intubated','vent','dialysis','eyes','motor','verbal','meds',
+          for c in continuous:
+              cohort[c]=pd.to_numeric(cohort[c],errors='coerce')
+              cohort.loc[cohort[c] < 0,c]=np.nan
+          for c in binary+gcs:
+              cohort[c]=pd.to_numeric(cohort[c],errors='coerce')
+
+          age_raw=cohort['age'].astype('string').str.strip()
+          cohort['age_over_89']=(age_raw=='> 89').astype(float)
+          cohort['age_numeric']=pd.to_numeric(age_raw.replace({'> 89':'90'}),errors='coerce')
+          gender=cohort['gender'].astype('string').str.strip().str.lower()
+          cohort['male']=gender.map({'male':1.0,'female':0.0})
+
+          valid_gcs=(cohort['meds'].eq(0) & cohort['eyes'].between(1,4) & cohort['motor'].between(1,6) & cohort['verbal'].between(1,5))
+          cohort['gcs_total']=np.where(valid_gcs,cohort['eyes']+cohort['motor']+cohort['verbal'],np.nan)
+          cohort['gcs_unscorable_meds']=cohort['meds'].eq(1).astype(float)
+
+          raw_features=[
+              'age_numeric','age_over_89','male',
+              'intubated','vent','dialysis','gcs_total','gcs_unscorable_meds',
               'urine','wbc','temperature','respiratoryrate','sodium',
-              'heartrate','meanbp','ph','hematocrit','creatinine','albumin',
-              'pao2','pco2','bilirubin','fio2','glucose'
+              'heartrate','meanbp','creatinine','bun','glucose'
           ]
-          available=[c for c in candidate if c in joined.columns]
-          print('CANDIDATE_AVAILABLE',json.dumps(available))
-          miss={c:float(joined[c].isna().mean()) for c in available}
-          print('CANDIDATE_MISSINGNESS',json.dumps(miss,sort_keys=True))
+          print('RAW_FEATURES',json.dumps(raw_features))
+          print('FULL_COHORT_MISSINGNESS_AUDIT_ONLY',json.dumps({c:float(cohort[c].isna().mean()) for c in raw_features},sort_keys=True))
+          for c in continuous+gcs+binary:
+              s=pd.to_numeric(cohort[c],errors='coerce')
+              print('VALUE_AUDIT',c,{'min':None if s.dropna().empty else float(s.min()),'max':None if s.dropna().empty else float(s.max()),'neg_count':int((s<0).sum()),'zero_count':int((s==0).sum())})
 
-          leakage_terms=['mortality','predicted','discharge','actual','apacheversion','apache']
-          suspicious=[c for c in joined.columns if any(t in c.lower() for t in leakage_terms)]
-          print('SUSPICIOUS_JOIN_COLUMNS',json.dumps(suspicious))
+          # Split is group-aware: a unique patient can never appear in more than one partition.
+          sgkf=StratifiedGroupKFold(n_splits=5,shuffle=True,random_state=5401)
+          folds=np.full(len(cohort),-1,dtype=int)
+          X=np.zeros((len(cohort),1))
+          y=cohort['target'].to_numpy()
+          groups=cohort['uniquepid'].astype(str).to_numpy()
+          for fold,(_,idx) in enumerate(sgkf.split(X,y,groups)):
+              folds[idx]=fold
+          assert (folds>=0).all()
+          cohort['fold']=folds
+          part=np.where(folds==0,'test',np.where(folds==1,'calibration','train'))
+          cohort['partition']=part
+          print('PARTITION_COUNTS',cohort['partition'].value_counts().to_dict())
+          print('PARTITION_TARGETS',cohort.groupby('partition')['target'].agg(['count','sum','mean']).to_dict('index'))
+          for a,b in [('train','calibration'),('train','test'),('calibration','test')]:
+              ga=set(cohort.loc[cohort.partition.eq(a),'uniquepid'].astype(str))
+              gb=set(cohort.loc[cohort.partition.eq(b),'uniquepid'].astype(str))
+              assert not (ga & gb),(a,b,len(ga&gb))
+          train=cohort.loc[cohort.partition.eq('train')]
+          print('TRAIN_ONLY_MISSINGNESS',json.dumps({c:float(train[c].isna().mean()) for c in raw_features},sort_keys=True))
 
           summary={
+              'source_version':'2.0.1',
+              'source_doi':'10.13026/4mxk-na84',
+              'license':'Open Data Commons Open Database License v1.0',
               'patient_rows':int(len(patient)),
-              'patient_unit_stays':int(patient['patientunitstayid'].nunique()),
-              'aps_rows':int(len(aps)),
-              'joined_rows':int(len(joined)),
-              'joined_unique_stays':int(joined['patientunitstayid'].nunique()),
-              'target_counts':{str(k):int(v) for k,v in tgt.value_counts(dropna=False).to_dict().items()},
-              'candidate_available':available,
-              'candidate_missingness':miss,
-              'patient_columns':cols(patient),
-              'aps_columns':cols(aps),
-              'apache_result_columns':cols(apr),
-              'admission_dx_columns':cols(adm),
-              'hospital_columns':cols(hospital)
+              'unit_stays':int(patient['patientunitstayid'].nunique()),
+              'unique_patients':int(patient['uniquepid'].nunique()),
+              'unique_hospital_stays':int(patient['patienthealthsystemstayid'].nunique()),
+              'hospitals':int(patient['hospitalid'].nunique()),
+              'cohort_rows':int(len(cohort)),
+              'cohort_unique_patients':int(cohort['uniquepid'].nunique()),
+              'cohort_hospitals':int(cohort['hospitalid'].nunique()),
+              'target_counts':{str(k):int(v) for k,v in cohort['target'].value_counts().sort_index().items()},
+              'raw_features':raw_features,
+              'train_missingness':{c:float(train[c].isna().mean()) for c in raw_features},
+              'partitions':{
+                  p:{
+                      'n':int((cohort.partition==p).sum()),
+                      'deaths':int(cohort.loc[cohort.partition.eq(p),'target'].sum()),
+                      'prevalence':float(cohort.loc[cohort.partition.eq(p),'target'].mean())
+                  } for p in ['train','calibration','test']
+              }
           }
           (root/'profile.json').write_text(json.dumps(summary,indent=2,sort_keys=True))
-          print('EICU_DEMO_PROFILE_PASS')
+          print('EICU_DEMO_PROFILE_V2_PASS')
           PY
+
       - uses: actions/upload-artifact@v4
         with:
-          name: hs054-eicu-demo-profile
+          name: hs054-eicu-demo-profile-v2
           path: out/
           retention-days: 14
