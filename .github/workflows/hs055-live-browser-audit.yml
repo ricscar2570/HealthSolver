@@ -1,0 +1,152 @@
+name: HealthSolver 0.55 Ensemble Live Browser Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs055-live-browser-audit.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Verify live Ensemble Intelligence
+        shell: bash
+        run: |
+          cat > audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const base='https://ricscar2570.github.io/HealthSolver/';
+          const meta=await fetch(base+'version.json?audit=055-ensemble').then(r=>r.json());
+          if(meta.version!=='0.55.0') throw new Error('wrong published version '+meta.version);
+          if(meta.predictive_model_count!==14) throw new Error('wrong model count');
+          if(meta.ensemble_intelligence_integrated!==true) throw new Error('ensemble flag missing');
+          if(meta.ensemble_intelligence_version!=='1.0.0') throw new Error('ensemble version missing');
+
+          const reg=await fetch(base+'predictive/model-registry-v2.json?audit=055-ensemble').then(r=>r.json());
+          if(reg.version!=='0.54.1'||reg.models.length!==14) throw new Error('predictive registry drift');
+          const spec=await fetch(base+'predictive/ensemble-intelligence-v1.json?audit=055-ensemble').then(r=>r.json());
+          if(spec.version!=='1.0.0'||spec.global_probability!==false) throw new Error('ensemble spec invalid');
+
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:2600}});
+          const errors=[];
+          page.on('pageerror',e=>errors.push('PAGE '+e.message));
+          page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
+
+          await page.goto(base+'?audit=055-ensemble',{waitUntil:'networkidle',timeout:120000});
+          await page.waitForFunction(()=>document.body.innerText.includes('Clinical Coach')&&document.body.innerText.includes('Expert Mode'),{timeout:30000});
+          await page.locator('aside .nav[data-page="intelligence"]').click();
+          await page.waitForTimeout(250);
+
+          const block=page.locator('#hs-predictive-integrated');
+          const initial=await block.innerText();
+          if(!initial.includes('MOTORE PREDITTIVO · HEALTHSOLVER 0.55.0')) throw new Error('0.55 branding missing');
+          if(!initial.includes('14 MODELLI SUPERVISIONATI')) throw new Error('14-model badge missing');
+          if(!initial.includes('ENSEMBLE INTELLIGENCE · 0.55')) throw new Error('ensemble section missing');
+          if(!initial.includes('NON È UNA PROBABILITÀ')) throw new Error('ensemble probability warning missing');
+
+          const set=async(id,v)=>{
+            const loc=page.locator('#'+id);
+            if(await loc.count()!==1) throw new Error('missing control '+id);
+            await loc.evaluate((e,val)=>{
+              e.value=String(val);
+              e.dispatchEvent(new Event('input',{bubbles:true}));
+              e.dispatchEvent(new Event('change',{bubbles:true}));
+            },v);
+          };
+
+          await set('ciAge',65);
+          const sex=page.locator('#ciSex');
+          const opts=await sex.locator('option').evaluateAll(os=>os.map(o=>({v:o.value,t:o.textContent.trim()})));
+          const male=opts.find(o=>/masch|male|^m$/i.test(o.t)||/^(m|male|maschio|1)$/i.test(o.v));
+          if(!male) throw new Error('male option missing');
+          await sex.selectOption(male.v);
+
+          // Sepsis model.
+          await set('hs51_episode_number',1);
+
+          // SUPPORT2 explicit day-3 inputs.
+          for(const [id,v] of Object.entries({
+            hs53_dzgroup:'CHF',hs53_numco:2,hs53_scoma:0,hs53_hday:1,
+            hs53_diabetes:0,hs53_dementia:0,hs53_ca:'no',hs53_meanbp:77,
+            hs53_wblc:10.5,hs53_hrt:100,hs53_resp:24,hs53_temp:36.7,
+            hs53_crea:1.2,hs53_sod:137
+          })) await set(id,v);
+
+          // eICU explicit first-APACHE-day inputs.
+          for(const [id,v] of Object.entries({
+            hs54_gcs_total:15,hs54_gcs_meds:0,hs54_temperature:37,
+            hs54_respiratoryrate:18,hs54_heartrate:82,hs54_meanbp:85,
+            hs54_glucose:120,hs54_sodium:140,hs54_creatinine:1.0
+          })) await set(id,v);
+
+          await page.locator('#hs42Run').click();
+          await page.waitForTimeout(450);
+
+          const ensemble=page.locator('#hs55Ensemble');
+          const text=await ensemble.innerText();
+          for(const needle of [
+            'Sintesi complessa multi-modello',
+            'Research Activation Index',
+            'Modelli applicabili',
+            'Sopra soglia interna',
+            'Ampiezza co-attivazione',
+            'Concordanza core esito ospedaliero',
+            'Mappa di co-attivazione',
+            'non produce una nuova probabilità clinica globale'
+          ]){
+            if(!text.includes(needle)) throw new Error('ensemble text missing '+needle);
+          }
+
+          const domains=page.locator('#hs55DomainGrid .hs55-domain');
+          if(await domains.count()!==6) throw new Error('expected six ensemble domains');
+
+          const state=await page.evaluate(()=>window.__HS_LAST_ENSEMBLE__);
+          if(!state) throw new Error('ensemble state missing');
+          if(state.release!=='HealthSolver 0.55.0 Ensemble Intelligence Layer') throw new Error('wrong ensemble state release');
+          if(state.applicable_models<3) throw new Error('too few applicable models in test');
+          if(state.domains.length!==6) throw new Error('wrong state domain count');
+          const acute=state.domains.find(d=>d.id==='acute_critical_outcomes');
+          if(!acute||acute.applicable<3) throw new Error('acute domain did not receive expected models');
+          for(const d of state.domains){
+            if(d.index!==null && (!(d.index>=0&&d.index<=100)||!Number.isFinite(d.index))) throw new Error('domain RAI out of bounds '+d.id);
+            if(d.separation!==null && (!(d.separation>=0&&d.separation<=100)||!Number.isFinite(d.separation))) throw new Error('domain separation out of bounds '+d.id);
+          }
+
+          const concordance=await page.locator('#hs55Concordance').innerText();
+          if(!/3/.test(concordance)) throw new Error('hospital-outcome concordance not based on three applicable models');
+          if(!/(Concordanza sopra-soglia|Concordanza sotto-soglia|Pattern misto \/ discordante)/.test(concordance)) throw new Error('concordance state missing');
+
+          if(/rischio globale\s*[:=]\s*\d/i.test(text)) throw new Error('forbidden global-risk number rendered');
+          if(/probabilità globale\s*[:=]\s*\d/i.test(text)) throw new Error('forbidden global-probability number rendered');
+
+          const serious=errors.filter(e=>!/Failed to load resource.*api\.fda\.gov/i.test(e));
+          if(serious.length) throw new Error(serious.join(' | '));
+
+          await page.screenshot({path:'HealthSolver-0.55-Ensemble.png',fullPage:true});
+          console.log('ENSEMBLE_STATE',JSON.stringify(state));
+          console.log('ENSEMBLE_CONCORDANCE',concordance);
+          console.log('0.55 ENSEMBLE LIVE PASS');
+          await browser.close();
+          JS
+          node audit.mjs | tee audit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: healthsolver-055-ensemble-live
+          path: |
+            HealthSolver-0.55-Ensemble.png
+            audit.txt
+          retention-days: 14
