@@ -121,7 +121,6 @@ jobs:
           assert m['metrics_test']['sensitivity_fatal']>0.90
           assert m['metrics_test']['specificity_nonfatal']<0.50
           assert 'not a general-population mortality probability' in m['target_definition']['interpretation']
-          assert 'not a cut-off' not in m.get('target_definition',{}).get('interpretation','') or True
           print('TWELVE MODEL STATIC INTEGRITY PASS')
           PY
 
@@ -153,3 +152,6 @@ jobs:
           grep -q '12 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
           grep -q 'HS-UCI-MIFATAL-001' predictive/integrated-predictive-ui.js
           grep -q 'hs52MiFatalDetails' predictive/integrated-predictive-ui.js
+          grep -q 'workflow_dispatch:' .github/workflows/hs052-uci-mi-fatal-outcome.yml
+          grep -q 'numpy==2.5.3 pandas==3.0.6 scikit-learn==1.9.1' .github/workflows/hs052-uci-mi-fatal-outcome.yml
+          grep -q "reg\['version'\] in {'0.51.1','0.52.0'}" .github/workflows/hs052-uci-mi-fatal-outcome.yml
