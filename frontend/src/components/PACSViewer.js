@@ -1,5 +1,6 @@
 // frontend/src/components/PACSViewer.js
 import React, { useState, useEffect } from 'react';
+import { apiUrl } from '../apiBase';
 // Potresti voler usare una libreria come react-dropzone per un'esperienza di upload migliore
 // import { useDropzone } from 'react-dropzone';
 
@@ -41,7 +42,7 @@ const PACSViewer = () => {
 
     try {
       // Chiama l'endpoint CNN attivato
-      const response = await fetch('http://localhost:8000/cnn/analyze', { // URL aggiornato
+      const response = await fetch(apiUrl('/cnn/analyze'), { // URL aggiornato
         method: 'POST',
         body: formData, // Invia FormData, non JSON
         // Non impostare 'Content-Type', il browser lo farà automaticamente per FormData
