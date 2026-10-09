@@ -16,5 +16,7 @@ def predict(data: PatientData):
     try:
         prediction = predict_therapy([data.age, data.bmi, data.condition_severity, data.comorbidities_count])
         return {"recommended_therapy": int(prediction)}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Legacy prediction failed.") from exc
