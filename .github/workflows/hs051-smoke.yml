@@ -1,0 +1,99 @@
+name: HealthSolver 0.51 UCI Sepsis Survival Smoke
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'predictive/**'
+      - '.github/workflows/hs051-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: node --check predictive/integrated-predictive-ui.js
+      - name: Verify sepsis model, external validation and registry
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import json,math,pathlib
+          root=pathlib.Path('predictive')
+          reg=json.loads((root/'model-registry-v2.json').read_text())
+          assert reg['schema']=='healthsolver.predictive_registry.v2'
+          assert reg['version']=='0.51.0'
+          assert len(reg['models'])==11
+          ids=[e['model_id'] for e in reg['models']]
+          assert len(ids)==len(set(ids))
+          assert ids[-1]=='HS-UCI-SEPSISDEATH-001'
+
+          m=json.loads((root/'model-sepsis-hospital-death-v1.json').read_text())
+          assert m['model_id']=='HS-UCI-SEPSISDEATH-001'
+          assert m['dataset']['uci_id']==827
+          assert m['dataset']['doi']=='10.24432/C53C8N'
+          assert m['dataset']['license']=='CC BY 4.0'
+          assert m['dataset']['primary_cohort']['admissions']==110204
+          assert m['dataset']['primary_cohort']['subjects']==84811
+          assert m['dataset']['study_cohort']['admissions']==19051
+          assert m['dataset']['external_validation_cohort']['patients']==137
+          assert m['dataset']['external_validation_cohort']['country']=='South Korea'
+          assert m['features']==['age_years','sex_0male_1female','episode_number']
+          assert m['target_definition']['source_name']=='hospital_outcome_1alive_0dead'
+          assert m['target_definition']['fixed_horizon'] is False
+          assert m['target_definition']['survival_probability'] is False
+          assert 'not mortality at a fixed number of days' in m['target_definition']['interpretation']
+          assert 'must not be described as 9-day mortality' in m['temporal_semantics']
+          assert 'admission-level' in m['split_limitation']
+          assert m['external_validation_status']=='WEAK_GENERALIZATION'
+          assert 'AUROC 0.548' in m['external_validation_interpretation']
+
+          q=m['metrics_test']
+          assert q['n_total_primary']==110204
+          assert q['n_train']==66122 and q['n_calibration']==22041 and q['n_test']==22041
+          assert 0.5<=q['auroc']<=1
+          assert q['auprc']>=q['positive_prevalence_death']
+          assert 0<=q['brier']<=1
+          ext=m['external_validation']
+          assert ext['n']==137
+          assert abs(ext['positive_prevalence_death']-(24/137))<1e-12
+          assert 0.5<=ext['auroc']<0.60
+          assert ext['auprc']>=ext['positive_prevalence_death']
+          assert 0<=ext['brier']<=1
+          assert abs(ext['threshold']-m['threshold'])<1e-15
+          assert m['abstention']['max_missing_features']==0
+          assert m['research_only'] is True and m['not_clinically_validated'] is True
+
+          score=float(m['logistic']['intercept'])
+          for f in m['features']:
+              scale=float(m['standardization']['scale'][f]); assert scale>0
+              v=float(m['imputation']['values'][f])
+              score+=(v-float(m['standardization']['mean'][f]))/scale*float(m['logistic']['coefficients'][f])
+          z=float(m['calibration']['intercept'])+float(m['calibration']['slope'])*score
+          p=1/(1+math.exp(-max(-35,min(35,z))))
+          assert math.isfinite(p) and 0<p<1
+
+          report=json.loads((root/'model-sepsis-hospital-death-v1-report.json').read_text())
+          assert report['internal_test']==q
+          assert report['external_validation']==ext
+          e=next(e for e in reg['models'] if e['model_id']==m['model_id'])
+          assert e['metrics_test']==q
+          assert e['external_validation']==ext
+          print({'median_probability':p,'internal':q,'external':ext})
+          PY
+      - name: Verify Predictive-First UI references eleventh model
+        shell: bash
+        run: |
+          grep -q 'HS_INTEGRATED_PREDICTIVE_051' predictive/integrated-predictive-ui.js
+          grep -q '11 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -q 'HS-UCI-SEPSISDEATH-001' predictive/integrated-predictive-ui.js
+          grep -q 'hs51SepsisDetails' predictive/integrated-predictive-ui.js
+          grep -q 'non mortalità a 9 giorni' predictive/integrated-predictive-ui.js
+          grep -q 'Validazione esterna debole' predictive/integrated-predictive-ui.js
