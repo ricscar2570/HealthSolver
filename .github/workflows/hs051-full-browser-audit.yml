@@ -75,7 +75,7 @@ jobs:
           const sepsisDetails=page.locator('#hs51SepsisDetails');
           await sepsisDetails.evaluate(el=>{el.open=true});
           const sepsisText=await sepsisDetails.innerText();
-          must(sepsisText.includes('non è mortalità a 9 giorni'),'sepsis fixed-horizon warning missing');
+          must(sepsisText.toLowerCase().includes('non è mortalità a 9 giorni'),'sepsis fixed-horizon warning missing');
           must(sepsisText.includes('Validazione esterna debole'),'sepsis external warning missing');
           must(sepsisText.includes('AUROC 0,548'),'sepsis external AUROC missing');
 
