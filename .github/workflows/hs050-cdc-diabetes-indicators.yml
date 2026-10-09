@@ -209,10 +209,11 @@ jobs:
           (out/'model-cdc-diabetes-indicators-v1-report.json').write_text(json.dumps(metrics,indent=2,sort_keys=True))
 
           reg=json.loads((out/'model-registry-v2.json').read_text())
-          assert reg['version']=='0.49.1',reg['version']
-          old_ids=[m['model_id'] for m in reg['models']]
-          assert len(old_ids)==9 and 'HS-CDC-DIABIND-001' not in old_ids
+          assert reg['version'] in {'0.49.1','0.50.0'},reg['version']
+          preserved=[m for m in reg['models'] if m['model_id']!='HS-CDC-DIABIND-001']
+          assert len(preserved)==9,[m['model_id'] for m in preserved]
           reg['version']='0.50.0'
+          reg['models']=preserved
           reg['models'].append({
             'model_id':model['model_id'],
             'title':'Diabete/prediabete · label BRFSS',
