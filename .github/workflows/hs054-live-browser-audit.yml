@@ -64,7 +64,7 @@ jobs:
           for(const needle of [
             'fine del primo APACHE day',
             'hospitalDischargeStatus = Expired',
-            'non è mortalità a 24 ore, 30 o 90 giorni',
+            'Non è mortalità a 24 ore, 30 o 90 giorni',
             'nessun APACHE score',
             'stesso paziente non compare in più partizioni',
             'non è validazione esterna'
