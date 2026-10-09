@@ -1,0 +1,90 @@
+name: HealthSolver 0.50 CDC Diabetes Indicators Smoke
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'predictive/**'
+      - '.github/workflows/hs050-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: node --check predictive/integrated-predictive-ui.js
+      - name: Verify CDC diabetes model and registry
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import json,math,pathlib
+          root=pathlib.Path('predictive')
+          reg=json.loads((root/'model-registry-v2.json').read_text())
+          assert reg['schema']=='healthsolver.predictive_registry.v2'
+          assert reg['version']=='0.50.0'
+          assert len(reg['models'])==10
+          ids=[e['model_id'] for e in reg['models']]
+          assert len(ids)==len(set(ids))
+          assert ids[-1]=='HS-CDC-DIABIND-001'
+          m=json.loads((root/'model-cdc-diabetes-indicators-v1.json').read_text())
+          assert m['model_id']=='HS-CDC-DIABIND-001'
+          assert m['dataset']['uci_id']==891
+          assert m['dataset']['doi']=='10.24432/C53919'
+          assert m['dataset']['instances']==253680
+          assert m['dataset']['features']==21
+          assert m['dataset']['missing_values'] is False
+          assert 'Public Domain' in m['dataset']['license']
+          expected=[
+            'high_bp','high_chol','chol_check','bmi','smoker_100','stroke_history',
+            'heart_disease_or_attack','physical_activity','fruits_daily','veggies_daily',
+            'heavy_alcohol','any_healthcare','no_doctor_due_cost','general_health',
+            'mental_health_days','physical_health_days','difficulty_walking','sex',
+            'age_category','education','income'
+          ]
+          assert m['features']==expected
+          td=m['target_definition']
+          assert td['source_name']=='Diabetes_binary'
+          assert td['prediabetes_and_diabetes_combined'] is True
+          assert td['future_risk'] is False
+          assert td['clinical_diagnosis'] is False
+          assert 'not a probability of developing diabetes in the future' in td['interpretation']
+          assert 'Cross-sectional' in m['temporal_semantics']
+          assert 'Healthcare-use and comorbidity indicators' in m['leakage_review']
+          q=m['metrics_test']
+          assert q['n_total']==253680
+          assert q['n_train']==152208 and q['n_calibration']==50736 and q['n_test']==50736
+          assert q['auroc']>=0.5
+          assert q['auprc']>=q['positive_prevalence']
+          assert 0<=q['brier']<=1
+          assert q['sensitivity']>=0.5 and q['specificity']>=0.5
+          assert 0<m['threshold']<1
+          assert m['research_only'] is True and m['not_clinically_validated'] is True
+          score=float(m['logistic']['intercept'])
+          for f in m['features']:
+              scale=float(m['standardization']['scale'][f]); assert scale>0
+              v=float(m['imputation']['values'][f])
+              score+=(v-float(m['standardization']['mean'][f]))/scale*float(m['logistic']['coefficients'][f])
+          z=float(m['calibration']['intercept'])+float(m['calibration']['slope'])*score
+          p=1/(1+math.exp(-max(-35,min(35,z))))
+          assert math.isfinite(p) and 0<p<1
+          assert json.loads((root/'model-cdc-diabetes-indicators-v1-report.json').read_text())==q
+          e=next(e for e in reg['models'] if e['model_id']==m['model_id'])
+          assert e['metrics_test']==q
+          assert 'prediabetes and diabetes' in e['target_semantics']
+          print({'median_probability':p,'metrics':q})
+          PY
+      - name: Verify Predictive-First UI references tenth model
+        shell: bash
+        run: |
+          grep -q 'HS_INTEGRATED_PREDICTIVE_050' predictive/integrated-predictive-ui.js
+          grep -q '10 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -q 'HS-CDC-DIABIND-001' predictive/integrated-predictive-ui.js
+          grep -q 'hs50CdcDiabetesDetails' predictive/integrated-predictive-ui.js
+          grep -q 'Diabetes_binary=1' predictive/integrated-predictive-ui.js
+          grep -q 'non è la probabilità futura di sviluppare diabete' predictive/integrated-predictive-ui.js
