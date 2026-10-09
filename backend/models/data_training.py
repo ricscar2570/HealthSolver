@@ -18,9 +18,9 @@ from backend.database import SessionLocal, Patient # Assumendo che Patient sia d
 MLFLOW_EXPERIMENT_NAME = "HealthSolver_Therapy_Prediction"
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "").strip()
 if not MLFLOW_TRACKING_URI:
-    tracking_dir = Path(os.getenv("MLFLOW_TRACKING_DIR", "mlflow_data")).resolve()
-    tracking_dir.mkdir(parents=True, exist_ok=True)
-    MLFLOW_TRACKING_URI = tracking_dir.as_uri()
+    tracking_db = Path(os.getenv("MLFLOW_TRACKING_DB", "mlflow_data/mlflow.db")).resolve()
+    tracking_db.parent.mkdir(parents=True, exist_ok=True)
+    MLFLOW_TRACKING_URI = f"sqlite:///{tracking_db}"
 mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
 
