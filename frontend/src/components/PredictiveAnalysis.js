@@ -54,7 +54,7 @@ const PredictiveAnalysis = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        throw new Error(errorData.error || errorData.detail || `HTTP error! status: ${response.status}`);
       }
 
       const result = await response.json();
