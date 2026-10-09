@@ -8,6 +8,7 @@ import logging
 import os
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 
@@ -21,6 +22,24 @@ app = FastAPI(
     title="HealthSolver Legacy API",
     description="Deprecated local backend; not used by the browser-based Research Edition.",
 )
+
+
+_legacy_cors_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "HEALTHSOLVER_CORS_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000",
+    ).split(",")
+    if origin.strip()
+]
+if _legacy_cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_legacy_cors_origins,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization"],
+    )
 
 
 @app.middleware("http")
