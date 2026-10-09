@@ -66,7 +66,7 @@ jobs:
           if(!male) throw new Error('male option missing');
           await sex.selectOption(male.v);
           const bmi=page.locator('#hs45_bmi');
-          await bmi.fill('31');
+          await bmi.evaluate((e,v)=>{e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));},'31');
           const vals={
             hs50_high_bp:'1',hs50_high_chol:'1',hs50_chol_check:'1',hs50_smoker_100:'1',
             hs50_stroke_history:'0',hs50_heart_disease_or_attack:'0',hs50_physical_activity:'1',
