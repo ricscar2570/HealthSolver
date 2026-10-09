@@ -15,6 +15,7 @@ async def analyze_dicom(file: UploadFile = File(...)):
     original_name = Path(file.filename or "upload.dcm").name
     suffix = Path(original_name).suffix.lower()
     if suffix != ".dcm":
+        await file.close()
         raise HTTPException(status_code=400, detail="Only .dcm files are accepted.")
 
     UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
