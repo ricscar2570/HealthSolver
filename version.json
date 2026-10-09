@@ -1,7 +1,7 @@
 {
   "app": "HealthSolver",
-  "version": "0.53.0",
-  "release": "SUPPORT2 Hospital Death Integration + Predictive-First UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition",
+  "version": "0.53.1",
+  "release": "Code Audit Remediation + SUPPORT2 Hospital Death Integration + Predictive-First UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition",
   "base_release": "0.38.0",
   "base_source_sha256": "c1bef787551183db369643036e9fc9a7f64ddec515ad804066b9a37279df6b68",
   "predictive_registry": "predictive/model-registry-v2.json",
@@ -21,7 +21,7 @@
     "HS-SUPPORT2-HOSPDEATH-001"
   ],
   "payload_parts": 7,
-  "source_sha256": "01a66b12cc740dbc8c9f8c3e5bc2822fe760501893d480f97e66f6060ed33201",
+  "source_sha256": "86c2bf48ea320b4f17d9253c4a007222b794e8ce1f25ae880096bad2a241eeb7",
   "predictive_modules_embedded": true,
   "integrated_predictive_ui": true,
   "predictive_first_ui": true,
@@ -38,5 +38,6 @@
   "uci_sepsis_survival_integrated": true,
   "sepsis_audit_semantics_remediation": true,
   "uci_mi_fatal_outcome_integrated": true,
-  "support2_hospital_death_integrated": true
+  "support2_hospital_death_integrated": true,
+  "code_audit_remediation": true
 }
