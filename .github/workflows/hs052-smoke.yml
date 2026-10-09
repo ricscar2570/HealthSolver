@@ -1,0 +1,103 @@
+name: HealthSolver 0.52 UCI MI Fatal Outcome Smoke
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'predictive/**'
+      - '.github/workflows/hs052-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: node --check predictive/integrated-predictive-ui.js
+      - name: Verify MI fatal-outcome model and registry
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import json,math,pathlib
+          root=pathlib.Path('predictive')
+          reg=json.loads((root/'model-registry-v2.json').read_text())
+          assert reg['schema']=='healthsolver.predictive_registry.v2'
+          assert reg['version']=='0.52.0'
+          assert len(reg['models'])==12
+          ids=[e['model_id'] for e in reg['models']]
+          assert len(ids)==len(set(ids))
+          assert ids[-1]=='HS-UCI-MIFATAL-001'
+
+          m=json.loads((root/'model-mi-fatal-outcome-v1.json').read_text())
+          assert m['model_id']=='HS-UCI-MIFATAL-001'
+          assert m['dataset']['uci_id']==579
+          assert m['dataset']['doi']=='10.24432/C53P5M'
+          assert m['dataset']['license']=='CC BY 4.0'
+          assert m['dataset']['instances']==1700
+          assert m['dataset']['source_features']==111
+          assert m['dataset']['source_outcomes']==12
+          assert m['runtime_environment']=={'python':'3.13','numpy':'2.5.3','pandas':'3.0.6','scikit_learn':'1.9.1'}
+
+          expected=['AGE','SEX','INF_ANAM','STENOK_AN','FK_STENOK','IBS_POST','GB','SIM_GIPERT','ZSN_A',
+                    'S_AD_ORIT','D_AD_ORIT','O_L_POST','K_SH_POST','MP_TP_POST','FIB_G_POST','IM_PG_P',
+                    'K_BLOOD','NA_BLOOD','L_BLOOD','ROE','TIME_B_S']
+          assert m['features']==expected
+          assert len(m['features'])==21
+          assert m['source_column_numbers']=={
+            'AGE':2,'SEX':3,'INF_ANAM':4,'STENOK_AN':5,'FK_STENOK':6,'IBS_POST':7,'GB':9,'SIM_GIPERT':10,
+            'ZSN_A':12,'S_AD_ORIT':37,'D_AD_ORIT':38,'O_L_POST':39,'K_SH_POST':40,'MP_TP_POST':41,
+            'FIB_G_POST':44,'IM_PG_P':49,'K_BLOOD':84,'NA_BLOOD':86,'L_BLOOD':90,'ROE':91,'TIME_B_S':92
+          }
+          assert m['excluded_dynamic_source_columns']==[93,94,95,100,101,102,103,104,105]
+          assert 'No outcome-driven feature selection' in m['feature_selection_policy']
+          assert 'no medication variables' in m['feature_selection_policy']
+          assert m['target_definition']['source_name']=='LET_IS'
+          assert m['target_definition']['binary_mapping']=='HealthSolver positive = LET_IS != 0'
+          assert m['target_definition']['clinical_diagnosis'] is False
+          assert 'not a general-population mortality probability' in m['target_definition']['interpretation']
+          assert 'dynamic source columns' in m['temporal_semantics']
+          assert 'Outcome columns 113-124 are never predictors' in m['leakage_review']
+          assert m['abstention']['max_missing_features']==4
+
+          q=m['metrics_test']
+          assert q['n_total']==1700
+          assert q['n_train']==1020 and q['n_calibration']==340 and q['n_test']==340
+          assert abs(q['positive_prevalence_fatal_outcome']-(271/1700))<1e-15
+          assert q['auroc']>=0.80
+          assert q['auprc']>=0.50
+          assert 0<=q['brier']<=1
+          assert q['sensitivity_fatal']>=0.80
+          assert 0<=q['specificity_nonfatal']<=1
+          assert 0<m['threshold']<1
+
+          score=float(m['logistic']['intercept'])
+          for f in m['features']:
+              scale=float(m['standardization']['scale'][f]); assert scale>0
+              v=float(m['imputation']['values'][f])
+              score+=(v-float(m['standardization']['mean'][f]))/scale*float(m['logistic']['coefficients'][f])
+          z=float(m['calibration']['intercept'])+float(m['calibration']['slope'])*score
+          p=1/(1+math.exp(-max(-35,min(35,z))))
+          assert math.isfinite(p) and 0<p<1
+
+          report=json.loads((root/'model-mi-fatal-outcome-v1-report.json').read_text())
+          assert report==q
+          e=next(e for e in reg['models'] if e['model_id']==m['model_id'])
+          assert e['metrics_test']==q
+          print({'median_probability':p,'metrics':q})
+          PY
+      - name: Verify Predictive-First UI references twelfth model
+        shell: bash
+        run: |
+          grep -q 'HS_INTEGRATED_PREDICTIVE_052' predictive/integrated-predictive-ui.js
+          grep -q '12 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -q 'HS-UCI-MIFATAL-001' predictive/integrated-predictive-ui.js
+          grep -q 'hs52MiFatalDetails' predictive/integrated-predictive-ui.js
+          grep -q 'LET_IS ≠ 0' predictive/integrated-predictive-ui.js
+          grep -q 'non uno score di mortalità clinicamente validato' predictive/integrated-predictive-ui.js
