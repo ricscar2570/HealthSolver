@@ -1,0 +1,194 @@
+{
+  "base_predictive_model_count_preserved": 14,
+  "calibration": {
+    "intercept": -0.09444022538621252,
+    "method": "Platt scaling",
+    "slope": 0.9484372500615615
+  },
+  "clinically_validated": false,
+  "feature_semantics": {
+    "age": "Age in years. eICU source age >89 is mapped to 90 to preserve source top-coding.",
+    "male": "1=male, 0=female."
+  },
+  "features": [
+    "age",
+    "male"
+  ],
+  "hard_boundaries": [
+    "Not a meta-model over the fourteen HealthSolver probabilities.",
+    "Not a validated general hospital-mortality probability.",
+    "Uses only age and sex because these are the only clean common predictors across the three released source cohorts.",
+    "Do not use for diagnosis, triage, treatment, admission, discharge, or end-of-life decisions.",
+    "Cross-source generalization is heterogeneous; this compact age/sex model is not a clinical mortality score and must not be interpreted as a general patient-specific hospital mortality probability."
+  ],
+  "is_base_registry_model": false,
+  "logistic": {
+    "C": 0.5,
+    "coefficients": {
+      "age": 0.27328328960413695,
+      "male": -0.02641883252964093
+    },
+    "intercept": -1.8306627355743348,
+    "solver": "lbfgs"
+  },
+  "metrics": {
+    "leave_one_source_out_transport": {
+      "eicu_demo": {
+        "accuracy": 0.36641604010025064,
+        "auprc": 0.15685015301202054,
+        "auroc": 0.6778431825176977,
+        "brier": 0.08359632934404623,
+        "n": 1995,
+        "prevalence_death": 0.08571428571428572,
+        "sensitivity_death": 0.8771929824561403,
+        "specificity_survival": 0.31853070175438597,
+        "threshold": 0.15847363956740743,
+        "train_sources": [
+          "sepsis_uci827",
+          "support2"
+        ]
+      },
+      "sepsis_uci827": {
+        "accuracy": 0.5242750686108859,
+        "auprc": 0.12739383303144222,
+        "auroc": 0.6688269057480055,
+        "brier": 0.0812845463408989,
+        "n": 102389,
+        "prevalence_death": 0.07863149361747844,
+        "sensitivity_death": 0.7409017513352378,
+        "specificity_survival": 0.5057876995484323,
+        "threshold": 0.1819174823971447,
+        "train_sources": [
+          "eicu_demo",
+          "support2"
+        ]
+      },
+      "support2": {
+        "accuracy": 0.5068643602416255,
+        "auprc": 0.2852867818538634,
+        "auroc": 0.5298120390496412,
+        "brier": 0.22709186945385257,
+        "n": 9105,
+        "prevalence_death": 0.2591982427237781,
+        "sensitivity_death": 0.5385593220338983,
+        "specificity_survival": 0.49577464788732395,
+        "threshold": 0.06504148506353712,
+        "train_sources": [
+          "eicu_demo",
+          "sepsis_uci827"
+        ]
+      }
+    },
+    "minimum_loso_auroc": 0.5298120390496412,
+    "per_source_heldout_test": {
+      "eicu_demo": {
+        "accuracy": 0.5839598997493735,
+        "auprc": 0.1294675500608501,
+        "auroc": 0.6435535858178889,
+        "brier": 0.07914191709361607,
+        "n": 399,
+        "prevalence_death": 0.08521303258145363,
+        "sensitivity_death": 0.6470588235294118,
+        "specificity_survival": 0.5780821917808219,
+        "threshold": 0.14233116231535944
+      },
+      "sepsis_uci827": {
+        "accuracy": 0.473288407071003,
+        "auprc": 0.1325377784218373,
+        "auroc": 0.6824395242791699,
+        "brier": 0.0752247435745535,
+        "n": 20478,
+        "prevalence_death": 0.07862095907803496,
+        "sensitivity_death": 0.8093167701863354,
+        "specificity_survival": 0.44461522153911387,
+        "threshold": 0.14233116231535944
+      },
+      "support2": {
+        "accuracy": 0.5518945634266886,
+        "auprc": 0.2900453342548589,
+        "auroc": 0.549068833159528,
+        "brier": 0.20581472975119605,
+        "n": 1821,
+        "prevalence_death": 0.2591982427237781,
+        "sensitivity_death": 0.4872881355932203,
+        "specificity_survival": 0.5744996293550778,
+        "threshold": 0.14233116231535944
+      }
+    },
+    "pooled_source_balanced_test": {
+      "accuracy": 0.5363809567490218,
+      "auprc": 0.16767510528385526,
+      "auroc": 0.5785998749545924,
+      "brier": 0.12006046347312191,
+      "n": 22698,
+      "sensitivity_death": 0.5793207084673112,
+      "specificity_survival": 0.5293320136634281,
+      "threshold": 0.14233116231535944
+    },
+    "pooled_unweighted_test": {
+      "accuracy": 0.48154022380826506,
+      "auprc": 0.13572713796002983,
+      "auroc": 0.637000903665526,
+      "brier": 0.08577048844466417,
+      "n": 22698,
+      "sensitivity_death": 0.7348771266540642,
+      "specificity_survival": 0.4554950927995336,
+      "threshold": 0.14233116231535944
+    }
+  },
+  "model_id": "HS-COMMON-HOSPDEATH-TRANSPORT-001",
+  "qualification_status": "RESEARCH_TRANSPORT_BASELINE",
+  "release": "HealthSolver 0.56.0 Common-Outcome Transport Layer",
+  "research_only": true,
+  "schema": "healthsolver.common_outcome_transport.v1",
+  "source_cohorts": {
+    "eicu_demo": {
+      "index_semantics": "first ICU stay with APACHE row; only age/sex used",
+      "rows_before_complete_case": 2004,
+      "rows_used": 1995
+    },
+    "sepsis_uci827": {
+      "index_semantics": "minimal clinical record / admission episode",
+      "rows_before_complete_case": 110204,
+      "rows_used": 102389
+    },
+    "support2": {
+      "index_semantics": "SUPPORT cohort; only age/sex used, not day-3 physiology",
+      "rows_before_complete_case": 9105,
+      "rows_used": 9105
+    }
+  },
+  "standardization": {
+    "mean": {
+      "age": 64.2657427508356,
+      "male": 0.5631157311958707
+    },
+    "scale": {
+      "age": 17.61345741656729,
+      "male": 0.49600040773734305
+    }
+  },
+  "target": {
+    "fixed_horizon": false,
+    "negative": "survived hospitalization / alive",
+    "positive": "in-hospital death / expired",
+    "warning": "The three cohorts have different inclusion criteria and index times; the shared label is hospital outcome, not a fixed-horizon mortality endpoint."
+  },
+  "threshold": 0.14233116231535944,
+  "title": "Common Outcome Transport \u00b7 decesso intraospedaliero",
+  "training": {
+    "calibration": "Platt scaling on pooled held-out calibration partitions with equal total source weight.",
+    "classifier": "LogisticRegression C=0.5 lbfgs; no class weighting; source-balanced sample weighting.",
+    "partition_policy": "Deterministic source-stratified 60/20/20 train/calibration/test split.",
+    "runtime_environment": {
+      "numpy": "2.5.3",
+      "pandas": "3.0.6",
+      "python": "3.13",
+      "scikit_learn": "1.9.1"
+    },
+    "source_balance": "Equal total sample weight per source in pooled training, calibration, and balanced pooled-test metrics.",
+    "standardization": "Source-balanced weighted mean and population SD learned on pooled training partition only.",
+    "threshold_selection": "Youden J on source-balanced pooled calibration partitions."
+  },
+  "version": "1.0.0"
+}
