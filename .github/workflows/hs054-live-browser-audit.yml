@@ -1,4 +1,4 @@
-name: HealthSolver 0.54 eICU Live Browser Audit
+name: HealthSolver 0.54.1 eICU Live Browser Audit
 on:
   push:
     branches: ['main']
@@ -29,13 +29,13 @@ jobs:
           import { chromium } from 'playwright';
           const base='https://ricscar2570.github.io/HealthSolver/';
           const meta=await fetch(base+'version.json?audit=054-eicu').then(r=>r.json());
-          if(meta.version!=='0.54.0') throw new Error('wrong published version '+meta.version);
+          if(meta.version!=='0.54.1') throw new Error('wrong published version '+meta.version);
           if(meta.predictive_model_count!==14) throw new Error('wrong model count '+meta.predictive_model_count);
           if(!meta.predictive_models.includes('HS-EICU-DEMO-HOSPDEATH-001')) throw new Error('eICU model missing');
           if(meta.eicu_demo_hospital_death_integrated!==true) throw new Error('eICU integration flag missing');
 
           const reg=await fetch(base+'predictive/model-registry-v2.json?audit=054-eicu').then(r=>r.json());
-          if(reg.version!=='0.54.0'||reg.models.length!==14) throw new Error('wrong registry');
+          if(reg.version!=='0.54.1'||reg.models.length!==14) throw new Error('wrong registry');
           const model=await fetch(base+'predictive/model-eicu-demo-hospital-death-v1.json?audit=054-eicu').then(r=>r.json());
           if(model.dataset.version!=='2.0.1'||model.dataset.development_cohort_rows!==2004) throw new Error('eICU provenance mismatch');
           if(model.raw_features.length!==11||model.features.length!==12) throw new Error('eICU feature shape mismatch');
@@ -67,7 +67,8 @@ jobs:
             'Non è mortalità a 24 ore, 30 o 90 giorni',
             'nessun APACHE score',
             'stesso paziente non compare in più partizioni',
-            'non è validazione esterna'
+            'non è validazione esterna',
+            'Coerenza GCS'
           ]){
             if(!detail.includes(needle)) throw new Error('missing eICU disclosure '+needle);
           }
@@ -130,6 +131,22 @@ jobs:
              text.includes('Fuori dal range osservato nel training: sodium')){
             throw new Error('generic dossier values leaked into eICU model');
           }
+
+
+          // GCS/medication semantic edge: meds=1 must make numeric GCS unavailable.
+          await set('hs54_gcs_total',3);
+          await set('hs54_gcs_meds',1);
+          await page.waitForTimeout(100);
+          const gcsInput=page.locator('#hs54_gcs_total');
+          if(!(await gcsInput.isDisabled())) throw new Error('GCS input should be disabled when meds=1');
+          if((await gcsInput.inputValue())!=='') throw new Error('GCS value should be cleared when meds=1');
+          await page.locator('#hs42Run').click();
+          await page.waitForTimeout(300);
+          const edgeText=await card.innerText();
+          if(/Astensione/i.test(edgeText)) throw new Error('eICU should remain usable with one allowed missing raw input');
+          if(!edgeText.includes('Imputati con mediana training: gcs_total')) throw new Error('GCS should be imputed when meds=1');
+          await set('hs54_gcs_meds',0);
+          await set('hs54_gcs_total',15);
 
           const resultCards=await page.locator('#hs42Results>.card').count();
           if(resultCards!==14) throw new Error('expected 14 result cards, got '+resultCards);
