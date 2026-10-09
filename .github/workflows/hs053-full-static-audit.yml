@@ -1,0 +1,153 @@
+name: HealthSolver 0.53 Full Static Release Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs053-full-static-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Repository and source integrity
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git fsck --full
+          test ! -f .env
+          test -f .env.example
+          test -f .gitignore
+          ! git ls-files | grep -E '(^|/)\.env$'
+          ! git grep -nE '^(<<<<<<<|=======|>>>>>>>)' -- . ':!README.MD'
+          python -m compileall -q backend dashboard tests
+          for f in predictive/*.js; do node --check "$f"; done
+          python -m pip install --disable-pip-version-check -q pyyaml
+          python - <<'PY'
+          import json,pathlib,yaml
+          for p in pathlib.Path('.').rglob('*.json'):
+              if '.git' not in p.parts: json.loads(p.read_text(encoding='utf-8'))
+          for ext in ('*.yml','*.yaml'):
+              for p in pathlib.Path('.').rglob(ext):
+                  if '.git' not in p.parts: list(yaml.safe_load_all(p.read_text(encoding='utf-8')))
+          print('PARSE PASS')
+          PY
+          npx --yes esbuild@0.25.10 frontend/src/App.js --bundle --loader:.js=jsx --packages=external --outfile=/tmp/healthsolver-legacy-frontend.js
+
+      - name: Preserve all twelve 0.52 predictive model artifacts byte-for-byte
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git diff --exit-code 8a2815f80edf7f34d728da6efdfbf66d7dc59a9f --             predictive/model-heart-disease-v1.json             predictive/model-heart-disease-v1-report.json             predictive/model-ckd-v1.json             predictive/model-breast-cancer-v1.json             predictive/model-hcv-v1.json             predictive/model-hcv-v1-report.json             predictive/model-nhanes-diabetes-v1.json             predictive/model-nhanes-diabetes-v1-report.json             predictive/model-nhis-hypertension-v1.json             predictive/model-nhis-hypertension-v1-report.json             predictive/model-diabetes-readmission-v1.json             predictive/model-diabetes-readmission-v1-report.json             predictive/model-thyroid-recurrence-v1.json             predictive/model-thyroid-recurrence-v1-report.json             predictive/model-heart-failure-mortality-v1.json             predictive/model-heart-failure-mortality-v1-report.json             predictive/model-cdc-diabetes-indicators-v1.json             predictive/model-cdc-diabetes-indicators-v1-report.json             predictive/model-sepsis-hospital-death-v1.json             predictive/model-sepsis-hospital-death-v1-report.json             predictive/model-mi-fatal-outcome-v1.json             predictive/model-mi-fatal-outcome-v1-report.json
+          echo '0.52 MODEL ARTIFACT FREEZE PASS'
+
+      - name: Validate all thirteen predictive artifacts
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,math,pathlib
+          root=pathlib.Path('predictive')
+          reg=json.loads((root/'model-registry-v2.json').read_text())
+          expected=[
+            'HS-UCI-HD-001','HS-UCI-CKD-001','HS-UCI-BC-001','HS-UCI-HCV-001',
+            'HS-NHANES-DM-001','HS-NHIS-HYP-001','HS-UCI-DMREADM-001',
+            'HS-UCI-THYREC-001','HS-UCI-HFDEATH-001','HS-CDC-DIABIND-001',
+            'HS-UCI-SEPSISDEATH-001','HS-UCI-MIFATAL-001','HS-SUPPORT2-HOSPDEATH-001'
+          ]
+          assert reg['schema']=='healthsolver.predictive_registry.v2'
+          assert reg['version']=='0.53.0'
+          assert [e['model_id'] for e in reg['models']]==expected
+          assert len(reg['models'])==13
+
+          for e in reg['models']:
+              p=root/e['file']; assert p.exists(),p
+              m=json.loads(p.read_text())
+              assert m['schema']=='healthsolver.predictive_model.v1'
+              assert m['model_id']==e['model_id']
+              assert m['research_only'] is True and m['not_clinically_validated'] is True
+              fs=m['features']; assert fs and len(fs)==len(set(fs))
+              assert set(m['imputation']['values'])==set(fs)
+              assert set(m['standardization']['mean'])==set(fs)
+              assert set(m['standardization']['scale'])==set(fs)
+              assert set(m['logistic']['coefficients'])==set(fs)
+              assert all(float(m['standardization']['scale'][f])>0 for f in fs)
+              assert 0<float(m['threshold'])<1
+              assert 0<=int(m['abstention']['max_missing_features'])<len(fs)
+              q=m['metrics_test']
+              auc=q.get('auroc',q.get('auroc_weighted'))
+              brier=q.get('brier',q.get('brier_weighted'))
+              assert auc is not None and .5<=float(auc)<=1
+              assert brier is not None and 0<=float(brier)<=1
+              score=float(m['logistic']['intercept'])
+              for f in fs:
+                  v=float(m['imputation']['values'][f])
+                  score+=(v-float(m['standardization']['mean'][f]))/float(m['standardization']['scale'][f])*float(m['logistic']['coefficients'][f])
+              z=float(m['calibration']['intercept'])+float(m['calibration']['slope'])*score
+              prob=1/(1+math.exp(-max(-35,min(35,z))))
+              assert math.isfinite(prob) and 0<prob<1
+              assert e['metrics_test']==q
+              report=root/(e['file'].replace('.json','-report.json'))
+              if report.exists():
+                  rr=json.loads(report.read_text())
+                  if m['model_id']=='HS-UCI-SEPSISDEATH-001':
+                      assert rr['internal_test']==q and rr['external_validation']==m['external_validation']
+                  else:
+                      assert rr==q
+              print(m['model_id'],'PASS',prob)
+
+          m=json.loads((root/'model-support2-hospital-death-v1.json').read_text())
+          assert m['dataset']['instances']==9105 and m['dataset']['centers']==5
+          assert len(m['raw_features'])==16 and len(m['features'])==25
+          assert m['target_definition']['source_name']=='hospdead'
+          assert m['target_definition']['fixed_horizon'] is False
+          assert m['target_definition']['survival_probability'] is False
+          assert 'Split performed before any screening' in m['feature_policy']
+          assert 'no outcome association' in m['feature_policy']
+          assert m['runtime_environment']=={'python':'3.13','numpy':'2.5.3','pandas':'3.0.6','scikit_learn':'1.9.1'}
+          for x in ['sps','aps','surv2m','surv6m','prg2m','prg6m','dnr','dnrday','avtisst','sfdm2','race','income','edu']:
+              assert x in m['excluded_source_fields']
+          assert m['metrics_test']['auroc']>0.81
+          assert m['metrics_test']['auprc']>0.62
+          print('THIRTEEN MODEL STATIC INTEGRITY PASS')
+          PY
+
+      - name: Import legacy FastAPI safely
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check -q fastapi sqlalchemy joblib scikit-learn prometheus-fastapi-instrumentator prometheus-client cryptography
+          python - <<'PY'
+          import os
+          for k in list(os.environ):
+              if k.startswith('ENABLE_LEGACY_'): os.environ.pop(k,None)
+          import backend.main as m
+          paths=set(m.app.openapi().get('paths',{}))
+          assert '/' in paths
+          assert '/predict/predict' in paths
+          assert '/admin/train' not in paths
+          assert '/cnn/analyze' not in paths
+          print('Legacy FastAPI safe import PASS')
+          PY
+
+      - name: Verify release packaging invariants
+        shell: bash
+        run: |
+          set -euxo pipefail
+          grep -q 'HS_INTEGRATED_PREDICTIVE_053' .github/workflows/hs041-repack-pages.yml
+          grep -q "v\['version'\]='0.53.0'" .github/workflows/hs041-repack-pages.yml
+          grep -q 'support2_hospital_death_integrated' .github/workflows/hs041-repack-pages.yml
+          grep -q "shutil.copytree(main/'predictive',public_predictive)" .github/workflows/hs041-repack-pages.yml
+          grep -q '13 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -q 'HS-SUPPORT2-HOSPDEATH-001' predictive/integrated-predictive-ui.js
+          grep -q 'hs53Support2Details' predictive/integrated-predictive-ui.js
+          grep -q 'workflow_dispatch:' .github/workflows/hs053-support2-hospdead.yml
+          grep -q 'numpy==2.5.3 pandas==3.0.6 scikit-learn==1.9.1' .github/workflows/hs053-support2-hospdead.yml
+          grep -q "reg\['version'\] in {'0.52.0','0.53.0'}" .github/workflows/hs053-support2-hospdead.yml
