@@ -1,4 +1,4 @@
-name: HealthSolver 0.51 Full Static Release Audit
+name: HealthSolver 0.51.1 Full Static Release Audit
 # final workflow-freeze qualification
 on:
   push:
@@ -63,7 +63,7 @@ jobs:
             'HS-UCI-SEPSISDEATH-001'
           ]
           assert reg['schema']=='healthsolver.predictive_registry.v2'
-          assert reg['version']=='0.51.0'
+          assert reg['version']=='0.51.1'
           assert [e['model_id'] for e in reg['models']]==expected
           assert len(reg['models'])==11
           for e in reg['models']:
@@ -104,6 +104,8 @@ jobs:
               print(m['model_id'],'PASS',prob)
 
           s=json.loads((root/'model-sepsis-hospital-death-v1.json').read_text())
+          assert s['version']=='1.0.1'
+          assert s['runtime_environment']=={'python':'3.13','numpy':'2.5.3','pandas':'3.0.6','scikit_learn':'1.9.1'}
           assert s['dataset']['uci_id']==827
           assert s['dataset']['doi']=='10.24432/C53C8N'
           assert s['dataset']['license']=='CC BY 4.0'
@@ -117,7 +119,25 @@ jobs:
           assert s['external_validation_status']=='WEAK_GENERALIZATION'
           assert 0.5<=s['external_validation']['auroc']<0.60
           assert 'admission-level' in s['split_limitation']
+          assert 'not every admission can be asserted to satisfy the later Sepsis-3 definition' in s['dataset']['primary_cohort']['scope']
+          assert 'does not treat 9.351 days as a fixed per-patient prediction horizon' in s['target_definition']['interpretation']
           print('ELEVEN MODEL STATIC INTEGRITY PASS')
+          PY
+      - name: Verify 0.51 to 0.51.1 numerical freeze
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git show f3c16504c723792c55a5fed0adc092ce1e42e424:predictive/model-sepsis-hospital-death-v1.json > /tmp/sepsis-0510.json
+          git show f3c16504c723792c55a5fed0adc092ce1e42e424:predictive/model-sepsis-hospital-death-v1-report.json > /tmp/sepsis-0510-report.json
+          python - <<'PY'
+          import json
+          old=json.load(open('/tmp/sepsis-0510.json'))
+          new=json.load(open('predictive/model-sepsis-hospital-death-v1.json'))
+          frozen=['features','field_meta','imputation','standardization','logistic','calibration','threshold','threshold_selection','metrics_test','external_validation','abstention','split_limitation','leakage_review']
+          for k in frozen:
+              assert new[k]==old[k],f'numerical/core drift in {k}'
+          assert json.load(open('/tmp/sepsis-0510-report.json'))==json.load(open('predictive/model-sepsis-hospital-death-v1-report.json'))
+          print('0.51 SEPSIS NUMERICAL FREEZE PASS')
           PY
       - name: Import legacy FastAPI safely
         shell: bash
@@ -139,10 +159,12 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          grep -q 'HS_INTEGRATED_PREDICTIVE_051' .github/workflows/hs041-repack-pages.yml
-          grep -q "v\['version'\]='0.51.0'" .github/workflows/hs041-repack-pages.yml
+          grep -q 'HS_INTEGRATED_PREDICTIVE_0511' .github/workflows/hs041-repack-pages.yml
+          grep -q "v\['version'\]='0.51.1'" .github/workflows/hs041-repack-pages.yml
           grep -q 'uci_sepsis_survival_integrated' .github/workflows/hs041-repack-pages.yml
           grep -q "shutil.copytree(main/'predictive',public_predictive)" .github/workflows/hs041-repack-pages.yml
           grep -q '11 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
           grep -q 'HS-UCI-SEPSISDEATH-001' predictive/integrated-predictive-ui.js
           grep -q 'hs51SepsisDetails' predictive/integrated-predictive-ui.js
+          grep -q 'Le metriche interne non costituiscono validazione clinica/prospettica' predictive/integrated-predictive-ui.js
+          grep -q 'max="5"' predictive/integrated-predictive-ui.js
