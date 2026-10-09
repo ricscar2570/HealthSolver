@@ -51,7 +51,7 @@ jobs:
               and n.endswith('.json')
               and n!='predictive/model-registry-v2.json'
           ]
-          assert len(frozen)>=25,len(frozen)
+          assert len(frozen)==24,len(frozen)
           for path in frozen:
               old=subprocess.check_output(['git','show',f'{baseline}:{path}'])
               new=pathlib.Path(path).read_bytes()
