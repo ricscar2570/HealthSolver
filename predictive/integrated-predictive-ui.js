@@ -1,12 +1,14 @@
 (()=>{
 'use strict';
-if(window.__HS_INTEGRATED_PREDICTIVE_0541__) return;
-window.__HS_INTEGRATED_PREDICTIVE_0541__=true;
+if(window.__HS_INTEGRATED_PREDICTIVE_0550__) return;
+window.__HS_INTEGRATED_PREDICTIVE_0550__=true;
 // Preserve prior release markers so historical regression checks remain valid.
+window.__HS_INTEGRATED_PREDICTIVE_0541__=true;
 window.__HS_INTEGRATED_PREDICTIVE_0540__=true;
 window.__HS_INTEGRATED_PREDICTIVE_0531__=true;
 
 const BUNDLE=window.__HS_PREDICTIVE_BUNDLE__||null;
+const ENSEMBLE=window.__HS_ENSEMBLE_CONFIG__||null;
 if(!BUNDLE?.registry||!BUNDLE?.models) return;
 
 document.getElementById('hs-pe040')?.remove();
@@ -18,9 +20,9 @@ document.getElementById('hs-router041')?.remove();
 // while updating only visible application-release branding.
 (function reconcileReleaseBranding(){
   const replacements=[
-    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.54.1'],
+    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.55.0'],
     [/^HealthSolver\s+0\.38\.0\s*·\s*Massive Public Data \+ Clinical Coach Research Edition\s*·\s*Riccardo Scaringi\s*·\s*Non uso clinico\.?$/i,
-     'HealthSolver 0.54.1 · Scientific Semantics Remediation + eICU Demo Hospital Death Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
+     'HealthSolver 0.55.0 · Ensemble Intelligence Layer + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
   ];
   const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
   const nodes=[];
@@ -107,6 +109,21 @@ style.textContent=`
 #hs-predictive-integrated details{border-top:1px solid #dce8e5;padding-top:12px;margin-top:12px!important}
 #hs-predictive-integrated summary{cursor:pointer;font-size:.98rem}
 #hs-predictive-integrated .hs43-guide{margin-top:18px;padding:14px 16px;border-radius:12px;background:#eef9f7;color:#24423f}
+#hs55Ensemble{margin-top:24px;padding:18px;border:2px solid #314d7a;border-radius:16px;background:#f8fbff}
+#hs55Ensemble .hs55-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}
+#hs55Ensemble .hs55-badge{font-size:.75rem;font-weight:800;letter-spacing:.07em;border-radius:999px;background:#314d7a;color:#fff;padding:7px 10px}
+#hs55EnsembleSummary,#hs55DomainGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:14px}
+#hs55Ensemble .hs55-card{border:1px solid #d4deec;border-radius:12px;background:#fff;padding:13px}
+#hs55Ensemble .hs55-value{font-size:1.65rem;font-weight:800;color:#1b355d;line-height:1.05}
+#hs55Ensemble .hs55-label{font-size:.82rem;color:#5c6d83;margin-top:6px}
+#hs55Ensemble .hs55-domain h4{margin:0 0 8px;font-size:1rem}
+#hs55Ensemble .hs55-domain p{margin:5px 0;font-size:.88rem;line-height:1.35}
+#hs55Ensemble .hs55-state{font-weight:800}
+#hs55Ensemble .hs55-map{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+#hs55Ensemble .hs55-chip{border:1px solid #ccd7e7;border-radius:999px;padding:5px 8px;background:#fff;font-size:.78rem}
+#hs55Ensemble .hs55-chip.on{border-color:#7a4e00;background:#fff8df}
+#hs55Ensemble .hs55-chip.off{border-color:#3f6b62;background:#f2fbf8}
+#hs55Ensemble .hs55-warning{margin-top:12px;padding:11px 13px;border-radius:10px;background:#fff4e5;color:#694100;font-size:.88rem;line-height:1.4}
 aside .nav[data-page="intelligence"] .hs43-nav-badge{display:inline-block;margin-left:7px;padding:2px 6px;border-radius:999px;background:#0d8f80;color:#fff;font-size:.62rem;font-weight:800;letter-spacing:.06em;vertical-align:middle}
 @media(max-width:760px){#hs-predictive-integrated #hs42Coverage{grid-template-columns:1fr}#hs-predictive-integrated .hs43-title{font-size:1.75rem}}
 `;
@@ -123,7 +140,7 @@ wrap.className='card';
 wrap.innerHTML=`
   <div class="hs43-hero">
     <div>
-      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.54.1</div>
+      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.55.0</div>
       <h2 class="hs43-title">Predizioni cliniche di ricerca</h2>
       <p class="hs43-sub">HealthSolver usa lo stesso dossier che hai già compilato per verificare quali modelli sono applicabili e calcolare le stime disponibili. Le funzioni predittive sono qui, in primo piano. Ogni nuovo database entra nello stesso registry e nello stesso dossier.</p>
     </div>
@@ -347,6 +364,24 @@ wrap.innerHTML=`
   </details>
   <h3 style="margin:24px 0 10px;font-size:1.25rem">Risultati predittivi</h3>
   <div id="hs42Results" class="grid"></div>
+  <section id="hs55Ensemble">
+    <div class="hs55-head">
+      <div>
+        <div class="eyebrow">ENSEMBLE INTELLIGENCE · 0.55</div>
+        <h3 style="margin:4px 0 6px">Sintesi complessa multi-modello</h3>
+        <p class="hint" style="margin:0">Combina in modo deterministico solo le uscite dei modelli applicabili, rispettando la soglia interna di ciascun modello. Produce pattern di attivazione, copertura e concordanza: <b>non produce una nuova probabilità clinica globale</b>.</p>
+      </div>
+      <div class="hs55-badge">NON È UNA PROBABILITÀ</div>
+    </div>
+    <div id="hs55EnsembleSummary"></div>
+    <div id="hs55DomainGrid"></div>
+    <div id="hs55Concordance" class="hs55-card" style="margin-top:10px"></div>
+    <div id="hs55Coactivation" class="hs55-card" style="margin-top:10px"></div>
+    <details id="hs55Methodology" style="margin-top:12px">
+      <summary><b>Metodo e limiti dell'Ensemble Intelligence Layer</b></summary>
+      <div id="hs55MethodologyText" class="hint" style="margin-top:8px"></div>
+    </details>
+  </section>
   <div class="notice" style="margin-top:16px"><b>Interpretazione.</b> Ogni percentuale appartiene al proprio modello e al proprio dataset. Non sono probabilità concorrenti di una singola diagnosi e non vanno sommate. Software di ricerca, non diagnosi clinica.</div>
 `;
 
@@ -737,16 +772,125 @@ function renderResult(entry,model,res){
   `;
   return d;
 }
+
+const mean=xs=>xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:null;
+function hs55Threshold(model){
+  const t=Number(model?.threshold);
+  return Number.isFinite(t)&&t>0&&t<1?t:null;
+}
+function hs55ThresholdPosition(p,t){
+  if(!Number.isFinite(p)||!Number.isFinite(t)||t<=0||t>=1) return null;
+  const x=Math.max(0,Math.min(1,p));
+  return x<=t?0.5*(x/t):0.5+0.5*((x-t)/(1-t));
+}
+function hs55Signal(row){
+  if(!row||row.res?.status!=='predicted') return null;
+  const p=Number(row.res.p),t=hs55Threshold(row.model);
+  const position=hs55ThresholdPosition(p,t);
+  if(position===null) return null;
+  return {
+    id:row.model.model_id,
+    title:titleFor(row.entry),
+    p,t,
+    active:p>=t,
+    position,
+    separation:Math.abs(position-0.5)*2
+  };
+}
+function hs55State(index){
+  const rules=ENSEMBLE?.display_rules||{};
+  if(index===null||!Number.isFinite(index)) return 'non valutabile';
+  if(index<=Number(rules.domain_below_max??40)) return rules.labels?.below||'prevalentemente sotto le soglie interne';
+  if(index<=Number(rules.domain_mixed_max??60)) return rules.labels?.mixed||'pattern intermedio/misto';
+  return rules.labels?.above||'prevalentemente sopra le soglie interne';
+}
+function renderEnsemble(rows){
+  const summary=$('hs55EnsembleSummary'),domainsBox=$('hs55DomainGrid'),conc=$('hs55Concordance'),map=$('hs55Coactivation'),method=$('hs55MethodologyText');
+  if(!summary||!domainsBox||!conc||!map||!method) return;
+  if(!ENSEMBLE){
+    summary.innerHTML='<div class="hs55-card"><b>Layer ensemble non disponibile.</b><p class="hint">Le 14 predizioni individuali restano operative e invariate.</p></div>';
+    domainsBox.innerHTML='';conc.innerHTML='';map.innerHTML='';
+    return;
+  }
+  const signals=rows.map(hs55Signal).filter(Boolean);
+  const byId=Object.fromEntries(signals.map(s=>[s.id,s]));
+  const domainResults=(ENSEMBLE.domains||[]).map(d=>{
+    const available=(d.models||[]).map(id=>byId[id]).filter(Boolean);
+    const index=available.length?mean(available.map(x=>x.position))*100:null;
+    const separation=available.length?mean(available.map(x=>x.separation))*100:null;
+    const active=available.filter(x=>x.active).length;
+    return {...d,available,index,separation,active,coverage:available.length/(d.models?.length||1)};
+  });
+  const applicable=signals.length;
+  const active=signals.filter(x=>x.active).length;
+  const evaluableDomains=domainResults.filter(d=>d.available.length);
+  const activeDomains=domainResults.filter(d=>d.active>0).length;
+  const highest=evaluableDomains.slice().sort((a,b)=>(b.index??-1)-(a.index??-1))[0]||null;
+
+  summary.innerHTML=[
+    ['Modelli applicabili',applicable+'/'+rows.length,'I modelli in astensione non valgono zero e non entrano nella sintesi.'],
+    ['Sopra soglia interna',String(active),'Conteggio descrittivo sui soli modelli applicabili.'],
+    ['Domini con segnali',evaluableDomains.length+'/'+domainResults.length,'Copertura dei domini configurati.'],
+    ['Ampiezza co-attivazione',String(activeDomains),'Domini con almeno un modello sopra la propria soglia interna.']
+  ].map(([l,v,h])=>'<div class="hs55-card"><div class="hs55-value">'+v+'</div><div class="hs55-label"><b>'+l+'</b><br>'+h+'</div></div>').join('');
+
+  domainsBox.innerHTML=domainResults.map(d=>{
+    if(!d.available.length) return '<div class="hs55-card hs55-domain"><h4>'+d.label+'</h4><p class="hs55-state">Non valutabile</p><p>0/'+d.models.length+' modelli applicabili.</p><p class="hint">'+d.interpretation+'</p></div>';
+    const rai=d.index.toFixed(0);
+    const sep=d.separation.toFixed(0);
+    return '<div class="hs55-card hs55-domain"><h4>'+d.label+'</h4>'+
+      '<div class="hs55-value">'+rai+'/100 RAI</div>'+
+      '<p class="hs55-state">'+hs55State(d.index)+'</p>'+
+      '<p>'+d.available.length+'/'+d.models.length+' modelli applicabili · '+d.active+' sopra soglia.</p>'+
+      '<p>Separazione media dalla soglia: '+sep+'/100.</p>'+
+      '<p class="hint">'+d.interpretation+'</p></div>';
+  }).join('');
+
+  const group=(ENSEMBLE.concordance_groups||[])[0];
+  if(group){
+    const gs=(group.models||[]).map(id=>byId[id]).filter(Boolean);
+    let state='Non valutabile: servono almeno '+(group.min_applicable||2)+' modelli applicabili.';
+    if(gs.length>=(group.min_applicable||2)){
+      const on=gs.filter(x=>x.active).length;
+      state=on===0?'Concordanza sotto-soglia':on===gs.length?'Concordanza sopra-soglia':'Pattern misto / discordante';
+      state+=' · '+on+'/'+gs.length+' sopra la propria soglia.';
+    }
+    conc.innerHTML='<h4 style="margin:0 0 6px">'+group.label+'</h4><p class="hs55-state">'+state+'</p><p class="hint">'+group.semantics+'</p>';
+  }
+
+  map.innerHTML='<h4 style="margin:0 0 6px">Mappa di co-attivazione dei modelli applicabili</h4>'+
+    '<div class="hs55-map">'+signals.map(s=>'<span class="hs55-chip '+(s.active?'on':'off')+'">'+s.title+' · '+(s.active?'sopra':'sotto')+' soglia · p '+(s.p*100).toFixed(1)+'%</span>').join('')+'</div>'+
+    (highest?'<p class="hint" style="margin-top:10px">Pattern di attivazione più marcato, in senso puramente descrittivo: <b>'+highest.label+'</b> (RAI '+highest.index.toFixed(0)+'/100). Non equivale al dominio clinicamente più rischioso.</p>':'');
+
+  method.innerHTML=
+    '<p><b>RAI:</b> indice senza unità. Per ogni modello applicabile, 0,5 corrisponde alla sua soglia decisionale interna; le posizioni vengono poi mediate a pesi uguali dentro il dominio. Non è una media delle probabilità.</p>'+
+    '<p><b>Separazione:</b> distanza media dalla soglia interna; non è confidenza statistica.</p>'+
+    '<p><b>Concordanza:</b> confronta solo lo stato sopra/sotto soglia e soltanto nel gruppo configurato. Coorti e index time restano differenti.</p>'+
+    '<div class="hs55-warning"><b>Limite vincolante:</b> HealthSolver 0.55 non ha un outcome comune su cui addestrare un meta-modello. Perciò non genera mortalità globale, rischio complessivo, probabilità diagnostica combinata o soglie di triage.</div>';
+
+  window.__HS_LAST_ENSEMBLE__={
+    release:ENSEMBLE.release,
+    applicable_models:applicable,
+    active_models:active,
+    active_domains:activeDomains,
+    domains:domainResults.map(d=>({id:d.id,label:d.label,index:d.index,separation:d.separation,applicable:d.available.length,total:d.models.length,active:d.active,state:hs55State(d.index)})),
+    strongest_descriptive_domain:highest?highest.id:null
+  };
+}
+
 function runAll(){
   const values=dossierCase(),out=$('hs42Results');out.innerHTML='';
   let done=0;
+  const ensembleRows=[];
   for(const {entry,model} of models){
     const res=infer(model,values[model.model_id]||{});
+    ensembleRows.push({entry,model,res});
     if(res.status==='predicted') done++;
     out.append(renderResult(entry,model,res));
   }
   renderCoverage();
-  $('hs42Status').textContent=`Analisi completata: ${done}/${models.length} modelli applicabili con i dati correnti.`;
+  renderEnsemble(ensembleRows);
+  $('hs42Status').textContent=`Analisi completata: ${done}/${models.length} modelli applicabili con i dati correnti. Ensemble Intelligence aggiornato sui soli modelli effettivamente predetti.`;
 }
 $('hs42Run').addEventListener('click',runAll);
 $('hs42Refresh').addEventListener('click',renderCoverage);
