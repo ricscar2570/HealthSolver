@@ -175,7 +175,8 @@ jobs:
               'features':21,
               'source':'https://archive.ics.uci.edu/dataset/891/cdc+diabetes+health+indicators',
               'upstream_source':'CDC Behavioral Risk Factor Surveillance System (BRFSS)',
-              'license':'CC0 / Public Domain for processed dataset; upstream CDC BRFSS public-domain data',
+              'license':'UCI external record: see linked dataset for licensing; linked processed dataset reported as CC0/Public Domain; upstream CDC BRFSS federal data/materials are generally public domain.',
+              'license_note':'The current UCI external-dataset page does not assign its own license and directs users to the linked dataset. HealthSolver retains attribution to UCI, the linked processed dataset, and CDC BRFSS rather than relying on a broader license claim.',
               'missing_values':False,
               'survey_semantics':'Cross-sectional/self-reported health-indicator dataset derived from BRFSS; not a prospective clinical cohort.'
             },
