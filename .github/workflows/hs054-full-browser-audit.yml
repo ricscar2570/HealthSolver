@@ -1,4 +1,4 @@
-name: HealthSolver 0.54 Full Browser E2E
+name: HealthSolver 0.54.1 Full Browser E2E
 on:
   push:
     branches: ['main']
@@ -50,9 +50,10 @@ jobs:
 
           await p.goto(base+'?audit=054-full',{waitUntil:'networkidle',timeout:120000});
           const meta=await fetch(base+'version.json?audit=054-full').then(r=>r.json());
-          ok(meta.version==='0.54.0','release version');
+          ok(meta.version==='0.54.1','release version');
           ok(meta.predictive_model_count===14,'14 metadata models');
           ok(meta.eicu_demo_hospital_death_integrated===true,'eICU metadata flag');
+          ok(meta.eicu_semantics_remediation===true,'eICU semantics remediation flag');
           ok(meta.predictive_models.includes('HS-EICU-DEMO-HOSPDEATH-001'),'eICU metadata model');
 
           for(const x of ['coach','intelligence','hub','massive','case','data','validation','archive','previous']) await nav(x);
