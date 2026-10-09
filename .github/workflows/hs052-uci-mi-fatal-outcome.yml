@@ -1,8 +1,6 @@
 name: HealthSolver 0.52 UCI MI Fatal Outcome
 on:
-  push:
-    branches: ['main']
-    paths: ['.github/workflows/hs052-uci-mi-fatal-outcome.yml']
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
@@ -200,7 +198,7 @@ jobs:
           (out/'model-mi-fatal-outcome-v1-report.json').write_text(json.dumps(metrics,indent=2,sort_keys=True))
 
           reg=json.loads((out/'model-registry-v2.json').read_text())
-          assert reg['version']=='0.51.1',reg['version']
+          assert reg['version'] in {'0.51.1','0.52.0'},reg['version']
           old=[m for m in reg['models'] if m['model_id']!='HS-UCI-MIFATAL-001']
           assert len(old)==11,[m['model_id'] for m in old]
           reg['version']='0.52.0'
