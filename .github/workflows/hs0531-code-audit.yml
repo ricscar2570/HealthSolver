@@ -1,0 +1,134 @@
+name: HealthSolver 0.53.1 Code Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs0531-code-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Parse and repository integrity
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git fsck --full
+          ! git grep -nE '^(<<<<<<<|=======|>>>>>>>)' -- . ':!README.MD'
+          python -m compileall -q backend dashboard tests
+          for f in predictive/*.js; do node --check "$f"; done
+          python - <<'PY'
+          import json,pathlib
+          for p in pathlib.Path('predictive').glob('*.json'):
+              json.loads(p.read_text(encoding='utf-8'))
+          print('PARSE PASS')
+          PY
+
+      - name: Bundle and lint legacy React
+        shell: bash
+        run: |
+          set -euxo pipefail
+          npx --yes esbuild@0.25.10 frontend/src/App.js --bundle --loader:.js=jsx --packages=external --outfile=/tmp/healthsolver-legacy-frontend.js
+          npx --yes eslint@8 frontend/src --no-eslintrc --env browser,es6             --parser-options '{"ecmaVersion":2022,"sourceType":"module","ecmaFeatures":{"jsx":true}}'             --rule 'no-undef:error'
+          ! grep -R "http://localhost:8000" frontend/src/components
+          grep -q "__HEALTHSOLVER_API_BASE_URL__" frontend/src/apiBase.js
+          grep -q "useState, useEffect" frontend/src/components/PACSViewer.js
+          echo 'LEGACY REACT STATIC PASS'
+
+      - name: Install minimal legacy Python dependencies
+        run: |
+          python -m pip install --disable-pip-version-check -q             pytest fastapi sqlalchemy pandas numpy joblib scikit-learn mlflow redis             prometheus-fastapi-instrumentator prometheus-client cryptography requests
+
+      - name: Run isolated Python tests
+        run: pytest -q tests/test_pipeline.py
+
+      - name: Verify legacy backend optional analytics loads safely
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import os
+          for k in list(os.environ):
+              if k.startswith('ENABLE_LEGACY_'): os.environ.pop(k,None)
+          import backend.main as m
+          paths=set(m.app.openapi()['paths'])
+          assert '/' in paths
+          assert '/predict/predict' in paths
+          assert '/dashboard/data' not in paths
+          assert '/dashboard/predict' not in paths
+          print('DEFAULT LEGACY API PASS')
+          PY
+          ENABLE_LEGACY_ANALYTICS=1 python - <<'PY'
+          import asyncio
+          import backend.main as m
+          paths=set(m.app.openapi()['paths'])
+          assert '/dashboard/data' in paths
+          assert '/dashboard/predict' in paths
+          from backend.routes.analytics import get_patient_data, predict_condition
+          rows=asyncio.run(get_patient_data())
+          assert len(rows)==2 and rows[0]['age']==45
+          try:
+              asyncio.run(predict_condition())
+          except Exception as exc:
+              assert getattr(exc,'status_code',None)==503
+              assert 'prophet' in str(getattr(exc,'detail','')).lower()
+          else:
+              raise AssertionError('Predict endpoint should be unavailable without optional Prophet')
+          print('OPTIONAL ANALYTICS LAZY-LOAD PASS')
+          PY
+
+      - name: Verify legacy dashboard source regression fixes
+        shell: bash
+        run: |
+          set -euxo pipefail
+          grep -q 'HEALTHSOLVER_API_BASE_URL' dashboard/dashboard.py
+          grep -q 'df\["age"\]' dashboard/dashboard.py
+          ! grep -q 'df\["Age"\]' dashboard/dashboard.py
+          grep -q 'timeout=15' dashboard/dashboard.py
+          echo 'LEGACY DASHBOARD PASS'
+
+      - name: Freeze predictive numerical cores
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git diff --exit-code 8a2815f80edf7f34d728da6efdfbf66d7dc59a9f --             predictive/model-heart-disease-v1.json             predictive/model-heart-disease-v1-report.json             predictive/model-ckd-v1.json             predictive/model-breast-cancer-v1.json             predictive/model-hcv-v1.json             predictive/model-hcv-v1-report.json             predictive/model-nhanes-diabetes-v1.json             predictive/model-nhanes-diabetes-v1-report.json             predictive/model-nhis-hypertension-v1.json             predictive/model-nhis-hypertension-v1-report.json             predictive/model-diabetes-readmission-v1.json             predictive/model-diabetes-readmission-v1-report.json             predictive/model-thyroid-recurrence-v1.json             predictive/model-thyroid-recurrence-v1-report.json             predictive/model-heart-failure-mortality-v1.json             predictive/model-heart-failure-mortality-v1-report.json             predictive/model-cdc-diabetes-indicators-v1.json             predictive/model-cdc-diabetes-indicators-v1-report.json             predictive/model-sepsis-hospital-death-v1.json             predictive/model-sepsis-hospital-death-v1-report.json             predictive/model-mi-fatal-outcome-v1.json             predictive/model-mi-fatal-outcome-v1-report.json
+          git show c05229c5046a8efc699e5c1ecc3126e780c5df53:predictive/model-support2-hospital-death-v1.json > /tmp/support2-0530.json
+          git show c05229c5046a8efc699e5c1ecc3126e780c5df53:predictive/model-support2-hospital-death-v1-report.json > /tmp/support2-0530-report.json
+          python - <<'PY'
+          import json
+          old=json.load(open('/tmp/support2-0530.json'))
+          new=json.load(open('predictive/model-support2-hospital-death-v1.json'))
+          frozen=['features','raw_features','encoding_map','field_meta','imputation','standardization','logistic','calibration','threshold','threshold_selection','metrics_test','feature_policy','excluded_source_fields','target_definition','temporal_semantics','leakage_review']
+          for k in frozen:
+              assert new[k]==old[k],f'numerical/core drift in {k}'
+          assert json.load(open('/tmp/support2-0530-report.json'))==json.load(open('predictive/model-support2-hospital-death-v1-report.json'))
+          assert new['version']=='1.0.1'
+          assert new['abstention']['max_missing_raw_features']==4
+          assert new['abstention']['required_raw_features']==['sex','dzgroup','ca']
+          print('0.53 SUPPORT2 NUMERICAL FREEZE PASS')
+          PY
+
+      - name: Verify SUPPORT2 runtime wiring
+        shell: bash
+        run: |
+          set -euxo pipefail
+          grep -q 'HS_INTEGRATED_PREDICTIVE_0531' predictive/integrated-predictive-ui.js
+          grep -q "hrt:num('hs53_hrt')" predictive/integrated-predictive-ui.js
+          grep -q "crea:num('hs53_crea')" predictive/integrated-predictive-ui.js
+          grep -q "sod:num('hs53_sod')" predictive/integrated-predictive-ui.js
+          ! grep -q "hrt:first(num('ci_pulse')" predictive/integrated-predictive-ui.js
+          ! grep -q "crea:first(num('ci_creatinine')" predictive/integrated-predictive-ui.js
+          grep -q 'max_missing_raw_features' predictive/integrated-predictive-ui.js
+          grep -q 'requiredRawMissing' predictive/integrated-predictive-ui.js
+          echo 'SUPPORT2 WIRING PASS'
