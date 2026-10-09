@@ -1,6 +1,5 @@
 name: HealthSolver Published Release Smoke
-# final 0.55 rerun
-# 0.55.0 ensemble-intelligence public parity
+# 0.56.0 common-outcome transport + ensemble public parity
 on:
   push:
     branches: ['main']
@@ -25,7 +24,7 @@ jobs:
           curl -L --fail --retry 8 --retry-delay 3 "$base/predictive/model-registry-v2.json?audit=published" -o live-registry.json
           python - <<'PY'
           import json,pathlib,urllib.request
-          expected_release='0.55.0'
+          expected_release='0.56.0'
           expected_registry='0.54.1'
           live=json.load(open('live-version.json'))
           local=json.load(open('predictive/model-registry-v2.json'))
@@ -40,6 +39,10 @@ jobs:
           assert live.get('eicu_semantics_remediation') is True,live
           assert live.get('ensemble_intelligence_integrated') is True,live
           assert live.get('ensemble_intelligence_version')=='1.0.0',live
+          assert live.get('common_outcome_transport_integrated') is True,live
+          assert live.get('common_outcome_transport_version')=='1.0.0',live
+          assert live.get('common_outcome_transport_model_id')=='HS-COMMON-HOSPDEATH-TRANSPORT-001',live
+          assert live.get('common_outcome_transport_qualification')=='WEAK_TRANSPORT_GENERALIZATION',live
           assert len(ids)==len(set(ids))
           for e in local['models']:
               url=f"https://ricscar2570.github.io/HealthSolver/predictive/{e['file']}?audit=published"
@@ -51,9 +54,15 @@ jobs:
               remote_ensemble=json.load(r)
           local_ensemble=json.load(open('predictive/ensemble-intelligence-v1.json'))
           assert remote_ensemble==local_ensemble,'public ensemble config differs from main'
-          print({'version':live['version'],'registry':local['version'],'models':ids,'ensemble':local_ensemble['version'],'source_sha256':live['source_sha256']})
+          with urllib.request.urlopen("https://ricscar2570.github.io/HealthSolver/predictive/common-outcome-transport-v1.json?audit=published",timeout=30) as r:
+              remote_transport=json.load(r)
+          local_transport=json.load(open('predictive/common-outcome-transport-v1.json'))
+          assert remote_transport==local_transport,'public transport model differs from main'
+          assert local_transport['base_predictive_model_count_preserved']==14
+          assert local_transport['qualification_status']=='WEAK_TRANSPORT_GENERALIZATION'
+          print({'version':live['version'],'registry':local['version'],'models':ids,'ensemble':local_ensemble['version'],'transport':local_transport['version'],'transport_qualification':local_transport['qualification_status'],'source_sha256':live['source_sha256']})
           PY
           curl -L --fail --retry 8 --retry-delay 3 "$base/predictive/integrated-predictive-ui.js?audit=published" -o live-ui.js
           cmp predictive/integrated-predictive-ui.js live-ui.js
           curl -L --fail --retry 8 --retry-delay 3 "$base/?audit=published" -o live-index.html
-          grep -q 'HealthSolver 0.55.0' live-index.html
+          grep -q 'HealthSolver 0.56.0' live-index.html
