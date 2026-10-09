@@ -42,6 +42,8 @@ jobs:
 
           src=pathlib.Path('/tmp/eicu054-repro')
           stored=json.loads(pathlib.Path('predictive/model-eicu-demo-hospital-death-v1.json').read_text())
+          assert stored['version']=='1.0.1'
+          assert 'meds=1' in stored['input_consistency_policy']
           patient=pd.read_csv(src/'patient.csv.gz',low_memory=False)
           aps=pd.read_csv(src/'apacheApsVar.csv.gz',low_memory=False)
           assert patient.shape==(2520,29)
@@ -153,5 +155,5 @@ jobs:
           print('IMPUTATION STANDARDIZATION PASS')
           print('CALIBRATION THRESHOLD PASS')
           print('METRICS PASS')
-          print('EICU INDEPENDENT REPRODUCTION PASS')
+          print('EICU 0.54.1 INDEPENDENT REPRODUCTION PASS')
           PY
