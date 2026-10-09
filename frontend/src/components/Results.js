@@ -10,7 +10,7 @@ const Results = () => {
 
   // Esempio: usa un altro endpoint se vuoi visualizzare altro, ad esempio
   // una distribuzione di rischio o dati paziente da /dashboard/data
-  // const patientDataApiEndpoint = 'http://localhost:8000/dashboard/data';
+  // const patientDataApiEndpoint = apiUrl('/dashboard/data');
 
   return (
     <div style={{ border: '1px solid #ccc', padding: '20px', margin: '20px 0' }}>
