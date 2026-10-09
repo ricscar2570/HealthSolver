@@ -1,4 +1,4 @@
-# HealthSolver 0.49.1 — Scientific Semantics Remediation + Predictive-First UI
+# HealthSolver 0.50 — CDC Diabetes Health Indicators Integration + Predictive-First UI
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.49.1 line.
+The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.50 line.
 
 ## What HealthSolver does
 
@@ -44,7 +44,7 @@ For the deployed GitHub Pages build:
 - core application state, backup and recovery workflows are handled client-side;
 - large static resources are packaged for browser delivery.
 
-The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.49.1 application.
+The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.50 application.
 
 ## Clinical Coach
 
@@ -710,6 +710,119 @@ The remediation adds explicit metadata and UI language for:
 - no censoring/time-to-event modeling;
 - no interpretation as a survival probability or general heart-failure mortality-risk score.
 
+## CDC Diabetes Health Indicators integration 0.50
+
+HealthSolver 0.50 adds one complete database macrostep based on **CDC Diabetes Health Indicators** (UCI ID 891, DOI `10.24432/C53919`) derived from the CDC Behavioral Risk Factor Surveillance System.
+
+The processed dataset contains **253,680 survey respondents** and **21 health/demographic indicators**, with no missing values in the distributed table.
+
+### Source and licensing
+
+- UCI external dataset record: CDC Diabetes Health Indicators
+- UCI ID: **891**
+- DOI: **10.24432/C53919**
+- upstream source: **CDC BRFSS**
+- processed dataset licensing: **CC0 / Public Domain**
+- CDC BRFSS federal survey data/materials: public-domain source material
+
+The 0.50 training workflow first uses the UCI interface and includes a public-dataset fallback so a temporary UCI API failure does not prevent reproducible acquisition. The successful release training run used `ucimlrepo:891`.
+
+### Target semantics
+
+New model:
+
+**HS-CDC-DIABIND-001 — Diabete/prediabete · label BRFSS**
+
+The source target is `Diabetes_binary`:
+
+- **0** = no diabetes in the processed source label;
+- **1** = **prediabetes OR diabetes combined**.
+
+This distinction is critical.
+
+The model does **not**:
+
+- diagnose diabetes;
+- distinguish prediabetes from diabetes;
+- predict incident/future diabetes;
+- provide a future-risk horizon;
+- replace glucose, HbA1c or other diagnostic assessment.
+
+It is a cross-sectional classifier of the source BRFSS-derived label.
+
+Some predictors, including healthcare-use and comorbidity variables, may partly reflect consequences or correlates of already existing disease. For this reason HealthSolver explicitly avoids describing the output as etiologic or prospective diabetes risk.
+
+### Predictors
+
+The model uses all 21 distributed source indicators:
+
+- high blood pressure;
+- high cholesterol;
+- cholesterol check in the previous five years;
+- BMI;
+- lifetime smoking threshold (≥100 cigarettes);
+- stroke history;
+- coronary heart disease / heart attack history;
+- physical activity;
+- daily fruit intake;
+- daily vegetable intake;
+- heavy alcohol consumption;
+- healthcare coverage;
+- inability to see a doctor because of cost;
+- general-health rating;
+- days of poor mental health;
+- days of poor physical health;
+- difficulty walking/climbing stairs;
+- sex;
+- BRFSS age category;
+- education;
+- income.
+
+Age, sex and BMI are reused from the HealthSolver dossier where definitions are compatible. The remaining survey-domain values are collected in the dedicated CDC/BRFSS panel.
+
+### Training design
+
+- total: **253,680**
+- training: **152,208**
+- calibration: **50,736**
+- held-out test: **50,736**
+- positive prevalence: **13.93%**
+- regularized class-balanced logistic regression;
+- training-only standardization;
+- held-out Platt calibration;
+- decision threshold chosen only on the calibration partition using Youden J.
+
+Held-out test metrics:
+
+- AUROC: **0.824**
+- AUPRC: **0.409**
+- Accuracy: **0.694**
+- Brier score: **0.099**
+- Sensitivity: **0.821**
+- Specificity: **0.674**
+- threshold: **0.117**
+
+These are internal held-out measurements from the same processed survey dataset, not external or prospective clinical validation.
+
+### Relationship to the existing NHANES diabetes model
+
+HealthSolver now contains two diabetes-related research outputs with materially different semantics:
+
+- **HS-NHANES-DM-001**: self-reported doctor-diagnosed diabetes among NHANES adults;
+- **HS-CDC-DIABIND-001**: BRFSS-derived binary label combining **prediabetes + diabetes**.
+
+Their probabilities must not be ranked, averaged, summed or interpreted as estimates of the same clinical endpoint.
+
+### Browser integration
+
+HealthSolver 0.50 exposes **10 supervised predictive models** in Predictive-First Expert Mode.
+
+The new section:
+
+**CDC/BRFSS · diabete/prediabete**
+
+contains the survey-domain inputs and shows the target limitation both before prediction and again on the result card.
+
 ## Machine learning and predictive research
 
 HealthSolver is being developed toward a broader machine-learning research architecture in which structured symptoms, history, vital signs, laboratory data and observations can be used as model inputs.
@@ -810,9 +923,9 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.49.1 — Scientific Semantics Remediation / UCI Heart Failure Clinical Records Integration / Predictive-First UI / Clinical Coach Research Edition**
+**HealthSolver 0.50 — CDC Diabetes Health Indicators Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
 
-Current predictive release is represented by the 0.49.1 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and nine supervised model artifacts under `predictive/`.
+Current predictive release is represented by the 0.50 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and ten supervised model artifacts under `predictive/`.
 
 The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
