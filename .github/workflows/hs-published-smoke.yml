@@ -1,4 +1,5 @@
 name: HealthSolver Published Release Smoke
+# final 0.55 rerun
 # 0.55.0 ensemble-intelligence public parity
 on:
   push:
