@@ -1,4 +1,4 @@
-# HealthSolver 0.51.1 — Sepsis Audit & Scientific Semantics Remediation + Predictive-First UI
+# HealthSolver 0.52 — UCI Myocardial Infarction Fatal Outcome Integration + Predictive-First UI
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.51.1 line.
+The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.52 line.
 
 ## What HealthSolver does
 
@@ -44,7 +44,7 @@ For the deployed GitHub Pages build:
 - core application state, backup and recovery workflows are handled client-side;
 - large static resources are packaged for browser delivery.
 
-The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.51.1 application.
+The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.52 application.
 
 ## Clinical Coach
 
@@ -959,6 +959,127 @@ A fresh independent audit re-downloaded the UCI source package and reproduced th
 
 The 0.51.1 static freeze compares the numerical/core fields against the frozen 0.51.0 model and confirms that there is no model drift.
 
+## UCI Myocardial Infarction Complications integration 0.52
+
+HealthSolver 0.52 adds one database macrostep based on **UCI Myocardial Infarction Complications** (UCI ID 579, DOI `10.24432/C53P5M`, CC BY 4.0). The dataset contains **1,700 hospitalized myocardial-infarction records**, **111 input features** and **12 outcome variables**, with missing values in many source fields.
+
+### Target
+
+New model:
+
+**HS-UCI-MIFATAL-001 — Esito letale acuto post-IMA · admission**
+
+The source outcome is `LET_IS`:
+
+- `0` = unknown/alive in the source coding;
+- `1` = cardiogenic shock;
+- `2` = pulmonary edema;
+- `3` = myocardial rupture;
+- `4` = progression of congestive heart failure;
+- `5` = thromboembolism;
+- `6` = asystole;
+- `7` = ventricular fibrillation.
+
+HealthSolver maps `LET_IS != 0` to the positive **fatal-outcome source label**. This is not a general-population mortality probability, not a clinically validated mortality score and not a triage cutoff.
+
+Source counts independently verified:
+
+- nonfatal/source 0: **1,429**
+- fatal/source 1–7: **271**
+- positive prevalence: **15.94%**
+
+### Admission-time leakage policy
+
+UCI documents two intended prediction moments: at hospital admission and on the third hospital day. For the admission model HealthSolver excludes the nine UCI input columns that are only available dynamically after admission:
+
+`93, 94, 95, 100, 101, 102, 103, 104, 105`.
+
+HealthSolver also excludes treatment/medication variables from its compact browser model.
+
+The selected feature set was **predeclared before training**. It contains 21 admission-time variables:
+
+- age and sex;
+- prior MI count;
+- exertional-angina history and functional class;
+- recent coronary-heart-disease status;
+- essential and symptomatic hypertension;
+- chronic heart-failure history;
+- systolic and diastolic pressure at ICU admission;
+- pulmonary edema at ICU admission;
+- cardiogenic shock at ICU admission;
+- paroxysmal atrial fibrillation at admission/pre-hospital stage;
+- ventricular fibrillation at admission/pre-hospital stage;
+- right-ventricular MI;
+- potassium;
+- sodium;
+- leukocyte count;
+- ESR;
+- symptom/CHD-attack-to-hospital time category.
+
+No feature was added or removed in response to held-out test performance.
+
+Shock, pulmonary edema and arrhythmias present at admission are retained because UCI explicitly defines them as admission/pre-hospital variables. They are strong baseline severity markers and are conceptually close to several eventual lethal causes, so the model must **not** be interpreted causally.
+
+### Training
+
+Pinned environment:
+
+- Python **3.13**
+- NumPy **2.5.3**
+- pandas **3.0.6**
+- scikit-learn **1.9.1**
+
+Split:
+
+- total: **1,700**
+- training: **1,020**
+- calibration: **340**
+- held-out test: **340**
+
+Model:
+
+- class-balanced regularized logistic regression;
+- training-only median imputation;
+- training-only standardization;
+- held-out Platt calibration;
+- threshold selected only on calibration data using Youden J.
+
+Held-out test:
+
+- AUROC: **0.826**
+- AUPRC: **0.582**
+- Brier: **0.098**
+- accuracy at the calibration-selected threshold: **0.559**
+- sensitivity for fatal outcome: **0.907**
+- specificity for nonfatal outcome: **0.493**
+- threshold: **0.0921**
+
+The threshold deliberately reflects the calibration-set Youden operating point and favors sensitivity. It is **not a clinical intervention or triage cutoff**.
+
+### Independent reproduction
+
+The release model is independently reproducible from the UCI `MI.data` file. A separate workflow re-downloads the source and reproduces:
+
+- source dimensions and `LET_IS` distribution;
+- the exact predeclared 21-feature policy;
+- deterministic train/calibration/test split;
+- training medians and missingness;
+- standardization;
+- logistic coefficients;
+- Platt calibration;
+- Youden threshold;
+- held-out metrics and confusion matrix.
+
+### Browser integration
+
+HealthSolver 0.52 exposes **12 supervised models** in Predictive-First Expert Mode.
+
+The new panel:
+
+**Infarto miocardico acuto · esito letale sorgente**
+
+reuses compatible dossier fields for age, sex, blood pressure, sodium and potassium and exposes source-specific admission fields for the remaining predictors. The result card explicitly identifies the output as the `LET_IS` source label and warns that the threshold is not a triage cutoff.
+
 ## Machine learning and predictive research
 
 HealthSolver is being developed toward a broader machine-learning research architecture in which structured symptoms, history, vital signs, laboratory data and observations can be used as model inputs.
@@ -1059,9 +1180,9 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.51.1 — Sepsis Audit & Scientific Semantics Remediation / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
+**HealthSolver 0.52 — UCI Myocardial Infarction Fatal Outcome Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
 
-Current predictive release is represented by the 0.51.1 audit checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and eleven supervised model artifacts under `predictive/`.
+Current predictive release is represented by the 0.52 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and twelve supervised model artifacts under `predictive/`.
 
 The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
