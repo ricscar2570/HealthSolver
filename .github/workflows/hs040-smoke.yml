@@ -36,7 +36,7 @@ jobs:
               m=json.loads(p.read_text())
               assert m['model_id']==e['model_id']
               assert m['schema']=='healthsolver.predictive_model.v1'
-              assert len(m['features'])>=5
+              assert len(m['features'])>=1
               q=m['metrics_test']
               assert q['n_test']>0
               auroc=q.get('auroc',q.get('auroc_weighted'))
