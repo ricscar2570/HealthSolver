@@ -863,7 +863,7 @@ function renderEnsemble(rows){
     (highest?'<p class="hint" style="margin-top:10px">Pattern di attivazione più marcato, in senso puramente descrittivo: <b>'+highest.label+'</b> (RAI '+highest.index.toFixed(0)+'/100). Non equivale al dominio clinicamente più rischioso.</p>':'');
 
   method.innerHTML=
-    '<p><b>RAI:</b> indice senza unità. Per ogni modello applicabile, 0,5 corrisponde alla sua soglia decisionale interna; le posizioni vengono poi mediate a pesi uguali dentro il dominio. Non è una media delle probabilità.</p>'+
+    '<p><b>Research Activation Index (RAI):</b> indice senza unità. Per ogni modello applicabile, 0,5 corrisponde alla sua soglia decisionale interna; le posizioni vengono poi mediate a pesi uguali dentro il dominio. Non è una media delle probabilità.</p>'+
     '<p><b>Separazione:</b> distanza media dalla soglia interna; non è confidenza statistica.</p>'+
     '<p><b>Concordanza:</b> confronta solo lo stato sopra/sotto soglia e soltanto nel gruppo configurato. Coorti e index time restano differenti.</p>'+
     '<div class="hs55-warning"><b>Limite vincolante:</b> HealthSolver 0.55 non ha un outcome comune su cui addestrare un meta-modello. Perciò non genera mortalità globale, rischio complessivo, probabilità diagnostica combinata o soglie di triage.</div>';
