@@ -136,7 +136,9 @@ jobs:
           console.log('Expert extraction/analysis PASS');
 
           stage('SCIENTIFIC SEMANTICS PRESENT');
-          const semText=await page.locator('#hs49HeartFailureDetails').innerText();
+          const semDetails=page.locator('#hs49HeartFailureDetails');
+          await semDetails.evaluate(el=>{el.open=true});
+          const semText=await semDetails.innerText();
           must(semText.includes('Faisalabad'),'Faisalabad cohort scope missing');
           must(semText.includes('4 a 285 giorni'),'variable follow-up disclosure missing');
           must(semText.includes('non è una probabilità di sopravvivenza'),'survival limitation missing');
