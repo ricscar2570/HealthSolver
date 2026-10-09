@@ -1,0 +1,157 @@
+name: HealthSolver 0.54 eICU Independent Reproduction
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs054-eicu-independent-reproduction.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install pinned stack
+        run: python -m pip install --disable-pip-version-check -q numpy==2.5.3 pandas==3.0.6 scikit-learn==1.9.1
+      - name: Re-download source and reproduce model
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p /tmp/eicu054-repro
+          cd /tmp/eicu054-repro
+          base='https://physionet.org/files/eicu-crd-demo/2.0.1'
+          for f in patient.csv.gz apacheApsVar.csv.gz; do
+            curl -L --fail --retry 5 --retry-delay 2 --connect-timeout 15 --max-time 180 -o "$f" "$base/$f"
+          done
+          cd "$GITHUB_WORKSPACE"
+          python - <<'PY'
+          import json,math,pathlib
+          import numpy as np
+          import pandas as pd
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import accuracy_score,average_precision_score,brier_score_loss,confusion_matrix,roc_auc_score,roc_curve
+          from sklearn.model_selection import StratifiedGroupKFold
+
+          src=pathlib.Path('/tmp/eicu054-repro')
+          stored=json.loads(pathlib.Path('predictive/model-eicu-demo-hospital-death-v1.json').read_text())
+          patient=pd.read_csv(src/'patient.csv.gz',low_memory=False)
+          aps=pd.read_csv(src/'apacheApsVar.csv.gz',low_memory=False)
+          assert patient.shape==(2520,29)
+          assert aps.shape==(2205,26)
+          print('EICU SOURCE PASS')
+
+          first=patient.loc[patient['unitvisitnumber'].eq(1)].copy()
+          cohort=first.merge(aps,on='patientunitstayid',how='inner',validate='one_to_one')
+          cohort['target']=cohort['hospitaldischargestatus'].astype('string').str.strip().str.lower().map({'alive':0,'expired':1})
+          cohort=cohort.loc[cohort['target'].notna()].copy()
+          cohort['target']=cohort['target'].astype(int)
+          assert len(cohort)==2004
+          assert cohort['target'].value_counts().sort_index().to_dict()=={0:1831,1:173}
+          print('COHORT PASS')
+
+          for c in ['temperature','respiratoryrate','heartrate','meanbp','glucose','sodium','creatinine']:
+              cohort[c]=pd.to_numeric(cohort[c],errors='coerce')
+              cohort.loc[cohort[c]<0,c]=np.nan
+
+          meds=pd.to_numeric(cohort['meds'],errors='coerce')
+          eyes=pd.to_numeric(cohort['eyes'],errors='coerce')
+          motor=pd.to_numeric(cohort['motor'],errors='coerce')
+          verbal=pd.to_numeric(cohort['verbal'],errors='coerce')
+          valid=(meds.eq(0)&eyes.between(1,4)&motor.between(1,6)&verbal.between(1,5))
+          cohort['gcs_total']=np.where(valid,eyes+motor+verbal,np.nan)
+          cohort['gcs_unscorable_meds']=np.where(meds.lt(0)|meds.isna(),np.nan,meds.eq(1).astype(float))
+          age_raw=cohort['age'].astype('string').str.strip()
+          cohort['age_numeric']=pd.to_numeric(age_raw.replace({'> 89':'90'}),errors='coerce')
+          cohort['age_over_89']=np.where(age_raw.isna(),np.nan,(age_raw=='> 89').astype(float))
+          cohort['male']=cohort['gender'].astype('string').str.strip().str.lower().map({'male':1.0,'female':0.0})
+
+          features=['age_numeric','age_over_89','male','gcs_total','gcs_unscorable_meds','temperature','respiratoryrate','heartrate','meanbp','glucose','sodium','creatinine']
+          assert features==stored['features']
+
+          y=cohort.target.to_numpy()
+          groups=cohort.uniquepid.astype(str).to_numpy()
+          folds=np.full(len(cohort),-1,dtype=int)
+          sgkf=StratifiedGroupKFold(n_splits=5,shuffle=True,random_state=5401)
+          for fold,(_,idx) in enumerate(sgkf.split(np.zeros((len(cohort),1)),y,groups)):
+              folds[idx]=fold
+          cohort['partition']=np.where(folds==0,'test',np.where(folds==1,'calibration','train'))
+          train=cohort.loc[cohort.partition.eq('train')]
+          cal=cohort.loc[cohort.partition.eq('calibration')]
+          test=cohort.loc[cohort.partition.eq('test')]
+          assert (len(train),len(cal),len(test))==(1200,402,402)
+          for a,b in [('train','calibration'),('train','test'),('calibration','test')]:
+              assert not (set(cohort.loc[cohort.partition.eq(a),'uniquepid'].astype(str)) & set(cohort.loc[cohort.partition.eq(b),'uniquepid'].astype(str)))
+          print('PATIENT-GROUP SPLIT PASS')
+
+          medians={f:float(train[f].median()) for f in features}
+          def matrix(df):
+              X=pd.DataFrame(index=df.index)
+              for f in features:X[f]=pd.to_numeric(df[f],errors='coerce').fillna(medians[f]).astype(float)
+              return X
+          Xtr,Xca,Xte=matrix(train),matrix(cal),matrix(test)
+          mean={f:float(Xtr[f].mean()) for f in features}
+          scale={f:float(Xtr[f].std(ddof=0)) for f in features}
+          scale={f:(v if math.isfinite(v) and v>0 else 1.0) for f,v in scale.items()}
+          def z(X):
+              Z=X.copy()
+              for f in features:Z[f]=(Z[f]-mean[f])/scale[f]
+              return Z
+          Ztr,Zca,Zte=z(Xtr),z(Xca),z(Xte)
+
+          clf=LogisticRegression(C=0.5,class_weight='balanced',solver='lbfgs',max_iter=5000,random_state=5403)
+          clf.fit(Ztr,train.target.to_numpy())
+          platt=LogisticRegression(C=1e6,solver='lbfgs',max_iter=5000,random_state=5404)
+          raw_cal=clf.decision_function(Zca).reshape(-1,1)
+          platt.fit(raw_cal,cal.target.to_numpy())
+          pcal=platt.predict_proba(raw_cal)[:,1]
+          fpr,tpr,thr=roc_curve(cal.target.to_numpy(),pcal)
+          finite=np.isfinite(thr); idx=int(np.argmax(tpr[finite]-fpr[finite]))
+          threshold=float(thr[finite][idx])
+
+          ptest=platt.predict_proba(clf.decision_function(Zte).reshape(-1,1))[:,1]
+          pred=(ptest>=threshold).astype(int)
+          tn,fp,fn,tp=confusion_matrix(test.target,pred,labels=[0,1]).ravel()
+          metrics={
+              'n_source_unit_stays':2520,'n_source_unique_patients':1841,
+              'n_total':2004,'n_unique_patients':1713,'n_train':1200,'n_calibration':402,'n_test':402,
+              'positive_prevalence_hospital_death':float(cohort.target.mean()),
+              'auroc':float(roc_auc_score(test.target,ptest)),
+              'auprc':float(average_precision_score(test.target,ptest)),
+              'brier':float(brier_score_loss(test.target,ptest)),
+              'accuracy':float(accuracy_score(test.target,pred)),
+              'sensitivity_hospital_death':float(tp/(tp+fn)),
+              'specificity_hospital_survival':float(tn/(tn+fp)),
+              'threshold':threshold,
+              'confusion_matrix':{'tn_survived':int(tn),'fp_death':int(fp),'fn_death':int(fn),'tp_death':int(tp)}
+          }
+
+          def close(a,b,tol=1e-11):
+              assert abs(float(a)-float(b))<=tol,(a,b)
+
+          for f in features:
+              close(medians[f],stored['imputation']['values'][f])
+              close(mean[f],stored['standardization']['mean'][f])
+              close(scale[f],stored['standardization']['scale'][f])
+          close(clf.intercept_[0],stored['logistic']['intercept'])
+          for f,c in zip(features,clf.coef_[0]):close(c,stored['logistic']['coefficients'][f])
+          close(platt.intercept_[0],stored['calibration']['intercept'])
+          close(platt.coef_[0][0],stored['calibration']['slope'])
+          close(threshold,stored['threshold'])
+          for k,v in metrics.items():
+              if isinstance(v,dict):
+                  assert v==stored['metrics_test'][k],(k,v,stored['metrics_test'][k])
+              else: close(v,stored['metrics_test'][k])
+          print('MODEL COEFFICIENTS PASS')
+          print('IMPUTATION STANDARDIZATION PASS')
+          print('CALIBRATION THRESHOLD PASS')
+          print('METRICS PASS')
+          print('EICU INDEPENDENT REPRODUCTION PASS')
+          PY
