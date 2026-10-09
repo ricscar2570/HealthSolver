@@ -23,7 +23,8 @@ jobs:
           python -m pip install --disable-pip-version-check -q numpy pandas scikit-learn
           python - <<'PY'
           import io,json,math,urllib.request,zipfile
-          import numpy as np,pandas as pd
+          import numpy as np,pandas as pd,sklearn
+          print('RUNTIME_VERSIONS',{'numpy':np.__version__,'pandas':pd.__version__,'scikit_learn':sklearn.__version__})
           from sklearn.linear_model import LogisticRegression
           from sklearn.metrics import accuracy_score,roc_auc_score,average_precision_score,brier_score_loss,confusion_matrix,roc_curve
           from sklearn.model_selection import train_test_split
