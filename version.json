@@ -1,7 +1,7 @@
 {
   "app": "HealthSolver",
-  "version": "0.52.0",
-  "release": "UCI Myocardial Infarction Fatal Outcome Integration + Predictive-First UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition",
+  "version": "0.53.0",
+  "release": "SUPPORT2 Hospital Death Integration + Predictive-First UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition",
   "base_release": "0.38.0",
   "base_source_sha256": "c1bef787551183db369643036e9fc9a7f64ddec515ad804066b9a37279df6b68",
   "predictive_registry": "predictive/model-registry-v2.json",
@@ -17,15 +17,16 @@
     "HS-UCI-HFDEATH-001",
     "HS-CDC-DIABIND-001",
     "HS-UCI-SEPSISDEATH-001",
-    "HS-UCI-MIFATAL-001"
+    "HS-UCI-MIFATAL-001",
+    "HS-SUPPORT2-HOSPDEATH-001"
   ],
   "payload_parts": 7,
-  "source_sha256": "55df7ac97c85ef26055153303262d698fe493ce2839f3b85974a8c8aeb9501e3",
+  "source_sha256": "01a66b12cc740dbc8c9f8c3e5bc2822fe760501893d480f97e66f6060ed33201",
   "predictive_modules_embedded": true,
   "integrated_predictive_ui": true,
   "predictive_first_ui": true,
   "uci_hcv_integrated": true,
-  "predictive_model_count": 12,
+  "predictive_model_count": 13,
   "nhanes_2017_2018_integrated": true,
   "nhis_2023_integrated": true,
   "uci_diabetes_readmission_integrated": true,
@@ -36,5 +37,6 @@
   "cdc_diabetes_indicators_integrated": true,
   "uci_sepsis_survival_integrated": true,
   "sepsis_audit_semantics_remediation": true,
-  "uci_mi_fatal_outcome_integrated": true
+  "uci_mi_fatal_outcome_integrated": true,
+  "support2_hospital_death_integrated": true
 }
