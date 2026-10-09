@@ -63,6 +63,7 @@ jobs:
           if(!detail.includes('non uno score di mortalità clinicamente validato')) throw new Error('validation warning missing');
           if(!detail.includes('9 variabili dinamiche')) throw new Error('dynamic-exclusion warning missing');
           if(!detail.includes('non va interpretata come rischio eziologico indipendente')) throw new Error('causal warning missing');
+          if(!detail.includes('il test finale non è completamente indipendente')) throw new Error('feature-screening limitation missing');
 
           const set=async(id,v)=>{
             const loc=page.locator('#'+id);
@@ -101,6 +102,7 @@ jobs:
           if(!/Test interno: AUROC 0\.826 · Brier 0\.098/.test(text)) throw new Error('MI internal metrics missing');
           if(!text.includes('LET_IS sorgente, non score clinico')) throw new Error('MI result semantics missing');
           if(!text.includes('non è un cut-off di triage')) throw new Error('threshold warning missing');
+          if(!text.includes('metriche interne sono esplorative')) throw new Error('exploratory-metrics warning missing');
 
           const serious=errors.filter(e=>!/Failed to load resource.*api\.fda\.gov/i.test(e));
           if(serious.length) throw new Error(serious.join(' | '));
