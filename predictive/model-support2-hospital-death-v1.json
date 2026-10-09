@@ -1,0 +1,636 @@
+{
+  "abstention": {
+    "max_missing_features": 4,
+    "message": "Prediction withheld when more than four encoded/raw clinical inputs are unavailable."
+  },
+  "calibration": {
+    "intercept": -1.0656293665229593,
+    "method": "Platt scaling on held-out calibration split",
+    "slope": 0.9214498926709748
+  },
+  "dataset": {
+    "centers": 5,
+    "country": "United States",
+    "instances": 9105,
+    "missing_values": true,
+    "name": "SUPPORT2",
+    "original_paper": "SUPPORT Principal Investigators, JAMA 1995;274:1591-1598",
+    "periods": [
+      "1989-1991",
+      "1992-1994"
+    ],
+    "permission": "Permission granted by Vanderbilt Department of Biostatistics dataset page; cite original SUPPORT paper and acknowledge hbiostat.org data source.",
+    "source": "https://hbiostat.org/data/",
+    "uci_external_record": "https://archive.ics.uci.edu/dataset/880/support2"
+  },
+  "encoding_map": {
+    "age": {
+      "kind": "numeric",
+      "raw_key": "age"
+    },
+    "ca__metastatic": {
+      "category": "metastatic",
+      "kind": "category",
+      "raw_key": "ca"
+    },
+    "ca__no": {
+      "category": "no",
+      "kind": "category",
+      "raw_key": "ca"
+    },
+    "ca__yes": {
+      "category": "yes",
+      "kind": "category",
+      "raw_key": "ca"
+    },
+    "crea": {
+      "kind": "numeric",
+      "raw_key": "crea"
+    },
+    "dementia": {
+      "kind": "numeric",
+      "raw_key": "dementia"
+    },
+    "diabetes": {
+      "kind": "numeric",
+      "raw_key": "diabetes"
+    },
+    "dzgroup__ARF/MOSF w/Sepsis": {
+      "category": "ARF/MOSF w/Sepsis",
+      "kind": "category",
+      "raw_key": "dzgroup"
+    },
+    "dzgroup__CHF": {
+      "category": "CHF",
+      "kind": "category",
+      "raw_key": "dzgroup"
+    },
+    "dzgroup__COPD": {
+      "category": "COPD",
+      "kind": "category",
+      "raw_key": "dzgroup"
+    },
+    "dzgroup__Cirrhosis": {
+      "category": "Cirrhosis",
+      "kind": "category",
+      "raw_key": "dzgroup"
+    },
+    "dzgroup__Colon Cancer": {
+      "category": "Colon Cancer",
+      "kind": "category",
+      "raw_key": "dzgroup"
+    },
+    "dzgroup__Coma": {
+      "category": "Coma",
+      "kind": "category",
+      "raw_key": "dzgroup"
+    },
+    "dzgroup__Lung Cancer": {
+      "category": "Lung Cancer",
+      "kind": "category",
+      "raw_key": "dzgroup"
+    },
+    "dzgroup__MOSF w/Malig": {
+      "category": "MOSF w/Malig",
+      "kind": "category",
+      "raw_key": "dzgroup"
+    },
+    "hday": {
+      "kind": "numeric",
+      "raw_key": "hday"
+    },
+    "hrt": {
+      "kind": "numeric",
+      "raw_key": "hrt"
+    },
+    "meanbp": {
+      "kind": "numeric",
+      "raw_key": "meanbp"
+    },
+    "num.co": {
+      "kind": "numeric",
+      "raw_key": "num.co"
+    },
+    "resp": {
+      "kind": "numeric",
+      "raw_key": "resp"
+    },
+    "scoma": {
+      "kind": "numeric",
+      "raw_key": "scoma"
+    },
+    "sex_male": {
+      "category": "male",
+      "kind": "category",
+      "raw_key": "sex"
+    },
+    "sod": {
+      "kind": "numeric",
+      "raw_key": "sod"
+    },
+    "temp": {
+      "kind": "numeric",
+      "raw_key": "temp"
+    },
+    "wblc": {
+      "kind": "numeric",
+      "raw_key": "wblc"
+    }
+  },
+  "excluded_source_fields": [
+    "id",
+    "death",
+    "slos",
+    "d.time",
+    "charges",
+    "totcst",
+    "totmcst",
+    "avtisst",
+    "sfdm2",
+    "sps",
+    "aps",
+    "surv2m",
+    "surv6m",
+    "prg2m",
+    "prg6m",
+    "dnr",
+    "dnrday",
+    "race",
+    "edu",
+    "income",
+    "dzclass",
+    "pafi",
+    "alb",
+    "bili",
+    "ph",
+    "glucose",
+    "bun",
+    "urine",
+    "adlp",
+    "adls",
+    "adlsc"
+  ],
+  "feature_policy": "Split performed before any screening. Feature set chosen from source semantics and training-partition missingness only; no outcome association was used for feature selection. Race, income and education excluded for portability/fairness. Prior prognostic scores, model predictions, physician prognosis, DNR variables, future costs/utilization and post-2-month functional outcome excluded.",
+  "features": [
+    "age",
+    "num.co",
+    "scoma",
+    "hday",
+    "diabetes",
+    "dementia",
+    "meanbp",
+    "wblc",
+    "hrt",
+    "resp",
+    "temp",
+    "crea",
+    "sod",
+    "sex_male",
+    "dzgroup__ARF/MOSF w/Sepsis",
+    "dzgroup__COPD",
+    "dzgroup__CHF",
+    "dzgroup__Cirrhosis",
+    "dzgroup__Coma",
+    "dzgroup__Colon Cancer",
+    "dzgroup__Lung Cancer",
+    "dzgroup__MOSF w/Malig",
+    "ca__no",
+    "ca__yes",
+    "ca__metastatic"
+  ],
+  "field_meta": {
+    "age": {
+      "median": 64.99695,
+      "training_max": 101.84796,
+      "training_min": 18.04199
+    },
+    "ca__metastatic": {
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "ca__no": {
+      "median": 1.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "ca__yes": {
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "crea": {
+      "median": 1.19995117,
+      "training_max": 21.5,
+      "training_min": 0.09999084
+    },
+    "dementia": {
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "diabetes": {
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "dzgroup__ARF/MOSF w/Sepsis": {
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "dzgroup__CHF": {
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "dzgroup__COPD": {
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "dzgroup__Cirrhosis": {
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "dzgroup__Colon Cancer": {
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "dzgroup__Coma": {
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "dzgroup__Lung Cancer": {
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "dzgroup__MOSF w/Malig": {
+      "median": 0.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "hday": {
+      "median": 1.0,
+      "training_max": 148.0,
+      "training_min": 1.0
+    },
+    "hrt": {
+      "median": 100.0,
+      "training_max": 232.0,
+      "training_min": 0.0
+    },
+    "meanbp": {
+      "median": 77.0,
+      "training_max": 195.0,
+      "training_min": 0.0
+    },
+    "num.co": {
+      "median": 2.0,
+      "training_max": 8.0,
+      "training_min": 0.0
+    },
+    "resp": {
+      "median": 24.0,
+      "training_max": 90.0,
+      "training_min": 0.0
+    },
+    "scoma": {
+      "median": 0.0,
+      "training_max": 100.0,
+      "training_min": 0.0
+    },
+    "sex_male": {
+      "median": 1.0,
+      "training_max": 1.0,
+      "training_min": 0.0
+    },
+    "sod": {
+      "median": 137.0,
+      "training_max": 181.0,
+      "training_min": 110.0
+    },
+    "temp": {
+      "median": 36.69531,
+      "training_max": 41.69531,
+      "training_min": 31.69922
+    },
+    "wblc": {
+      "median": 10.5,
+      "training_max": 128.78125,
+      "training_min": 0.0
+    }
+  },
+  "imputation": {
+    "raw_values": {
+      "age": 64.99695,
+      "crea": 1.19995117,
+      "dementia": 0.0,
+      "diabetes": 0.0,
+      "hday": 1.0,
+      "hrt": 100.0,
+      "meanbp": 77.0,
+      "num.co": 2.0,
+      "resp": 24.0,
+      "scoma": 0.0,
+      "sod": 137.0,
+      "temp": 36.69531,
+      "wblc": 10.5
+    },
+    "strategy": "training median for numeric raw fields before encoding",
+    "values": {
+      "age": 64.99695,
+      "ca__metastatic": 0.0,
+      "ca__no": 1.0,
+      "ca__yes": 0.0,
+      "crea": 1.19995117,
+      "dementia": 0.0,
+      "diabetes": 0.0,
+      "dzgroup__ARF/MOSF w/Sepsis": 0.0,
+      "dzgroup__CHF": 0.0,
+      "dzgroup__COPD": 0.0,
+      "dzgroup__Cirrhosis": 0.0,
+      "dzgroup__Colon Cancer": 0.0,
+      "dzgroup__Coma": 0.0,
+      "dzgroup__Lung Cancer": 0.0,
+      "dzgroup__MOSF w/Malig": 0.0,
+      "hday": 1.0,
+      "hrt": 100.0,
+      "meanbp": 77.0,
+      "num.co": 2.0,
+      "resp": 24.0,
+      "scoma": 0.0,
+      "sex_male": 1.0,
+      "sod": 137.0,
+      "temp": 36.69531,
+      "wblc": 10.5
+    }
+  },
+  "leakage_review": "Excludes death, slos, d.time, charges/costs, average TISS days 3-25, sfdm2, SUPPORT/APACHE physiology scores, model survival estimates, physician prognoses, and DNR variables. Day-3 raw physiology is retained because it defines the intended index time.",
+  "logistic": {
+    "coefficients": {
+      "age": 0.24457285064463619,
+      "ca__metastatic": 0.04518205528230446,
+      "ca__no": -0.06548970126172744,
+      "ca__yes": 0.03707149352839695,
+      "crea": 0.11373745393309342,
+      "dementia": -0.04492710101092611,
+      "diabetes": -0.09094499784395454,
+      "dzgroup__ARF/MOSF w/Sepsis": 0.3145181892042041,
+      "dzgroup__CHF": -0.3961231679024641,
+      "dzgroup__COPD": -0.20135564084663937,
+      "dzgroup__Cirrhosis": 0.08527685343829065,
+      "dzgroup__Colon Cancer": -0.2623076647197442,
+      "dzgroup__Coma": 0.15624118820504956,
+      "dzgroup__Lung Cancer": -0.13908365789240168,
+      "dzgroup__MOSF w/Malig": 0.3541971678829348,
+      "hday": 0.26699159088939356,
+      "hrt": 0.19526955488714293,
+      "meanbp": -0.1715729338365211,
+      "num.co": 0.0723063001102771,
+      "resp": -0.009634587480856651,
+      "scoma": 0.6247875275407102,
+      "sex_male": 0.013370476695839245,
+      "sod": -0.034499402532830355,
+      "temp": -0.07332804711277245,
+      "wblc": 0.03749922617981689
+    },
+    "intercept": -0.30227019008935235
+  },
+  "metrics_test": {
+    "accuracy": 0.7380560131795717,
+    "auprc": 0.622152590711349,
+    "auroc": 0.8192116570969079,
+    "brier": 0.14216750344970988,
+    "confusion_matrix": {
+      "fn_death": 109,
+      "fp_death": 368,
+      "tn_survived": 981,
+      "tp_death": 363
+    },
+    "n_calibration": 1821,
+    "n_test": 1821,
+    "n_total": 9105,
+    "n_train": 5463,
+    "positive_prevalence_hospital_death": 0.2591982427237781,
+    "sensitivity_hospital_death": 0.7690677966101694,
+    "specificity_hospital_survival": 0.7272053372868792,
+    "threshold": 0.24330849889113282
+  },
+  "model_id": "HS-SUPPORT2-HOSPDEATH-001",
+  "not_clinically_validated": true,
+  "raw_feature_schema": [
+    {
+      "key": "age",
+      "kind": "numeric",
+      "label": "Et\u00e0",
+      "unit": "anni"
+    },
+    {
+      "categories": [
+        "female",
+        "male"
+      ],
+      "key": "sex",
+      "kind": "categorical",
+      "label": "Sesso"
+    },
+    {
+      "categories": [
+        "ARF/MOSF w/Sepsis",
+        "COPD",
+        "CHF",
+        "Cirrhosis",
+        "Coma",
+        "Colon Cancer",
+        "Lung Cancer",
+        "MOSF w/Malig"
+      ],
+      "key": "dzgroup",
+      "kind": "categorical",
+      "label": "Gruppo diagnostico SUPPORT"
+    },
+    {
+      "key": "num.co",
+      "kind": "numeric",
+      "label": "Numero comorbidit\u00e0",
+      "unit": "conteggio"
+    },
+    {
+      "key": "scoma",
+      "kind": "numeric",
+      "label": "SUPPORT coma score giorno 3",
+      "unit": "score"
+    },
+    {
+      "key": "hday",
+      "kind": "numeric",
+      "label": "Giorno di ricovero all\u2019ingresso nello studio",
+      "unit": "giorni"
+    },
+    {
+      "key": "diabetes",
+      "kind": "binary",
+      "label": "Diabete",
+      "unit": "0=no, 1=s\u00ec"
+    },
+    {
+      "key": "dementia",
+      "kind": "binary",
+      "label": "Demenza",
+      "unit": "0=no, 1=s\u00ec"
+    },
+    {
+      "categories": [
+        "no",
+        "yes",
+        "metastatic"
+      ],
+      "key": "ca",
+      "kind": "categorical",
+      "label": "Cancro"
+    },
+    {
+      "key": "meanbp",
+      "kind": "numeric",
+      "label": "Pressione arteriosa media giorno 3",
+      "unit": "mmHg"
+    },
+    {
+      "key": "wblc",
+      "kind": "numeric",
+      "label": "Leucociti giorno 3",
+      "unit": "10^3/\u00b5L"
+    },
+    {
+      "key": "hrt",
+      "kind": "numeric",
+      "label": "Frequenza cardiaca giorno 3",
+      "unit": "bpm"
+    },
+    {
+      "key": "resp",
+      "kind": "numeric",
+      "label": "Frequenza respiratoria giorno 3",
+      "unit": "atti/min"
+    },
+    {
+      "key": "temp",
+      "kind": "numeric",
+      "label": "Temperatura giorno 3",
+      "unit": "\u00b0C"
+    },
+    {
+      "key": "crea",
+      "kind": "numeric",
+      "label": "Creatinina giorno 3",
+      "unit": "mg/dL"
+    },
+    {
+      "key": "sod",
+      "kind": "numeric",
+      "label": "Sodio giorno 3",
+      "unit": "mEq/L"
+    }
+  ],
+  "raw_features": [
+    "age",
+    "sex",
+    "dzgroup",
+    "num.co",
+    "scoma",
+    "hday",
+    "diabetes",
+    "dementia",
+    "ca",
+    "meanbp",
+    "wblc",
+    "hrt",
+    "resp",
+    "temp",
+    "crea",
+    "sod"
+  ],
+  "release": "HealthSolver 0.53 SUPPORT2 Hospital Death Integration",
+  "research_only": true,
+  "runtime_environment": {
+    "numpy": "2.5.3",
+    "pandas": "3.0.6",
+    "python": "3.13",
+    "scikit_learn": "1.9.1"
+  },
+  "schema": "healthsolver.predictive_model.v1",
+  "standardization": {
+    "mean": {
+      "age": 62.81315175544572,
+      "ca__metastatic": 0.2062969064616511,
+      "ca__no": 0.6529379461834157,
+      "ca__yes": 0.14076514735493317,
+      "crea": 1.772779975800842,
+      "dementia": 0.03276587955335896,
+      "diabetes": 0.19604612850082373,
+      "dzgroup__ARF/MOSF w/Sepsis": 0.38660076880834704,
+      "dzgroup__CHF": 0.15376166941241076,
+      "dzgroup__COPD": 0.10488742449203735,
+      "dzgroup__Cirrhosis": 0.059125022881200806,
+      "dzgroup__Colon Cancer": 0.05546403075233388,
+      "dzgroup__Coma": 0.060955518945634266,
+      "dzgroup__Lung Cancer": 0.09994508511806699,
+      "dzgroup__MOSF w/Malig": 0.07926047958996889,
+      "hday": 4.422661541277686,
+      "hrt": 96.58716790097017,
+      "meanbp": 84.30258099945085,
+      "num.co": 1.8753432180120813,
+      "resp": 23.344316309719932,
+      "scoma": 12.036426871682226,
+      "sex_male": 0.5579352004393191,
+      "sod": 137.54036243822077,
+      "temp": 37.100525916163285,
+      "wblc": 12.247511608493502
+    },
+    "scale": {
+      "age": 15.529178208864783,
+      "ca__metastatic": 0.404646132869207,
+      "ca__no": 0.4760356967888003,
+      "ca__yes": 0.34777912623542706,
+      "crea": 1.6974569649265125,
+      "dementia": 0.1780232476123659,
+      "diabetes": 0.39700383373547193,
+      "dzgroup__ARF/MOSF w/Sepsis": 0.48697085576566285,
+      "dzgroup__CHF": 0.3607201386558827,
+      "dzgroup__COPD": 0.3064083103890371,
+      "dzgroup__Cirrhosis": 0.2358585477579693,
+      "dzgroup__Colon Cancer": 0.22888375225218163,
+      "dzgroup__Coma": 0.2392487066959876,
+      "dzgroup__Lung Cancer": 0.299926766192698,
+      "dzgroup__MOSF w/Malig": 0.27014487958341354,
+      "hday": 9.386752619970583,
+      "hrt": 31.46338548329178,
+      "meanbp": 27.788816954351976,
+      "num.co": 1.3423711219630734,
+      "resp": 9.655680676410457,
+      "scoma": 24.61635990566112,
+      "sex_male": 0.49663217027298573,
+      "sod": 6.015399879455353,
+      "temp": 1.2509467517152826,
+      "wblc": 8.970172696249987
+    }
+  },
+  "target_definition": {
+    "fixed_horizon": false,
+    "interpretation": "Source in-hospital death label among seriously ill hospitalized SUPPORT patients; not 30-day/90-day mortality and not a general-population mortality probability.",
+    "negative": "0 = survived hospitalization",
+    "positive": "1 = death in hospital",
+    "source_name": "hospdead",
+    "survival_probability": false
+  },
+  "task": "Binary research classification of SUPPORT2 hospdead using a predeclared day-3/baseline feature set after split-first protocol.",
+  "temporal_semantics": "Most physiologic assessments are study-day-3 values. The model is therefore a day-3/baseline hospital-outcome classifier, not an admission-time model. Hospital death has no single fixed follow-up duration in this released table.",
+  "threshold": 0.24330849889113282,
+  "threshold_selection": "Youden J maximum on held-out calibration split; evaluated once on untouched held-out test",
+  "version": "1.0.0"
+}

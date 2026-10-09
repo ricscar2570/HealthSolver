@@ -331,8 +331,35 @@
       "target_semantics": "LET_IS != 0 from an admission-time compact feature subset; research source-label classifier, not validated mortality score.",
       "task": "Binary research classification of the UCI LET_IS lethal-outcome label from a predeclared 21-feature admission-time subset; positive class means LET_IS is one of causes 1-7 rather than source value 0.",
       "title": "Esito letale acuto post-IMA \u00b7 admission"
+    },
+    {
+      "file": "model-support2-hospital-death-v1.json",
+      "metrics_test": {
+        "accuracy": 0.7380560131795717,
+        "auprc": 0.622152590711349,
+        "auroc": 0.8192116570969079,
+        "brier": 0.14216750344970988,
+        "confusion_matrix": {
+          "fn_death": 109,
+          "fp_death": 368,
+          "tn_survived": 981,
+          "tp_death": 363
+        },
+        "n_calibration": 1821,
+        "n_test": 1821,
+        "n_total": 9105,
+        "n_train": 5463,
+        "positive_prevalence_hospital_death": 0.2591982427237781,
+        "sensitivity_hospital_death": 0.7690677966101694,
+        "specificity_hospital_survival": 0.7272053372868792,
+        "threshold": 0.24330849889113282
+      },
+      "model_id": "HS-SUPPORT2-HOSPDEATH-001",
+      "target_semantics": "hospdead=1, day-3/baseline source-label classifier; no fixed mortality horizon and not clinically validated.",
+      "task": "Binary research classification of SUPPORT2 hospdead using a predeclared day-3/baseline feature set after split-first protocol.",
+      "title": "SUPPORT2 \u00b7 decesso intraospedaliero \u00b7 day 3"
     }
   ],
   "schema": "healthsolver.predictive_registry.v2",
-  "version": "0.52.0"
+  "version": "0.53.0"
 }
