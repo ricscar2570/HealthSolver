@@ -1,0 +1,112 @@
+name: HealthSolver 0.50 CDC Diabetes Live Browser Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs050-live-browser-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Verify live CDC diabetes integration
+        shell: bash
+        run: |
+          cat > audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const base='https://ricscar2570.github.io/HealthSolver/';
+          const meta=await fetch(base+'version.json?audit=050-cdc').then(r=>r.json());
+          if(meta.version!=='0.50.0') throw new Error('wrong published version '+meta.version);
+          if(meta.predictive_model_count!==10) throw new Error('wrong published model count '+meta.predictive_model_count);
+          if(!meta.predictive_models.includes('HS-CDC-DIABIND-001')) throw new Error('CDC diabetes model missing');
+          if(meta.cdc_diabetes_indicators_integrated!==true) throw new Error('CDC diabetes integration flag missing');
+          const registry=await fetch(base+'predictive/model-registry-v2.json?audit=050-cdc').then(r=>r.json());
+          if(registry.version!=='0.50.0'||registry.models.length!==10) throw new Error('wrong public registry');
+          const model=await fetch(base+'predictive/model-cdc-diabetes-indicators-v1.json?audit=050-cdc').then(r=>r.json());
+          if(model.dataset.instances!==253680||model.features.length!==21) throw new Error('wrong CDC model shape');
+          if(model.target_definition.prediabetes_and_diabetes_combined!==true) throw new Error('target semantics missing');
+          if(model.target_definition.future_risk!==false||model.target_definition.clinical_diagnosis!==false) throw new Error('target limitation flags wrong');
+
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1900}});
+          const errors=[];
+          page.on('pageerror',e=>errors.push('PAGE '+e.message));
+          page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
+          await page.goto(base+'?audit=050-cdc',{waitUntil:'networkidle',timeout:120000});
+          await page.waitForFunction(()=>document.body.innerText.includes('Clinical Coach')&&document.body.innerText.includes('Expert Mode'),{timeout:30000});
+          await page.locator('aside .nav[data-page="intelligence"]').click();
+          await page.waitForTimeout(350);
+          const block=page.locator('#hs-predictive-integrated');
+          const initial=await block.innerText();
+          if(!initial.includes('10 MODELLI SUPERVISIONATI')) throw new Error('ten-model badge missing');
+          if(!initial.includes('Diabete/prediabete · label BRFSS')) throw new Error('CDC coverage card missing');
+
+          const details=page.locator('#hs50CdcDiabetesDetails');
+          if(await details.count()!==1) throw new Error('CDC specialist panel missing');
+          await details.evaluate(el=>{el.open=true});
+          const detailText=await details.innerText();
+          if(!detailText.includes('253.680')) throw new Error('source population count missing');
+          if(!detailText.includes('prediabete e diabete')) throw new Error('combined-target semantics missing');
+          if(!detailText.includes('non è la probabilità futura di sviluppare diabete')) throw new Error('future-risk warning missing');
+
+          await page.locator('#ciAge').fill('64');
+          const sex=page.locator('#ciSex');
+          const opts=await sex.locator('option').evaluateAll(os=>os.map(o=>({v:o.value,t:o.textContent.trim()})));
+          const male=opts.find(o=>/masch|male|^m$/i.test(o.t)||/^(m|male|maschio|1)$/i.test(o.v));
+          if(!male) throw new Error('male option missing');
+          await sex.selectOption(male.v);
+          const bmi=page.locator('#hs45_bmi');
+          await bmi.fill('31');
+          const vals={
+            hs50_high_bp:'1',hs50_high_chol:'1',hs50_chol_check:'1',hs50_smoker_100:'1',
+            hs50_stroke_history:'0',hs50_heart_disease_or_attack:'0',hs50_physical_activity:'1',
+            hs50_fruits_daily:'1',hs50_veggies_daily:'1',hs50_heavy_alcohol:'0',
+            hs50_any_healthcare:'1',hs50_no_doctor_due_cost:'0',hs50_general_health:'3',
+            hs50_mental_health_days:'2',hs50_physical_health_days:'4',hs50_difficulty_walking:'0',
+            hs50_education:'5',hs50_income:'7'
+          };
+          for(const [id,v] of Object.entries(vals)){
+            const loc=page.locator('#'+id);
+            if(await loc.count()!==1) throw new Error('missing CDC control '+id);
+            if((await loc.evaluate(e=>e.tagName))==='SELECT') await loc.selectOption(v); else await loc.fill(v);
+          }
+          await page.locator('#hs42Refresh').click(); await page.waitForTimeout(100);
+          const coverage=page.locator('#hs42Coverage .metric').filter({hasText:'Diabete/prediabete · label BRFSS'});
+          if(await coverage.count()!==1) throw new Error('CDC coverage card missing after data');
+          const coverageText=await coverage.innerText();
+          if(!/21\/21/.test(coverageText)||!/PRONTO ALLA PREDIZIONE/i.test(coverageText)) throw new Error('CDC model not ready: '+coverageText);
+          await page.locator('#hs42Run').click(); await page.waitForTimeout(400);
+          const card=page.locator('#hs42Results .card').filter({hasText:'HS-CDC-DIABIND-001'});
+          if(await card.count()!==1) throw new Error('CDC result card missing');
+          const text=await card.innerText();
+          if(!/%/.test(text)||/Astensione/i.test(text)) throw new Error('CDC probability missing');
+          if(!/AUROC\s+0\.824/i.test(text)) throw new Error('CDC held-out AUROC missing');
+          if(!text.includes('non diagnosi né rischio futuro')) throw new Error('CDC result semantic warning missing');
+          if(!text.includes('non distingue le due condizioni')) throw new Error('combined target result warning missing');
+          const serious=errors.filter(e=>!/Failed to load resource.*api\.fda\.gov/i.test(e));
+          if(serious.length) throw new Error(serious.join(' | '));
+          await page.screenshot({path:'HealthSolver-0.50-CDC-Diabetes.png',fullPage:true});
+          console.log('CDC_RESULT\n'+text);
+          console.log('CDC_COVERAGE\n'+coverageText);
+          console.log('CDC DIABETES LIVE PASS');
+          await browser.close();
+          JS
+          node audit.mjs | tee audit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: healthsolver-050-cdc-diabetes-live
+          path: |
+            HealthSolver-0.50-CDC-Diabetes.png
+            audit.txt
+          retention-days: 14
