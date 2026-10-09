@@ -1,0 +1,170 @@
+name: HealthSolver 0.52 Full Browser E2E Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs052-full-browser-audit.yml']
+permissions:
+  contents: read
+jobs:
+  browser-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: End-to-end audit active 0.52 browser workflows
+        shell: bash
+        run: |
+          cat > audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
+          const base='https://ricscar2570.github.io/HealthSolver/';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:2100},acceptDownloads:true});
+          const errors=[];
+          page.on('pageerror',e=>errors.push('PAGEERROR '+e.message));
+          page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
+          const must=(v,msg)=>{if(!v)throw new Error(msg)};
+          const nav=async p=>{
+            const n=page.locator('aside .nav[data-page="'+p+'"]');
+            must(await n.count()===1,'nav missing '+p);
+            await n.click();await page.waitForTimeout(100);
+            must(await page.locator('#page-'+p).isVisible(),'page not visible '+p);
+          };
+          const set=async(id,v)=>{
+            const loc=page.locator('#'+id);must(await loc.count()===1,'missing '+id);
+            await loc.evaluate((e,val)=>{e.value=String(val);e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));},v);
+          };
+          const selectLabel=async(id,label)=>{const loc=page.locator('#'+id);must(await loc.count()===1,'missing '+id);await loc.selectOption({label});};
+          const download=async(sel,path)=>{
+            const p=page.waitForEvent('download',{timeout:15000});
+            await page.locator(sel).click();const d=await p;await d.saveAs(path);
+            must(fs.existsSync(path)&&fs.statSync(path).size>0,'empty download '+sel);
+          };
+
+          await page.goto(base+'?audit=052-full',{waitUntil:'networkidle',timeout:120000});
+          await page.waitForFunction(()=>document.body.innerText.includes('Clinical Coach')&&document.body.innerText.includes('Expert Mode'),{timeout:30000});
+          const meta=await fetch(base+'version.json?audit=052-full').then(r=>r.json());
+          must(meta.version==='0.52.0','wrong version');
+          must(meta.predictive_model_count===12,'wrong model count');
+          must(meta.uci_mi_fatal_outcome_integrated===true,'MI release flag missing');
+
+          for(const p of ['coach','intelligence','hub','massive','case','data','validation','archive','previous']) await nav(p);
+          console.log('navigation PASS');
+
+          await nav('coach');
+          await page.locator('#coachNewBlank').click();
+          await page.locator('#coachAge').fill('67');
+          await selectLabel('coachSex','Maschile');
+          await page.locator('#coachContinue').click();await page.waitForTimeout(150);
+          must((await page.locator('#page-coach').innerText()).includes('67'),'Coach profile failed');
+          console.log('Coach PASS');
+
+          await nav('intelligence');
+          await page.locator('#ciClear').click();
+          await page.locator('#ciText').fill('Età 64, sesso F, PA 132/78, FC 104, SpO2 93%. Tosse e dispnea. Creatinina 1.4 mg/dL.');
+          await page.locator('#ciExtract').click();await page.waitForTimeout(120);
+          await page.locator('#ciApply').click();await page.waitForTimeout(120);
+          must((await page.locator('#ciAge').inputValue())==='64','Expert age parse failed');
+          must((await page.locator('#ci_systolic').inputValue())==='132','Expert SBP parse failed');
+          if(!(await page.locator('#ciConsent').isChecked()))await page.locator('#ciConsent').check();
+          await page.locator('#ciRun').click();await page.waitForTimeout(250);
+          console.log('Expert extraction/analysis PASS');
+
+          const block=page.locator('#hs-predictive-integrated');
+          must((await block.innerText()).includes('12 MODELLI SUPERVISIONATI'),'12-model badge missing');
+          const coverage=page.locator('#hs42Coverage .metric');
+          must(await coverage.count()===12,'expected 12 coverage cards');
+
+          await set('ciAge',63);await selectLabel('ciSex','Maschile');
+          await set('ci_systolic',130);await set('ci_diastolic',80);
+          await set('ci_potassium',4.1);await set('ci_sodium',136);
+          const mi={
+            hs52_inf_anam:0,hs52_stenok_an:2,hs52_fk_stenok:2,hs52_ibs_post:1,hs52_gb:2,
+            hs52_sim_gipert:0,hs52_zsn_a:0,hs52_pulm_edema:0,hs52_cardiogenic_shock:0,
+            hs52_parox_af:0,hs52_vf:0,hs52_rv_mi:0,hs52_wbc:8.1,hs52_esr:10,hs52_time_to_hospital:4
+          };
+          for(const [id,v] of Object.entries(mi)) await set(id,v);
+          await page.locator('#hs42Refresh').click();await page.waitForTimeout(100);
+          const miCov=page.locator('#hs42Coverage .metric').filter({hasText:'Esito letale acuto post-IMA · admission'});
+          must(await miCov.count()===1,'MI coverage missing');
+          must(/21\/21/.test(await miCov.innerText()),'MI coverage incomplete');
+
+          await page.locator('#hs42Run').click();await page.waitForTimeout(400);
+          const cards=page.locator('#hs42Results>.card');
+          must(await cards.count()===12,'expected 12 result cards');
+          const miCard=cards.filter({hasText:'HS-UCI-MIFATAL-001'});
+          must(await miCard.count()===1,'MI result card missing');
+          const miText=await miCard.innerText();
+          must(/%/.test(miText)&&!/Astensione/i.test(miText),'MI numeric prediction missing');
+          must(miText.includes('LET_IS sorgente, non score clinico'),'MI semantic warning missing');
+          must(miText.includes('non è un cut-off di triage'),'MI threshold warning missing');
+          console.log('12-model registry/result surface PASS');
+
+          await nav('hub');
+          await page.locator('#hubExample').click();await page.waitForTimeout(120);
+          if(!(await page.locator('#hubConsent').isChecked()))await page.locator('#hubConsent').check();
+          await page.locator('#hubAnalyze').click();await page.waitForTimeout(250);
+          console.log('Hub PASS');
+
+          await nav('massive');
+          await page.locator('#mpAge').fill('64');await page.locator('#mpBmi').fill('34.1');await selectLabel('mpSex','Femminile');
+          await page.locator('#mpBrfssRun').click();await page.waitForTimeout(180);
+          const massiveText=await page.locator('#page-massive').innerText();
+          must(massiveText.includes('457.670')&&massiveText.includes('%'),'BRFSS evidence failed');
+          fs.writeFileSync('/tmp/fhir.json',JSON.stringify({resourceType:'Bundle',type:'collection',entry:[{resource:{resourceType:'Patient',id:'audit',gender:'female',birthDate:'1980-01-01'}}]}));
+          await page.locator('#mpFhirFile').setInputFiles('/tmp/fhir.json');await page.waitForTimeout(250);
+          console.log('Massive Public Data PASS');
+
+          await nav('case');
+          await page.locator('#loadExample').click();
+          const consent=page.locator('#consent');
+          if(await consent.count()===1&&!(await consent.isChecked()))await consent.check();
+          await page.locator('#evaluate').click();await page.waitForTimeout(250);
+          must(/probabil|risultat|modello/i.test(await page.locator('#page-case').innerText()),'single model output missing');
+          console.log('Single model PASS');
+
+          await nav('data');
+          await download('#downloadDataset','/tmp/dataset.json');
+          await download('#downloadSchema','/tmp/schema.json');
+          await page.locator('#epochs').selectOption('20');
+          await page.locator('#train').click();
+          await page.waitForFunction(()=>{const b=document.querySelector('#train');return b&&!b.disabled},{timeout:60000});
+          console.log('Data/training PASS');
+
+          await nav('validation');
+          await page.locator('#recompute').click();await page.waitForTimeout(180);
+          must(/AUC|BRIER|sensibil/i.test(await page.locator('#page-validation').innerText()),'validation metrics missing');
+          await download('#exportMetrics','/tmp/metrics.json');
+          console.log('Validation PASS');
+
+          await nav('archive');
+          must(await page.locator('#page-archive').isVisible(),'archive page missing');
+          console.log('Archive surface PASS');
+          await nav('previous');
+          must((await page.locator('#page-previous').innerText()).includes('Visita e laboratori conservati'),'previous marker missing');
+          console.log('Previous functions PASS');
+
+          const serious=errors.filter(e=>!/Failed to load resource.*api\.fda\.gov/i.test(e));
+          console.log('ALL_BROWSER_ERRORS',JSON.stringify(errors,null,2));
+          must(serious.length===0,'browser errors '+serious.join(' | '));
+          await page.screenshot({path:'HealthSolver-0.52-Full-Audit.png',fullPage:true});
+          await browser.close();
+          console.log('FULL ACTIVE-APP E2E PASS');
+          JS
+          node audit.mjs | tee full-browser-audit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: healthsolver-052-full-browser-audit
+          path: |
+            full-browser-audit.txt
+            HealthSolver-0.52-Full-Audit.png
+          retention-days: 14
