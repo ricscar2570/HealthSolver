@@ -1,4 +1,4 @@
-# HealthSolver 0.48 — UCI Thyroid Cancer Recurrence Integration + Predictive-First UI
+# HealthSolver 0.49 — UCI Heart Failure Clinical Records Integration + Predictive-First UI
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.48 line.
+The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.49 line.
 
 ## What HealthSolver does
 
@@ -44,7 +44,7 @@ For the deployed GitHub Pages build:
 - core application state, backup and recovery workflows are handled client-side;
 - large static resources are packaged for browser delivery.
 
-The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.48 application.
+The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.49 application.
 
 ## Clinical Coach
 
@@ -626,6 +626,74 @@ A live Playwright audit on GitHub Pages verifies that:
 - a numeric probability is rendered;
 - the result card reports the held-out AUROC.
 
+## UCI Heart Failure Clinical Records integration 0.49
+
+HealthSolver 0.49 adds one complete database macrostep based on **UCI Heart Failure Clinical Records** (UCI ID 519, DOI `10.24432/C5Z89R`, CC BY 4.0).
+
+The source contains **299 patients with heart failure**, 12 source predictors and the binary target `DEATH_EVENT`. UCI reports no missing values in the source dataset.
+
+### Leakage control
+
+The source variable `time` is the follow-up duration in days. HealthSolver deliberately excludes it from model inputs because it is not a baseline clinical predictor and could leak post-index observation information into a mortality prediction.
+
+The browser model therefore uses **11 baseline/source clinical variables**:
+
+- age;
+- anaemia;
+- creatine phosphokinase / CPK;
+- diabetes;
+- ejection fraction;
+- high blood pressure;
+- platelets;
+- serum creatinine;
+- serum sodium;
+- sex;
+- smoking.
+
+### New predictive model
+
+**HS-UCI-HFDEATH-001 — Mortalità nel follow-up · insufficienza cardiaca**
+
+Research task:
+
+- positive class: `DEATH_EVENT=1`, death recorded during the source follow-up;
+- negative class: `DEATH_EVENT=0`;
+- `time` excluded from predictors;
+- age and sex reused from the existing dossier;
+- compatible creatinine and sodium values may be reused from the dossier;
+- remaining source variables are entered in the dedicated heart-failure specialist panel.
+
+Training design:
+
+- total: **299**
+- training: **179**
+- calibration: **60**
+- held-out test: **60**
+- class-balanced regularized logistic regression;
+- training-derived standardization;
+- held-out Platt calibration;
+- decision threshold selected only on the calibration split using Youden J.
+
+Held-out test metrics:
+
+- AUROC: **0.744**
+- AUPRC: **0.659**
+- Accuracy: **0.683**
+- Brier score: **0.188**
+- Sensitivity: **0.700**
+- Specificity: **0.675**
+- threshold: **0.300**
+
+These are internal held-out results from the same source cohort. They are not external or prospective clinical validation and must not be presented as a validated heart-failure mortality score.
+
+### Browser integration
+
+HealthSolver 0.49 exposes **9 supervised predictive models** in Predictive-First Expert Mode.
+
+The new section **“Insufficienza cardiaca · mortalità nel follow-up”** makes the leakage-control choice visible to the user and never exposes `time` as an input.
+
+The release qualification includes a model-specific smoke test, a live Playwright audit against GitHub Pages, a full static release audit, a published-release synchronization smoke and a complete browser E2E regression audit.
+
 ## Machine learning and predictive research
 
 HealthSolver is being developed toward a broader machine-learning research architecture in which structured symptoms, history, vital signs, laboratory data and observations can be used as model inputs.
@@ -726,9 +794,9 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.48 — UCI Thyroid Cancer Recurrence Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
+**HealthSolver 0.49 — UCI Heart Failure Clinical Records Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
 
-Current predictive release is represented by the 0.48 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and eight supervised model artifacts under `predictive/`.
+Current predictive release is represented by the 0.49 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and nine supervised model artifacts under `predictive/`.
 
 The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
