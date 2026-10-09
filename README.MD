@@ -1297,7 +1297,7 @@ A post-release audit identified two non-numerical issues and one provenance ambi
 
 - the eICU panel previously allowed a numeric GCS together with “GCS non valutabile per farmaci”; eICU source semantics make those states mutually exclusive, so the runtime now ignores/disables numeric GCS when medication makes GCS unscorable;
 - stale README deployment text still referred to 0.53.1/13 models and an older SUPPORT2 fallback policy; both are corrected;
-- PhysioNet's demo landing page describes the sample as selected from 20 larger hospitals, while the distributed v2.0.1 `patient.csv.gz` and `hospital.csv.gz` inspected by HealthSolver contain 186 distinct `hospitalid` values. Because those two source descriptions conflict, HealthSolver does not use or advertise a hospital-count claim for this model. Hospital identifiers are excluded from prediction. citeturn772321search0turn121047search0
+- PhysioNet's demo landing page describes the sample as selected from 20 larger hospitals, while the distributed v2.0.1 `patient.csv.gz` and `hospital.csv.gz` inspected by HealthSolver contain 186 distinct `hospitalid` values. Because those two source descriptions conflict, HealthSolver does not use or advertise a hospital-count claim for this model. Hospital identifiers are excluded from prediction.
 
 The model coefficients, preprocessing, calibration, decision threshold and held-out metrics are unchanged from 0.54.0.
 
