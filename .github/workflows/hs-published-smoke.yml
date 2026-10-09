@@ -23,8 +23,8 @@ jobs:
           curl -L --fail --retry 8 --retry-delay 3 "$base/predictive/model-registry-v2.json?audit=published" -o live-registry.json
           python - <<'PY'
           import json,pathlib,urllib.request
-          expected_release='0.53.1'
-          expected_registry='0.53.1'
+          expected_release='0.54.0'
+          expected_registry='0.54.0'
           live=json.load(open('live-version.json'))
           local=json.load(open('predictive/model-registry-v2.json'))
           public=json.load(open('live-registry.json'))
@@ -32,8 +32,9 @@ jobs:
           assert local['version']==expected_registry,local
           assert public==local,'public registry differs from main registry'
           ids=[m['model_id'] for m in local['models']]
-          assert live['predictive_model_count']==len(ids)==13,(live,ids)
+          assert live['predictive_model_count']==len(ids)==14,(live,ids)
           assert live['predictive_models']==ids,(live['predictive_models'],ids)
+          assert live.get('eicu_demo_hospital_death_integrated') is True,live
           assert len(ids)==len(set(ids))
           for e in local['models']:
               url=f"https://ricscar2570.github.io/HealthSolver/predictive/{e['file']}?audit=published"
@@ -46,4 +47,4 @@ jobs:
           curl -L --fail --retry 8 --retry-delay 3 "$base/predictive/integrated-predictive-ui.js?audit=published" -o live-ui.js
           cmp predictive/integrated-predictive-ui.js live-ui.js
           curl -L --fail --retry 8 --retry-delay 3 "$base/?audit=published" -o live-index.html
-          grep -q 'HealthSolver 0.53.1' live-index.html
+          grep -q 'HealthSolver 0.54.0' live-index.html
