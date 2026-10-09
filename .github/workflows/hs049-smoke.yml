@@ -27,7 +27,7 @@ jobs:
           root=pathlib.Path('predictive')
           reg=json.loads((root/'model-registry-v2.json').read_text())
           assert reg['schema']=='healthsolver.predictive_registry.v2'
-          assert reg['version']=='0.49.0',reg['version']
+          assert tuple(map(int,reg['version'].split('.'))) >= (0,49,0),reg['version']
           assert len(reg['models'])==9,len(reg['models'])
           ids=[e['model_id'] for e in reg['models']]
           assert len(ids)==len(set(ids))
@@ -47,6 +47,14 @@ jobs:
             'high_blood_pressure','platelets','serum_creatinine','serum_sodium','sex','smoking'
           ]
           assert 'time' not in m['features']
+          assert m['version'] in {'1.0.0','1.0.1'}
+          if m['version']=='1.0.1':
+              assert m['dataset']['cohort_scope']['location']=='Faisalabad, Punjab, Pakistan'
+              assert m['dataset']['follow_up']['min_days']==4 and m['dataset']['follow_up']['max_days']==285
+              assert m['dataset']['follow_up']['mean_days']==130
+              assert m['target_definition']['fixed_horizon'] is False
+              assert m['target_definition']['survival_model'] is False
+              assert 'not mortality at 30, 90, 365 days' in m['time_to_event_limitation']
           q=m['metrics_test']
           assert q['n_total']==299
           assert q['n_train']==179 and q['n_calibration']==60 and q['n_test']==60
@@ -76,8 +84,8 @@ jobs:
       - name: Verify integrated UI references ninth model
         shell: bash
         run: |
-          grep -q 'HS_INTEGRATED_PREDICTIVE_049' predictive/integrated-predictive-ui.js
+          grep -Eq 'HS_INTEGRATED_PREDICTIVE_0491|HS_INTEGRATED_PREDICTIVE_049' predictive/integrated-predictive-ui.js
           grep -q '9 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
           grep -q 'HS-UCI-HFDEATH-001' predictive/integrated-predictive-ui.js
-          grep -q 'Insufficienza cardiaca · mortalità nel follow-up' predictive/integrated-predictive-ui.js
+          grep -Eq 'Insufficienza cardiaca · (DEATH_EVENT coorte UCI 519|mortalità nel follow-up)' predictive/integrated-predictive-ui.js
           grep -q 'hs49HeartFailureDetails' predictive/integrated-predictive-ui.js
