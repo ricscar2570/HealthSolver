@@ -1,0 +1,304 @@
+name: HealthSolver 0.56 Common Outcome Transport Build
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs056-common-outcome-transport.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install pinned scientific stack
+        run: python -m pip install --disable-pip-version-check -q numpy==2.5.3 pandas==3.0.6 scikit-learn==1.9.1
+      - name: Download sources and build common-outcome transport model
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p /tmp/hs056
+          python - <<'PY'
+          import io,json,math,pathlib,urllib.request,zipfile,hashlib
+          import numpy as np,pandas as pd,sklearn
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import roc_auc_score,average_precision_score,brier_score_loss,roc_curve,accuracy_score,confusion_matrix
+          from sklearn.model_selection import train_test_split
+
+          OUT=pathlib.Path('predictive')
+          TMP=pathlib.Path('/tmp/hs056')
+          UA={'User-Agent':'HealthSolver/0.56 common-outcome research build'}
+          RUNTIME={'python':'3.13','numpy':np.__version__,'pandas':pd.__version__,'scikit_learn':sklearn.__version__}
+          assert RUNTIME=={'python':'3.13','numpy':'2.5.3','pandas':'3.0.6','scikit_learn':'1.9.1'},RUNTIME
+
+          def get(url):
+              req=urllib.request.Request(url,headers=UA)
+              with urllib.request.urlopen(req,timeout=180) as r:return r.read()
+
+          # 1) UCI sepsis-survival primary cohort.
+          blob=get('https://archive.ics.uci.edu/static/public/827/sepsis+survival+minimal+clinical+records.zip')
+          with zipfile.ZipFile(io.BytesIO(blob)) as outer:
+              inner=outer.read('s41598-020-73558-3_sepsis_survival_dataset.zip')
+          with zipfile.ZipFile(io.BytesIO(inner)) as z:
+              s=pd.read_csv(z.open('s41598-020-73558-3_sepsis_survival_primary_cohort.csv'))
+          assert s.shape==(110204,4)
+          sepsis=pd.DataFrame({
+              'age':pd.to_numeric(s.age_years,errors='coerce'),
+              'male':1-pd.to_numeric(s.sex_0male_1female,errors='coerce'),
+              'death':1-pd.to_numeric(s.hospital_outcome_1alive_0dead,errors='coerce'),
+              'source':'sepsis_uci827'
+          })
+
+          # 2) SUPPORT2.
+          blob=get('https://hbiostat.org/data/repo/support2csv.zip')
+          with zipfile.ZipFile(io.BytesIO(blob)) as z:
+              u=pd.read_csv(z.open('support2.csv'))
+          assert u.shape==(9105,47)
+          support=pd.DataFrame({
+              'age':pd.to_numeric(u.age,errors='coerce'),
+              'male':u.sex.astype('string').str.strip().str.lower().map({'male':1.0,'female':0.0}),
+              'death':pd.to_numeric(u.hospdead,errors='coerce'),
+              'source':'support2'
+          })
+
+          # 3) eICU Demo, same first-stay + APACHE-row cohort policy as 0.54.
+          base='https://physionet.org/files/eicu-crd-demo/2.0.1/'
+          pb=get(base+'patient.csv.gz');ab=get(base+'apacheApsVar.csv.gz')
+          patient=pd.read_csv(io.BytesIO(pb),compression='gzip',low_memory=False)
+          aps=pd.read_csv(io.BytesIO(ab),compression='gzip',low_memory=False)
+          assert patient.shape==(2520,29) and aps.shape==(2205,26)
+          first=patient.loc[patient.unitvisitnumber.eq(1)].copy()
+          e=first.merge(aps[['patientunitstayid']],on='patientunitstayid',how='inner',validate='one_to_one')
+          target=e.hospitaldischargestatus.astype('string').str.strip().str.lower().map({'alive':0.0,'expired':1.0})
+          age_raw=e.age.astype('string').str.strip()
+          age=pd.to_numeric(age_raw.replace({'> 89':'90'}),errors='coerce')
+          male=e.gender.astype('string').str.strip().str.lower().map({'male':1.0,'female':0.0})
+          eicu=pd.DataFrame({'age':age,'male':male,'death':target,'source':'eicu_demo'})
+          eicu=eicu.loc[eicu.death.notna()].copy()
+          assert len(eicu)==2004
+
+          frames=[sepsis,support,eicu]
+          data=pd.concat(frames,ignore_index=True)
+          for c in ['age','male','death']: data[c]=pd.to_numeric(data[c],errors='coerce')
+          before=data.groupby('source').size().to_dict()
+          data=data.dropna(subset=['age','male','death']).copy()
+          data=data.loc[data.age.between(18,110)&data.male.isin([0,1])&data.death.isin([0,1])].copy()
+          after=data.groupby('source').size().to_dict()
+          assert set(after)=={'sepsis_uci827','support2','eicu_demo'}
+          assert after['sepsis_uci827']>100000 and after['support2']>9000 and after['eicu_demo']>1900
+
+          # Deterministic 60/20/20 source-stratified partitions.
+          split_seed={'sepsis_uci827':5601,'support2':5602,'eicu_demo':5603}
+          parts=[]
+          for src,g in data.groupby('source',sort=True):
+              idx=np.arange(len(g))
+              y=g.death.astype(int).to_numpy()
+              tr,tmp=train_test_split(idx,test_size=.40,random_state=split_seed[src],stratify=y)
+              ca,te=train_test_split(tmp,test_size=.50,random_state=split_seed[src]+10,stratify=y[tmp])
+              q=g.reset_index(drop=True)
+              q['partition']=''
+              q.loc[tr,'partition']='train';q.loc[ca,'partition']='calibration';q.loc[te,'partition']='test'
+              parts.append(q)
+          d=pd.concat(parts,ignore_index=True)
+          features=['age','male']
+
+          def source_balanced_weights(frame):
+              counts=frame.groupby('source').size().to_dict()
+              k=len(counts)
+              return np.array([1.0/(k*counts[s]) for s in frame.source],dtype=float)
+
+          def weighted_stats(frame,w):
+              X=frame[features].to_numpy(float)
+              mu=np.average(X,axis=0,weights=w)
+              var=np.average((X-mu)**2,axis=0,weights=w)
+              sd=np.sqrt(var);sd=np.where(sd>0,sd,1.0)
+              return mu,sd
+
+          def fit(train,cal):
+              wtr=source_balanced_weights(train);wca=source_balanced_weights(cal)
+              mu,sd=weighted_stats(train,wtr)
+              Z=(train[features].to_numpy(float)-mu)/sd
+              base=LogisticRegression(max_iter=4000,C=.5,solver='lbfgs',class_weight=None,random_state=5604)
+              base.fit(Z,train.death.astype(int),sample_weight=wtr*len(wtr))
+              Zc=(cal[features].to_numpy(float)-mu)/sd
+              score=base.decision_function(Zc).reshape(-1,1)
+              platt=LogisticRegression(max_iter=4000,C=1e6,solver='lbfgs',random_state=5605)
+              platt.fit(score,cal.death.astype(int),sample_weight=wca*len(wca))
+              p=platt.predict_proba(score)[:,1]
+              fpr,tpr,thr=roc_curve(cal.death.astype(int),p,sample_weight=wca)
+              valid=np.isfinite(thr)
+              threshold=float(thr[valid][np.argmax((tpr-fpr)[valid])])
+              return mu,sd,base,platt,threshold
+
+          train=d[d.partition.eq('train')].copy()
+          cal=d[d.partition.eq('calibration')].copy()
+          test=d[d.partition.eq('test')].copy()
+          mu,sd,base_model,platt,threshold=fit(train,cal)
+
+          def predict(frame,pack):
+              mu,sd,b,p,t=pack
+              z=(frame[features].to_numpy(float)-mu)/sd
+              return p.predict_proba(b.decision_function(z).reshape(-1,1))[:,1]
+
+          pack=(mu,sd,base_model,platt,threshold)
+          ptest=predict(test,pack)
+
+          def metrics(frame,p,threshold,balanced=False):
+              y=frame.death.astype(int).to_numpy()
+              w=source_balanced_weights(frame) if balanced else None
+              pred=(p>=threshold).astype(int)
+              tn,fp,fn,tp=confusion_matrix(y,pred,labels=[0,1],sample_weight=w).ravel()
+              return {
+                'n':int(len(frame)),
+                'auroc':float(roc_auc_score(y,p,sample_weight=w)),
+                'auprc':float(average_precision_score(y,p,sample_weight=w)),
+                'brier':float(brier_score_loss(y,p,sample_weight=w)),
+                'accuracy':float(accuracy_score(y,p,sample_weight=w)),
+                'sensitivity_death':float(tp/(tp+fn)),
+                'specificity_survival':float(tn/(tn+fp)),
+                'threshold':float(threshold)
+              }
+
+          pooled_bal=metrics(test,ptest,threshold,True)
+          pooled_raw=metrics(test,ptest,threshold,False)
+          per_source={}
+          for src,g in test.groupby('source',sort=True):
+              pp=predict(g,pack)
+              per_source[src]=metrics(g,pp,threshold,False)
+              per_source[src]['prevalence_death']=float(g.death.mean())
+
+          # Leave-one-source-out transport validation: fit/calibrate on two source training/calibration
+          # partitions and evaluate on ALL complete-case rows of the unseen third source.
+          loso={}
+          for held in sorted(d.source.unique()):
+              tr=d[(d.source!=held)&d.partition.eq('train')].copy()
+              ca=d[(d.source!=held)&d.partition.eq('calibration')].copy()
+              unseen=d[d.source.eq(held)].copy()
+              lp=fit(tr,ca)
+              pu=predict(unseen,lp)
+              loso[held]=metrics(unseen,pu,lp[-1],False)
+              loso[held]['prevalence_death']=float(unseen.death.mean())
+              loso[held]['train_sources']=sorted(set(tr.source))
+
+          # Conservative status: this model is only a qualified research transport baseline.
+          min_loso_auc=min(v['auroc'] for v in loso.values())
+          status='RESEARCH_TRANSPORT_BASELINE'
+          transport_note=('Cross-source generalization is heterogeneous; this compact age/sex model is not a '
+                          'clinical mortality score and must not be interpreted as a general patient-specific '
+                          'hospital mortality probability.')
+
+          model={
+            'schema':'healthsolver.common_outcome_transport.v1',
+            'version':'1.0.0',
+            'release':'HealthSolver 0.56.0 Common-Outcome Transport Layer',
+            'model_id':'HS-COMMON-HOSPDEATH-TRANSPORT-001',
+            'title':'Common Outcome Transport · decesso intraospedaliero',
+            'research_only':True,
+            'clinically_validated':False,
+            'base_predictive_model_count_preserved':14,
+            'is_base_registry_model':False,
+            'target':{
+              'positive':'in-hospital death / expired',
+              'negative':'survived hospitalization / alive',
+              'fixed_horizon':False,
+              'warning':'The three cohorts have different inclusion criteria and index times; the shared label is hospital outcome, not a fixed-horizon mortality endpoint.'
+            },
+            'features':['age','male'],
+            'feature_semantics':{
+              'age':'Age in years. eICU source age >89 is mapped to 90 to preserve source top-coding.',
+              'male':'1=male, 0=female.'
+            },
+            'source_cohorts':{
+              'sepsis_uci827':{'rows_before_complete_case':int(before['sepsis_uci827']),'rows_used':int(after['sepsis_uci827']),'index_semantics':'minimal clinical record / admission episode'},
+              'support2':{'rows_before_complete_case':int(before['support2']),'rows_used':int(after['support2']),'index_semantics':'SUPPORT cohort; only age/sex used, not day-3 physiology'},
+              'eicu_demo':{'rows_before_complete_case':int(before['eicu_demo']),'rows_used':int(after['eicu_demo']),'index_semantics':'first ICU stay with APACHE row; only age/sex used'}
+            },
+            'training':{
+              'partition_policy':'Deterministic source-stratified 60/20/20 train/calibration/test split.',
+              'source_balance':'Equal total sample weight per source in pooled training, calibration, and balanced pooled-test metrics.',
+              'standardization':'Source-balanced weighted mean and population SD learned on pooled training partition only.',
+              'classifier':'LogisticRegression C=0.5 lbfgs; no class weighting; source-balanced sample weighting.',
+              'calibration':'Platt scaling on pooled held-out calibration partitions with equal total source weight.',
+              'threshold_selection':'Youden J on source-balanced pooled calibration partitions.',
+              'runtime_environment':RUNTIME
+            },
+            'standardization':{'mean':dict(zip(features,map(float,mu))),'scale':dict(zip(features,map(float,sd)))},
+            'logistic':{'intercept':float(base_model.intercept_[0]),'coefficients':dict(zip(features,map(float,base_model.coef_[0]))),'C':0.5,'solver':'lbfgs'},
+            'calibration':{'intercept':float(platt.intercept_[0]),'slope':float(platt.coef_[0,0]),'method':'Platt scaling'},
+            'threshold':float(threshold),
+            'metrics':{
+              'pooled_source_balanced_test':pooled_bal,
+              'pooled_unweighted_test':pooled_raw,
+              'per_source_heldout_test':per_source,
+              'leave_one_source_out_transport':loso,
+              'minimum_loso_auroc':float(min_loso_auc)
+            },
+            'qualification_status':status,
+            'hard_boundaries':[
+              'Not a meta-model over the fourteen HealthSolver probabilities.',
+              'Not a validated general hospital-mortality probability.',
+              'Uses only age and sex because these are the only clean common predictors across the three released source cohorts.',
+              'Do not use for diagnosis, triage, treatment, admission, discharge, or end-of-life decisions.',
+              transport_note
+            ]
+          }
+          report={
+            'release':model['release'],
+            'model_id':model['model_id'],
+            'source_rows_used':after,
+            'partition_counts':d.groupby(['source','partition']).size().unstack(fill_value=0).to_dict(orient='index'),
+            'prevalence_by_source':d.groupby('source').death.mean().astype(float).to_dict(),
+            'pooled_source_balanced_test':pooled_bal,
+            'pooled_unweighted_test':pooled_raw,
+            'per_source_heldout_test':per_source,
+            'leave_one_source_out_transport':loso,
+            'scientific_interpretation':transport_note
+          }
+          (OUT/'common-outcome-transport-v1.json').write_text(json.dumps(model,indent=2,sort_keys=True)+'\n')
+          (OUT/'common-outcome-transport-v1-report.json').write_text(json.dumps(report,indent=2,sort_keys=True)+'\n')
+
+          print('SOURCE_ROWS',after)
+          print('POOLED_BALANCED_TEST',pooled_bal)
+          print('PER_SOURCE_TEST',per_source)
+          print('LOSO_TRANSPORT',loso)
+          print('MIN_LOSO_AUROC',min_loso_auc)
+          print('HS056 COMMON OUTCOME BUILD PASS')
+          PY
+
+      - name: Static artifact audit
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import json,math
+          m=json.load(open('predictive/common-outcome-transport-v1.json'))
+          r=json.load(open('predictive/common-outcome-transport-v1-report.json'))
+          assert m['version']=='1.0.0'
+          assert m['base_predictive_model_count_preserved']==14
+          assert m['is_base_registry_model'] is False
+          assert m['features']==['age','male']
+          assert 0<m['threshold']<1
+          assert set(m['metrics']['leave_one_source_out_transport'])=={'sepsis_uci827','support2','eicu_demo'}
+          assert all(math.isfinite(v['auroc']) and 0<=v['auroc']<=1 for v in m['metrics']['leave_one_source_out_transport'].values())
+          assert r['model_id']==m['model_id']
+          print('HS056 ARTIFACT AUDIT PASS')
+          PY
+
+      - name: Commit generated research artifacts
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name "healthsolver-bot"
+          git config user.email "healthsolver-bot@users.noreply.github.com"
+          git add predictive/common-outcome-transport-v1.json predictive/common-outcome-transport-v1-report.json
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: add 0.56 common-outcome transport research model"
+          git push
