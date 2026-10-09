@@ -1,4 +1,4 @@
-name: HealthSolver 0.54 eICU Demo Smoke
+name: HealthSolver 0.54.1 eICU Semantics Smoke
 on:
   push:
     branches: ['main']
@@ -34,7 +34,7 @@ jobs:
           root=pathlib.Path('predictive')
           reg=json.loads((root/'model-registry-v2.json').read_text())
           assert reg['schema']=='healthsolver.predictive_registry.v2'
-          assert reg['version']=='0.54.0'
+          assert reg['version']=='0.54.1'
           assert len(reg['models'])==14
           ids=[e['model_id'] for e in reg['models']]
           assert len(ids)==len(set(ids))
@@ -42,7 +42,7 @@ jobs:
 
           m=json.loads((root/'model-eicu-demo-hospital-death-v1.json').read_text())
           assert m['model_id']=='HS-EICU-DEMO-HOSPDEATH-001'
-          assert m['version']=='1.0.0'
+          assert m['version']=='1.0.1'
           assert m['dataset']['version']=='2.0.1'
           assert m['dataset']['doi']=='10.13026/4mxk-na84'
           assert 'Open Database License' in m['dataset']['license']
@@ -60,6 +60,8 @@ jobs:
           assert m['target_definition']['survival_probability'] is False
           assert 'first APACHE day' in m['temporal_semantics']
           assert 'StratifiedGroupKFold' in m['split_policy']
+          assert 'meds=1' in m['input_consistency_policy']
+          assert '186 distinct hospitalid' in m['dataset']['source_metadata_note']
           assert 'no feature/outcome association' in m['feature_policy']
           assert m['abstention']['max_missing_raw_features']==2
           assert m['abstention']['required_raw_features']==['age','sex']
@@ -102,11 +104,11 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          grep -q 'HS_INTEGRATED_PREDICTIVE_0540' predictive/integrated-predictive-ui.js
+          grep -q 'HS_INTEGRATED_PREDICTIVE_0541' predictive/integrated-predictive-ui.js
           grep -q '14 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
           grep -q 'HS-EICU-DEMO-HOSPDEATH-001' predictive/integrated-predictive-ui.js
           grep -q 'hs54EicuDetails' predictive/integrated-predictive-ui.js
-          grep -q "gcs_total:num('hs54_gcs_total')" predictive/integrated-predictive-ui.js
+          grep -q "gcs_total:gcsMeds===1?null:num('hs54_gcs_total')" predictive/integrated-predictive-ui.js
           grep -q "heartrate:num('hs54_heartrate')" predictive/integrated-predictive-ui.js
           grep -q "creatinine:num('hs54_creatinine')" predictive/integrated-predictive-ui.js
           if grep -q "heartrate:first(num('ci_pulse')" predictive/integrated-predictive-ui.js; then
@@ -115,4 +117,5 @@ jobs:
           fi
           grep -q 'hospitalDischargeStatus' predictive/integrated-predictive-ui.js
           grep -q 'first APACHE day' predictive/integrated-predictive-ui.js
-          echo 'EICU 0.54 SMOKE PASS'
+          grep -q 'Coerenza GCS' predictive/integrated-predictive-ui.js
+          echo 'EICU 0.54.1 SEMANTICS SMOKE PASS'
