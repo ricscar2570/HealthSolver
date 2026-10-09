@@ -1,7 +1,7 @@
 {
   "app": "HealthSolver",
-  "version": "0.54.1",
-  "release": "Scientific Semantics Remediation + eICU Demo Hospital Death Integration + SUPPORT2 + Predictive-First UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition",
+  "version": "0.55.0",
+  "release": "Ensemble Intelligence Layer + 14-Model Predictive-First UI + Clinical Coach Research Edition",
   "base_release": "0.38.0",
   "base_source_sha256": "c1bef787551183db369643036e9fc9a7f64ddec515ad804066b9a37279df6b68",
   "predictive_registry": "predictive/model-registry-v2.json",
@@ -22,7 +22,7 @@
     "HS-EICU-DEMO-HOSPDEATH-001"
   ],
   "payload_parts": 7,
-  "source_sha256": "765eee60ec36e051ce9acefa185bf9e8e34fd3007d488500f68a96330abb50d8",
+  "source_sha256": "6139803aeff0a207ad9eb35cd7f7e5bebe916d556cfd000b8c9439b06aee23f2",
   "predictive_modules_embedded": true,
   "integrated_predictive_ui": true,
   "predictive_first_ui": true,
@@ -42,5 +42,7 @@
   "support2_hospital_death_integrated": true,
   "code_audit_remediation": true,
   "eicu_demo_hospital_death_integrated": true,
-  "eicu_semantics_remediation": true
+  "eicu_semantics_remediation": true,
+  "ensemble_intelligence_integrated": true,
+  "ensemble_intelligence_version": "1.0.0"
 }
