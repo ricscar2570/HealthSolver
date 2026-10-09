@@ -1,0 +1,125 @@
+name: HealthSolver 0.49 Heart Failure Live Browser Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs049-live-browser-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Verify live heart failure integration
+        shell: bash
+        run: |
+          cat > audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+
+          const base='https://ricscar2570.github.io/HealthSolver/';
+          const meta=await fetch(base+'version.json?audit=049-hf').then(r=>r.json());
+          if(meta.version!=='0.49.0') throw new Error('wrong published version '+meta.version);
+          if(meta.predictive_model_count!==9) throw new Error('wrong published model count '+meta.predictive_model_count);
+          if(!meta.predictive_models.includes('HS-UCI-HFDEATH-001')) throw new Error('heart failure model missing from metadata');
+          if(meta.uci_heart_failure_integrated!==true) throw new Error('heart failure integration flag missing');
+
+          const registry=await fetch(base+'predictive/model-registry-v2.json?audit=049-hf').then(r=>r.json());
+          if(registry.version!=='0.49.0') throw new Error('wrong registry version '+registry.version);
+          if(registry.models.length!==9) throw new Error('wrong registry model count');
+          if(!registry.models.some(x=>x.model_id==='HS-UCI-HFDEATH-001')) throw new Error('heart failure entry missing');
+
+          const model=await fetch(base+'predictive/model-heart-failure-mortality-v1.json?audit=049-hf').then(r=>r.json());
+          if(model.excluded_source_features.join(',')!=='time') throw new Error('time leakage-control exclusion missing');
+          if(model.features.includes('time')) throw new Error('time must not be a predictor');
+
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1800}});
+          const errors=[];
+          page.on('pageerror',e=>errors.push('PAGE '+e.message));
+          page.on('console',m=>{if(m.type()==='error') errors.push('CONSOLE '+m.text())});
+
+          await page.goto(base+'?audit=049-hf',{waitUntil:'networkidle',timeout:120000});
+          await page.waitForFunction(()=>document.body.innerText.includes('Clinical Coach')&&document.body.innerText.includes('Expert Mode'),{timeout:30000});
+          const expert=page.locator('aside .nav[data-page="intelligence"]');
+          if(await expert.count()!==1) throw new Error('Expert Mode nav missing');
+          await expert.click(); await page.waitForTimeout(400);
+
+          const block=page.locator('#hs-predictive-integrated');
+          if(await block.count()!==1 || !(await block.isVisible())) throw new Error('predictive block missing');
+          const initial=await block.innerText();
+          if(!initial.includes('9 MODELLI SUPERVISIONATI')) throw new Error('nine-model badge missing');
+          if(!initial.includes('Mortalità nel follow-up · insufficienza cardiaca')) throw new Error('heart failure coverage card missing');
+
+          await page.locator('#ciAge').fill('65');
+          const sex=page.locator('#ciSex');
+          const opts=await sex.locator('option').evaluateAll(os=>os.map(o=>({v:o.value,t:o.textContent.trim()})));
+          const male=opts.find(o=>/masch|male|^m$/i.test(o.t)||/^(m|male|maschio|1)$/i.test(o.v));
+          if(!male) throw new Error('male sex option not found');
+          await sex.selectOption(male.v);
+
+          const details=page.locator('#hs49HeartFailureDetails');
+          if(await details.count()!==1) throw new Error('heart failure specialist panel missing');
+          await details.evaluate(el=>{el.open=true});
+          if(await page.locator('#hs49_time').count()!==0) throw new Error('follow-up time must not be exposed as predictor');
+
+          const values={
+            hs49_anaemia:'0',
+            hs49_cpk:'250',
+            hs49_diabetes:'1',
+            hs49_ejection_fraction:'35',
+            hs49_high_blood_pressure:'1',
+            hs49_platelets:'250000',
+            hs49_serum_creatinine:'1.4',
+            hs49_serum_sodium:'137',
+            hs49_smoking:'0'
+          };
+          for(const [id,v] of Object.entries(values)){
+            const loc=page.locator('#'+id);
+            if(await loc.count()!==1) throw new Error('missing heart failure control '+id);
+            if((await loc.evaluate(e=>e.tagName))==='SELECT') await loc.selectOption(v);
+            else await loc.fill(v);
+          }
+
+          await page.locator('#hs42Refresh').click(); await page.waitForTimeout(120);
+          const coverage=page.locator('#hs42Coverage .metric').filter({hasText:'Mortalità nel follow-up · insufficienza cardiaca'});
+          if(await coverage.count()!==1) throw new Error('heart failure coverage card missing after input');
+          const coverageText=await coverage.innerText();
+          if(!/PRONTO ALLA PREDIZIONE/i.test(coverageText)) throw new Error('heart failure model not ready: '+coverageText);
+
+          await page.locator('#hs42Run').click(); await page.waitForTimeout(350);
+          const card=page.locator('#hs42Results .card').filter({hasText:'HS-UCI-HFDEATH-001'});
+          if(await card.count()!==1) throw new Error('heart failure result card missing');
+          const text=await card.innerText();
+          if(!/%/.test(text)) throw new Error('heart failure numeric probability missing');
+          if(/Astensione/i.test(text)) throw new Error('heart failure unexpectedly abstained');
+          if(!/AUROC\s+0\.744/i.test(text)) throw new Error('heart failure held-out AUROC not shown as expected: '+text);
+
+          const serious=errors.filter(e=>!/Failed to load resource.*api\.fda\.gov/i.test(e));
+          if(serious.length) throw new Error('browser errors '+serious.join(' | '));
+
+          await block.scrollIntoViewIfNeeded();
+          await block.screenshot({path:'HealthSolver-0.49-Heart-Failure.png'});
+          await page.screenshot({path:'HealthSolver-0.49-Expert-Mode.png',fullPage:true});
+          console.log('HEART_FAILURE_RESULT\n'+text);
+          console.log('HEART_FAILURE_COVERAGE\n'+coverageText);
+          await browser.close();
+          JS
+          node audit.mjs | tee audit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: healthsolver-049-heart-failure-live
+          path: |
+            HealthSolver-0.49-Heart-Failure.png
+            HealthSolver-0.49-Expert-Mode.png
+            audit.txt
+          retention-days: 14
