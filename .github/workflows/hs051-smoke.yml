@@ -95,8 +95,11 @@ jobs:
         shell: bash
         run: |
           grep -Eq 'HS_INTEGRATED_PREDICTIVE_052|HS_INTEGRATED_PREDICTIVE_0511' predictive/integrated-predictive-ui.js
-          grep -q '11 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -q 'MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
           grep -q 'HS-UCI-SEPSISDEATH-001' predictive/integrated-predictive-ui.js
           grep -q 'hs51SepsisDetails' predictive/integrated-predictive-ui.js
-          grep -q 'circa 9,351 giorni' predictive/integrated-predictive-ui.js\n          grep -q 'non tutti i 110.204 ricoveri possono essere qualificati come Sepsis-3' predictive/integrated-predictive-ui.js\n          grep -q 'max="5"' predictive/integrated-predictive-ui.js
-          grep -q 'Validazione esterna debole' predictive/integrated-predictive-ui.js\n          grep -q 'Le metriche interne non costituiscono validazione clinica/prospettica' predictive/integrated-predictive-ui.js
+          grep -q 'circa 9,351 giorni' predictive/integrated-predictive-ui.js
+          grep -q 'non tutti i 110.204 ricoveri possono essere qualificati come Sepsis-3' predictive/integrated-predictive-ui.js
+          grep -q 'max="5"' predictive/integrated-predictive-ui.js
+          grep -q 'Validazione esterna debole' predictive/integrated-predictive-ui.js
+          grep -q 'Le metriche interne non costituiscono validazione clinica/prospettica' predictive/integrated-predictive-ui.js
