@@ -1212,7 +1212,7 @@ The new panel:
 
 **SUPPORT2 · decesso intraospedaliero · stato clinico giorno 3**
 
-reuses compatible age, sex, pulse, creatinine and sodium values from the common dossier and asks for the remaining source-specific day-3 variables.
+reuses only compatible age and sex from the common dossier. All SUPPORT2 day-3 physiologic values — including heart rate, creatinine and sodium — must be entered explicitly in the SUPPORT2 panel so generic measurements from another timepoint cannot be substituted.
 
 Both the panel and result card state that:
 
@@ -1291,6 +1291,16 @@ The 0.54 workflow verifies the PhysioNet checksums and license, uses a pinned sc
 
 HealthSolver 0.54 exposes **14 supervised predictive models** in the Predictive-First Expert Mode.
 
+### 0.54.1 semantic remediation
+
+A post-release audit identified two non-numerical issues and one provenance ambiguity:
+
+- the eICU panel previously allowed a numeric GCS together with “GCS non valutabile per farmaci”; eICU source semantics make those states mutually exclusive, so the runtime now ignores/disables numeric GCS when medication makes GCS unscorable;
+- stale README deployment text still referred to 0.53.1/13 models and an older SUPPORT2 fallback policy; both are corrected;
+- PhysioNet's demo landing page describes the sample as selected from 20 larger hospitals, while the distributed v2.0.1 `patient.csv.gz` and `hospital.csv.gz` inspected by HealthSolver contain 186 distinct `hospitalid` values. Because those two source descriptions conflict, HealthSolver does not use or advertise a hospital-count claim for this model. Hospital identifiers are excluded from prediction. citeturn772321search0turn121047search0
+
+The model coefficients, preprocessing, calibration, decision threshold and held-out metrics are unchanged from 0.54.0.
+
 ## Machine learning and predictive research
 
 HealthSolver is being developed toward a broader machine-learning research architecture in which structured symptoms, history, vital signs, laboratory data and observations can be used as model inputs.
@@ -1366,7 +1376,7 @@ The standalone HTML recorded for the 0.38 checkpoint has SHA-256:
 
 These are software qualification results. They are **not clinical validation**.
 
-The current 0.53.1 audit gate additionally verifies repository integrity, Python compilation, legacy React bundling/linting, isolated Python tests, default and optional legacy API behavior, CORS, PACS timeout handling, fail-closed CNN/EHR invariants, dashboard regressions, predictive numerical-core freeze and SUPPORT2 runtime wiring. The separate published-release smoke verifies that the live 0.53.1 registry, all 13 public model artifacts and the integrated predictive UI match `main`.
+The 0.53.1 audit gate verified repository integrity, Python compilation, legacy React bundling/linting, isolated Python tests, default and optional legacy API behavior, CORS, PACS timeout handling, fail-closed CNN/EHR invariants, dashboard regressions, predictive numerical-core freeze and SUPPORT2 runtime wiring. The current 0.54.1 qualification additionally covers eICU source/checksum verification, patient-disjoint development splits, independent model reproduction, eICU semantic edge cases, full static freeze of earlier model artifacts, live browser behavior and public-assets-vs-`main` parity.
 
 ## GitHub Pages deployment
 
@@ -1374,7 +1384,7 @@ The public application is deployed at:
 
 https://ricscar2570.github.io/HealthSolver/
 
-The current deployment uses the native GitHub Pages pipeline and publishes the qualified **0.53.1** Research Edition with the 13-model predictive registry, SUPPORT2 remediation and Predictive-First UI.
+The current deployment uses the native GitHub Pages pipeline and publishes the qualified **0.54.1** Research Edition with the 14-model predictive registry, eICU Demo integration, SUPPORT2 remediation and Predictive-First UI.
 
 The release pipeline preserves the verified standalone payload, and the published-release smoke test compares the public registry, every public predictive model artifact and the integrated predictive UI against the authoritative files on `main`.
 
@@ -1393,9 +1403,9 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.54.0 — eICU Demo Hospital Death Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
+**HealthSolver 0.54.1 — Scientific Semantics Remediation / eICU Demo Hospital Death Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
 
-The current predictive release is represented by the 0.54.0 eICU checkpoint line, built on the frozen 0.53.1 remediation baseline, the Predictive-First Expert Mode UI, the versioned predictive registry and **fourteen** supervised model artifacts under `predictive/`.
+The current predictive release is represented by the 0.54.1 scientific-semantics remediation built on the frozen 0.54.0 eICU checkpoint and 0.53.1 remediation baseline, the Predictive-First Expert Mode UI, the versioned predictive registry and **fourteen** supervised model artifacts under `predictive/`.
 
 The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
