@@ -1,4 +1,4 @@
-# HealthSolver 0.49 — UCI Heart Failure Clinical Records Integration + Predictive-First UI
+# HealthSolver 0.49.1 — Scientific Semantics Remediation + Predictive-First UI
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.49 line.
+The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.49.1 line.
 
 ## What HealthSolver does
 
@@ -44,7 +44,7 @@ For the deployed GitHub Pages build:
 - core application state, backup and recovery workflows are handled client-side;
 - large static resources are packaged for browser delivery.
 
-The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.49 application.
+The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.49.1 application.
 
 ## Clinical Coach
 
@@ -630,11 +630,11 @@ A live Playwright audit on GitHub Pages verifies that:
 
 HealthSolver 0.49 adds one complete database macrostep based on **UCI Heart Failure Clinical Records** (UCI ID 519, DOI `10.24432/C5Z89R`, CC BY 4.0).
 
-The source contains **299 patients with heart failure**, 12 source predictors and the binary target `DEATH_EVENT`. UCI reports no missing values in the source dataset.
+The source contains **299 patients**, 12 source predictors and the binary target `DEATH_EVENT`. The cohort was collected in 2015 at Faisalabad Institute of Cardiology and Allied Hospital in Faisalabad, Pakistan. All 299 patients had left ventricular systolic dysfunction and previous heart failure classified NYHA III or IV. UCI reports no missing values in the source dataset.
 
 ### Leakage control
 
-The source variable `time` is the follow-up duration in days. HealthSolver deliberately excludes it from model inputs because it is not a baseline clinical predictor and could leak post-index observation information into a mortality prediction.
+The source variable `time` is follow-up duration in days. HealthSolver deliberately excludes it from model inputs because using observation duration as a predictor would leak post-index information. Follow-up is variable (4–285 days; mean about 130 days), so the binary classifier does **not** estimate mortality at 30, 90, 365 days or any fixed horizon and is **not** a survival model.
 
 The browser model therefore uses **11 baseline/source clinical variables**:
 
@@ -652,7 +652,7 @@ The browser model therefore uses **11 baseline/source clinical variables**:
 
 ### New predictive model
 
-**HS-UCI-HFDEATH-001 — Mortalità nel follow-up · insufficienza cardiaca**
+**HS-UCI-HFDEATH-001 — DEATH_EVENT UCI 519 · insufficienza cardiaca**
 
 Research task:
 
@@ -690,9 +690,25 @@ These are internal held-out results from the same source cohort. They are not ex
 
 HealthSolver 0.49 exposes **9 supervised predictive models** in Predictive-First Expert Mode.
 
-The new section **“Insufficienza cardiaca · mortalità nel follow-up”** makes the leakage-control choice visible to the user and never exposes `time` as an input.
+The remediated section **“Insufficienza cardiaca · DEATH_EVENT coorte UCI 519”** makes both leakage control and output semantics visible. It never exposes `time` as an input and explicitly states that the percentage is a source-cohort `DEATH_EVENT` estimate, not a fixed-horizon mortality or survival probability.
 
 The release qualification includes a model-specific smoke test, a live Playwright audit against GitHub Pages, a full static release audit, a published-release synchronization smoke and a complete browser E2E regression audit.
+
+## Scientific Semantics Remediation 0.49.1
+
+HealthSolver 0.49.1 does **not retrain** `HS-UCI-HFDEATH-001`. Coefficients, standardization, imputation, calibration, threshold, split sizes and held-out metrics remain unchanged from 0.49.0.
+
+The remediation adds explicit metadata and UI language for:
+
+- Faisalabad, Pakistan, April–December 2015 source setting;
+- two source hospitals;
+- left ventricular systolic dysfunction in all 299 patients;
+- previous NYHA III–IV heart failure in all 299 patients;
+- variable follow-up of 4–285 days, mean about 130 days;
+- `DEATH_EVENT` as the binary source label;
+- no fixed mortality horizon;
+- no censoring/time-to-event modeling;
+- no interpretation as a survival probability or general heart-failure mortality-risk score.
 
 ## Machine learning and predictive research
 
@@ -794,9 +810,9 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.49 — UCI Heart Failure Clinical Records Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
+**HealthSolver 0.49.1 — Scientific Semantics Remediation / UCI Heart Failure Clinical Records Integration / Predictive-First UI / Clinical Coach Research Edition**
 
-Current predictive release is represented by the 0.49 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and nine supervised model artifacts under `predictive/`.
+Current predictive release is represented by the 0.49.1 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and nine supervised model artifacts under `predictive/`.
 
 The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
