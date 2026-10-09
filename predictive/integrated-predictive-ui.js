@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.__HS_INTEGRATED_PREDICTIVE_050__) return;
-window.__HS_INTEGRATED_PREDICTIVE_050__=true;
+if(window.__HS_INTEGRATED_PREDICTIVE_051__) return;
+window.__HS_INTEGRATED_PREDICTIVE_051__=true;
 
 const BUNDLE=window.__HS_PREDICTIVE_BUNDLE__||null;
 if(!BUNDLE?.registry||!BUNDLE?.models) return;
@@ -15,9 +15,9 @@ document.getElementById('hs-router041')?.remove();
 // while updating only visible application-release branding.
 (function reconcileReleaseBranding(){
   const replacements=[
-    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.50'],
+    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.51'],
     [/^HealthSolver\s+0\.38\.0\s*·\s*Massive Public Data \+ Clinical Coach Research Edition\s*·\s*Riccardo Scaringi\s*·\s*Non uso clinico\.?$/i,
-     'HealthSolver 0.50.0 · CDC Diabetes Health Indicators Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
+     'HealthSolver 0.51.0 · UCI Sepsis Survival Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
   ];
   const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
   const nodes=[];
@@ -120,11 +120,11 @@ wrap.className='card';
 wrap.innerHTML=`
   <div class="hs43-hero">
     <div>
-      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.50</div>
+      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.51</div>
       <h2 class="hs43-title">Predizioni cliniche di ricerca</h2>
       <p class="hs43-sub">HealthSolver usa lo stesso dossier che hai già compilato per verificare quali modelli sono applicabili e calcolare le stime disponibili. Le funzioni predittive sono qui, in primo piano. Ogni nuovo database entra nello stesso registry e nello stesso dossier.</p>
     </div>
-    <div class="hs43-badge">10 MODELLI SUPERVISIONATI</div>
+    <div class="hs43-badge">11 MODELLI SUPERVISIONATI</div>
   </div>
   <div id="hs42Coverage" class="metrics"></div>
   <div class="actions" style="margin-top:8px">
@@ -262,6 +262,15 @@ wrap.innerHTML=`
       <label>Reddito BRFSS<select id="hs50_income"><option value="">—</option><option value="1">Categoria 1 · &lt;$10.000</option><option value="2">Categoria 2</option><option value="3">Categoria 3</option><option value="4">Categoria 4</option><option value="5">Categoria 5 · &lt;$35.000</option><option value="6">Categoria 6</option><option value="7">Categoria 7</option><option value="8">Categoria 8 · ≥$75.000</option></select></label>
     </div>
     <div class="notice" style="margin-top:10px"><b>Semantica del target:</b> <code>Diabetes_binary=1</code> unisce <b>prediabete e diabete</b>. La percentuale è una classificazione del label sorgente BRFSS, non una diagnosi, non separa prediabete da diabete e non è la probabilità futura di sviluppare diabete.</div>
+  </details>
+  <details id="hs51SepsisDetails">
+    <summary><b>Sepsi / infezione · esito ospedaliero</b> · modello minimale UCI 827</summary>
+    <p class="hint">Età e sesso vengono riutilizzati dal dossier. Inserisci soltanto il numero dell'episodio settico secondo la codifica sorgente (1=primo episodio, 2=secondo, ...). Il modello deriva dal primary cohort norvegese 2011–2012.</p>
+    <div class="grid">
+      <label>Numero episodio settico<input id="hs51_episode_number" type="number" min="1" step="1"></label>
+    </div>
+    <div class="notice" style="margin-top:10px"><b>Semantica dell'output:</b> il modello stima il label di <b>decesso come esito ospedaliero</b> nella coorte sorgente. Non è mortalità a 9 giorni, non ha un orizzonte temporale fisso e non è una probabilità di sopravvivenza/time-to-event.</div>
+    <div class="notice" style="margin-top:10px"><b>Validazione esterna debole:</b> sulla coorte sudcoreana indipendente di 137 pazienti, AUROC 0,548. Il risultato va trattato come dimostrazione metodologica di ricerca e non generalizzato clinicamente.</div>
   </details>
   <h3 style="margin:24px 0 10px;font-size:1.25rem">Risultati predittivi</h3>
   <div id="hs42Results" class="grid"></div>
@@ -451,6 +460,12 @@ function dossierCase(){
     education:num('hs50_education'),
     income:num('hs50_income')
   };
+  const sv=sexVal();
+  const sepsis={
+    age_years:age,
+    sex_0male_1female:sv===1?0:sv===0?1:null,
+    episode_number:num('hs51_episode_number')
+  };
   return {
     'HS-UCI-HD-001':heart,
     'HS-UCI-CKD-001':ckd,
@@ -461,7 +476,8 @@ function dossierCase(){
     'HS-UCI-DMREADM-001':readm,
     'HS-UCI-THYREC-001':thyroid,
     'HS-UCI-HFDEATH-001':heartFailure,
-    'HS-CDC-DIABIND-001':cdcDiabetes
+    'HS-CDC-DIABIND-001':cdcDiabetes,
+    'HS-UCI-SEPSISDEATH-001':sepsis
   };
 }
 function readiness(model,values){
@@ -508,7 +524,9 @@ function renderResult(entry,model,res){
     ? `<div class="notice"><b>DEATH_EVENT UCI 519, non rischio a tempo fisso.</b> Coorte Faisalabad 2015 con disfunzione sistolica ventricolare sinistra e NYHA III–IV; follow-up 4–285 giorni (media ~130). Questa percentuale non è mortalità a 30/90/365 giorni e non è una probabilità di sopravvivenza.</div>`
     : model.model_id==='HS-CDC-DIABIND-001'
       ? `<div class="notice"><b>Label BRFSS, non diagnosi né rischio futuro.</b> <code>Diabetes_binary=1</code> unisce prediabete e diabete. Questa percentuale non distingue le due condizioni e non stima la probabilità futura di sviluppare diabete.</div>`
-      : '';
+      : model.model_id==='HS-UCI-SEPSISDEATH-001'
+        ? `<div class="notice"><b>Esito ospedaliero, non mortalità a 9 giorni.</b> Il tempo di ricovero varia nel dataset sorgente; questa percentuale non ha un orizzonte fisso e non è una probabilità di sopravvivenza. <b>Validazione esterna debole:</b> coorte sudcoreana n=137, AUROC 0.548; non generalizzare clinicamente.</div>`
+        : '';
   d.innerHTML=`
     <div class="eyebrow">${model.model_id}</div>
     <h3>${titleFor(entry)}</h3>
@@ -518,6 +536,7 @@ function renderResult(entry,model,res){
     ${res.ood.length?`<div class="notice">Fuori dal range osservato nel training: ${res.ood.join(', ')}</div>`:''}
     <p class="hint"><b>Contributi principali</b></p><ul>${contrib}</ul>
     <p class="hint">Test interno: AUROC ${Number(first(model.metrics_test.auroc,model.metrics_test.auroc_weighted)).toFixed(3)} · Brier ${Number(first(model.metrics_test.brier,model.metrics_test.brier_weighted)).toFixed(3)}. Nessuna validazione clinica esterna/prospettica.</p>
+    ${model.model_id==='HS-UCI-SEPSISDEATH-001'&&model.external_validation?`<p class="hint"><b>Validazione esterna indipendente:</b> n=${model.external_validation.n} · AUROC ${Number(model.external_validation.auroc).toFixed(3)} · AUPRC ${Number(model.external_validation.auprc).toFixed(3)} · Brier ${Number(model.external_validation.brier).toFixed(3)}. Discriminazione esterna debole.</p>`:''}
   `;
   return d;
 }
