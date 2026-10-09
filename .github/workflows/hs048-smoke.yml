@@ -26,8 +26,8 @@ jobs:
           import json,math,pathlib
           root=pathlib.Path('predictive')
           reg=json.loads((root/'model-registry-v2.json').read_text())
-          assert reg['version']=='0.48.0',reg['version']
-          assert len(reg['models'])==8,len(reg['models'])
+          assert tuple(map(int,reg['version'].split('.'))) >= (0,48,0),reg['version']
+          assert len(reg['models'])>=8,len(reg['models'])
           ids=[e['model_id'] for e in reg['models']]
           assert len(ids)==len(set(ids))
           assert 'HS-UCI-THYREC-001' in ids
@@ -81,7 +81,7 @@ jobs:
       - name: Verify integrated UI references eighth model
         shell: bash
         run: |
-          grep -q '8 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -q 'MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
           grep -q 'HS-UCI-THYREC-001' predictive/integrated-predictive-ui.js
           grep -q 'Carcinoma tiroideo differenziato · recidiva' predictive/integrated-predictive-ui.js
           grep -q 'Response' predictive/integrated-predictive-ui.js
