@@ -1,7 +1,7 @@
 {
   "app": "HealthSolver",
-  "version": "0.48.0",
-  "release": "UCI Thyroid Cancer Recurrence Integration + Predictive-First UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition",
+  "version": "0.49.0",
+  "release": "UCI Heart Failure Clinical Records Integration + Predictive-First UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition",
   "base_release": "0.38.0",
   "base_source_sha256": "c1bef787551183db369643036e9fc9a7f64ddec515ad804066b9a37279df6b68",
   "predictive_registry": "predictive/model-registry-v2.json",
@@ -13,18 +13,20 @@
     "HS-NHANES-DM-001",
     "HS-NHIS-HYP-001",
     "HS-UCI-DMREADM-001",
-    "HS-UCI-THYREC-001"
+    "HS-UCI-THYREC-001",
+    "HS-UCI-HFDEATH-001"
   ],
   "payload_parts": 7,
-  "source_sha256": "f7488492ffefcaa5d812330683ff0b4c169cb77fdacd9431e92d47aebdd33483",
+  "source_sha256": "e23e6b299f82b0c3affa91d0db9ce12e2420237d83e6555fbe6bd9bb724e2e83",
   "predictive_modules_embedded": true,
   "integrated_predictive_ui": true,
   "predictive_first_ui": true,
   "uci_hcv_integrated": true,
-  "predictive_model_count": 8,
+  "predictive_model_count": 9,
   "nhanes_2017_2018_integrated": true,
   "nhis_2023_integrated": true,
   "uci_diabetes_readmission_integrated": true,
   "full_audit_remediation": true,
-  "uci_thyroid_recurrence_integrated": true
+  "uci_thyroid_recurrence_integrated": true,
+  "uci_heart_failure_integrated": true
 }

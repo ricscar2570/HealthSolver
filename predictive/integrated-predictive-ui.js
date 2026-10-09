@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.__HS_INTEGRATED_PREDICTIVE_048__) return;
-window.__HS_INTEGRATED_PREDICTIVE_048__=true;
+if(window.__HS_INTEGRATED_PREDICTIVE_049__) return;
+window.__HS_INTEGRATED_PREDICTIVE_049__=true;
 
 const BUNDLE=window.__HS_PREDICTIVE_BUNDLE__||null;
 if(!BUNDLE?.registry||!BUNDLE?.models) return;
@@ -15,9 +15,9 @@ document.getElementById('hs-router041')?.remove();
 // while updating only visible application-release branding.
 (function reconcileReleaseBranding(){
   const replacements=[
-    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.48'],
+    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.49'],
     [/^HealthSolver\s+0\.38\.0\s*·\s*Massive Public Data \+ Clinical Coach Research Edition\s*·\s*Riccardo Scaringi\s*·\s*Non uso clinico\.?$/i,
-     'HealthSolver 0.48.0 · UCI Thyroid Cancer Recurrence Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
+     'HealthSolver 0.49.0 · UCI Heart Failure Clinical Records Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
   ];
   const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
   const nodes=[];
@@ -103,11 +103,11 @@ wrap.className='card';
 wrap.innerHTML=`
   <div class="hs43-hero">
     <div>
-      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.48</div>
+      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.49</div>
       <h2 class="hs43-title">Predizioni cliniche di ricerca</h2>
       <p class="hs43-sub">HealthSolver usa lo stesso dossier che hai già compilato per verificare quali modelli sono applicabili e calcolare le stime disponibili. Le funzioni predittive sono qui, in primo piano. Ogni nuovo database entra nello stesso registry e nello stesso dossier.</p>
     </div>
-    <div class="hs43-badge">8 MODELLI SUPERVISIONATI</div>
+    <div class="hs43-badge">9 MODELLI SUPERVISIONATI</div>
   </div>
   <div id="hs42Coverage" class="metrics"></div>
   <div class="actions" style="margin-top:8px">
@@ -196,6 +196,30 @@ wrap.innerHTML=`
     <p class="hint">Età e sesso vengono riutilizzati dal dossier. Gli altri campi devono corrispondere alle categorie della coorte UCI 915. La variabile post-trattamento <code>Response</code> è stata esclusa dal modello per ridurre leakage temporale.</p>
     <div id="hs48ThyroidGrid" class="grid"></div>
     <div class="notice" style="margin-top:10px"><b>Target del modello:</b> appartenenza al gruppo con recidiva del carcinoma tiroideo differenziato nella coorte UCI. Non è una previsione clinica validata né una raccomandazione terapeutica.</div>
+  </details>
+  <details id="hs49HeartFailureDetails">
+    <summary><b>Insufficienza cardiaca · mortalità nel follow-up</b> · dati clinici di base UCI 519</summary>
+    <p class="hint">Età e sesso vengono riutilizzati dal dossier. Creatinina e sodio possono essere riutilizzati dai campi generali se presenti nelle stesse unità. La variabile <code>time</code> (durata del follow-up) è esclusa dal modello per evitare leakage temporale.</p>
+    <div class="grid">
+      <label>Anemia
+        <select id="hs49_anaemia"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select>
+      </label>
+      <label>Creatinfosfochinasi / CPK (mcg/L)<input id="hs49_cpk" type="number" step="any" min="0"></label>
+      <label>Diabete
+        <select id="hs49_diabetes"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select>
+      </label>
+      <label>Frazione di eiezione (%)<input id="hs49_ejection_fraction" type="number" step="any" min="0" max="100"></label>
+      <label>Ipertensione
+        <select id="hs49_high_blood_pressure"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select>
+      </label>
+      <label>Piastrine (kiloplatelets/mL)<input id="hs49_platelets" type="number" step="any" min="0"></label>
+      <label>Creatinina sierica (mg/dL)<input id="hs49_serum_creatinine" type="number" step="any" min="0"></label>
+      <label>Sodio sierico (mEq/L)<input id="hs49_serum_sodium" type="number" step="any" min="0"></label>
+      <label>Fumo
+        <select id="hs49_smoking"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select>
+      </label>
+    </div>
+    <div class="notice" style="margin-top:10px"><b>Target del modello:</b> decesso registrato durante il follow-up nella coorte UCI Heart Failure Clinical Records. È una stima di ricerca nel dominio della coorte sorgente, non un punteggio prognostico clinicamente validato.</div>
   </details>
   <h3 style="margin:24px 0 10px;font-size:1.25rem">Risultati predittivi</h3>
   <div id="hs42Results" class="grid"></div>
@@ -349,6 +373,19 @@ function dossierCase(){
     medication_change:num('hs47_medication_change')
   };
   const thyroid=thyroidEncodedCase(thyroidPair?.model||null,age,sexVal());
+  const heartFailure={
+    age,
+    anaemia:num('hs49_anaemia'),
+    creatinine_phosphokinase:num('hs49_cpk'),
+    diabetes:num('hs49_diabetes'),
+    ejection_fraction:num('hs49_ejection_fraction'),
+    high_blood_pressure:num('hs49_high_blood_pressure'),
+    platelets:first(num('ci_platelets'),num('hs49_platelets')),
+    serum_creatinine:first(num('ci_creatinine'),num('hs49_serum_creatinine')),
+    serum_sodium:first(num('ci_sodium'),num('hs49_serum_sodium')),
+    sex:sexVal(),
+    smoking:num('hs49_smoking')
+  };
   return {
     'HS-UCI-HD-001':heart,
     'HS-UCI-CKD-001':ckd,
@@ -357,7 +394,8 @@ function dossierCase(){
     'HS-NHANES-DM-001':nhanes,
     'HS-NHIS-HYP-001':nhis,
     'HS-UCI-DMREADM-001':readm,
-    'HS-UCI-THYREC-001':thyroid
+    'HS-UCI-THYREC-001':thyroid,
+    'HS-UCI-HFDEATH-001':heartFailure
   };
 }
 function readiness(model,values){
