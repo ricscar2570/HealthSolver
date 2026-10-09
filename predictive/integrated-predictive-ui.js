@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.__HS_INTEGRATED_PREDICTIVE_052__) return;
-window.__HS_INTEGRATED_PREDICTIVE_052__=true;
+if(window.__HS_INTEGRATED_PREDICTIVE_053__) return;
+window.__HS_INTEGRATED_PREDICTIVE_053__=true;
 
 const BUNDLE=window.__HS_PREDICTIVE_BUNDLE__||null;
 if(!BUNDLE?.registry||!BUNDLE?.models) return;
@@ -15,9 +15,9 @@ document.getElementById('hs-router041')?.remove();
 // while updating only visible application-release branding.
 (function reconcileReleaseBranding(){
   const replacements=[
-    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.52'],
+    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.53'],
     [/^HealthSolver\s+0\.38\.0\s*·\s*Massive Public Data \+ Clinical Coach Research Edition\s*·\s*Riccardo Scaringi\s*·\s*Non uso clinico\.?$/i,
-     'HealthSolver 0.52.0 · UCI Myocardial Infarction Fatal Outcome Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
+     'HealthSolver 0.53.0 · SUPPORT2 Hospital Death Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
   ];
   const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
   const nodes=[];
@@ -120,11 +120,11 @@ wrap.className='card';
 wrap.innerHTML=`
   <div class="hs43-hero">
     <div>
-      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.52</div>
+      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.53</div>
       <h2 class="hs43-title">Predizioni cliniche di ricerca</h2>
       <p class="hs43-sub">HealthSolver usa lo stesso dossier che hai già compilato per verificare quali modelli sono applicabili e calcolare le stime disponibili. Le funzioni predittive sono qui, in primo piano. Ogni nuovo database entra nello stesso registry e nello stesso dossier.</p>
     </div>
-    <div class="hs43-badge">12 MODELLI SUPERVISIONATI</div>
+    <div class="hs43-badge">13 MODELLI SUPERVISIONATI</div>
   </div>
   <div id="hs42Coverage" class="metrics"></div>
   <div class="actions" style="margin-top:8px">
@@ -300,6 +300,29 @@ wrap.innerHTML=`
     <div class="notice" style="margin-top:10px"><b>Nota di leakage/causalità:</b> shock cardiogeno, edema polmonare e aritmie presenti già all'ingresso sono mantenuti perché UCI li definisce admission/pre-hospital. Sono forti segnali di gravità e concettualmente vicini ad alcune cause letali finali: per questo la probabilità non va interpretata come rischio eziologico indipendente.</div>
     <div class="notice" style="margin-top:10px"><b>Limite della selezione feature:</b> il profiling esplorativo preliminare ha incluso correlazioni univariate con <code>LET_IS</code> sull'intero dataset prima di congelare le 21 feature. Non è stato fatto tuning iterativo sul test, ma il test finale non è completamente indipendente dalla conoscenza usata nello screening; le metriche possono quindi essere ottimistiche e restano esplorative fino a validazione esterna.</div>
   </details>
+  <details id="hs53Support2Details">
+    <summary><b>SUPPORT2 · decesso intraospedaliero</b> · stato clinico giorno 3</summary>
+    <p class="hint">Coorte multicentrica di 9.105 pazienti critici in 5 centri USA. Il modello usa un set split-first di variabili baseline/giorno 3. Età e sesso vengono riutilizzati dal dossier; frequenza cardiaca, creatinina e sodio vengono riutilizzati solo se presenti nelle unità compatibili.</p>
+    <div class="grid">
+      <label>Gruppo diagnostico SUPPORT<select id="hs53_dzgroup"><option value="">—</option><option>ARF/MOSF w/Sepsis</option><option>COPD</option><option>CHF</option><option>Cirrhosis</option><option>Coma</option><option>Colon Cancer</option><option>Lung Cancer</option><option>MOSF w/Malig</option></select></label>
+      <label>Numero comorbidità<input id="hs53_numco" type="number" min="0" step="1"></label>
+      <label>SUPPORT coma score giorno 3<input id="hs53_scoma" type="number" min="0" max="100" step="any"></label>
+      <label>Giorno di ricovero all'ingresso nello studio<input id="hs53_hday" type="number" min="1" step="1"></label>
+      <label>Diabete<select id="hs53_diabetes"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>Demenza<select id="hs53_dementia"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>Cancro<select id="hs53_ca"><option value="">—</option><option value="no">No</option><option value="yes">Sì, non metastatico</option><option value="metastatic">Metastatico</option></select></label>
+      <label>Pressione arteriosa media giorno 3 (mmHg)<input id="hs53_meanbp" type="number" step="any"></label>
+      <label>Leucociti giorno 3 (10³/µL)<input id="hs53_wblc" type="number" min="0" step="any"></label>
+      <label>Frequenza respiratoria giorno 3 (atti/min)<input id="hs53_resp" type="number" min="0" step="any"></label>
+      <label>Temperatura giorno 3 (°C)<input id="hs53_temp" type="number" step="any"></label>
+      <label>Frequenza cardiaca giorno 3 (bpm, se non già nel dossier)<input id="hs53_hrt" type="number" min="0" step="any"></label>
+      <label>Creatinina giorno 3 (mg/dL, se non già nel dossier)<input id="hs53_crea" type="number" min="0" step="any"></label>
+      <label>Sodio giorno 3 (mEq/L, se non già nel dossier)<input id="hs53_sod" type="number" min="0" step="any"></label>
+    </div>
+    <div class="notice" style="margin-top:10px"><b>Target:</b> <code>hospdead=1</code> significa decesso durante il ricovero nella coorte SUPPORT2. Non è mortalità a 30/90 giorni, non è una survival probability e non è uno score clinicamente validato.</div>
+    <div class="notice" style="margin-top:10px"><b>Leakage control:</b> esclusi outcome/follow-up, costi e utilizzo futuro, TISS giorni 3–25, punteggi SUPPORT/APACHE, probabilità di sopravvivenza già calcolate, prognosi del medico e variabili DNR. Il modello usa la fisiologia grezza del giorno 3 come index time.</div>
+    <div class="notice" style="margin-top:10px"><b>Fairness/portabilità:</b> razza, reddito e istruzione non sono usati come predittori. La performance resta una validazione interna sullo stesso studio storico e richiede validazione esterna contemporanea.</div>
+  </details>
   <h3 style="margin:24px 0 10px;font-size:1.25rem">Risultati predittivi</h3>
   <div id="hs42Results" class="grid"></div>
   <div class="notice" style="margin-top:16px"><b>Interpretazione.</b> Ogni percentuale appartiene al proprio modello e al proprio dataset. Non sono probabilità concorrenti di una singola diagnosi e non vanno sommate. Software di ricerca, non diagnosi clinica.</div>
@@ -327,6 +350,8 @@ for(const [id,label,unit] of HCV){
 const registry=BUNDLE.registry;
 const models=registry.models.map(e=>({entry:e,model:BUNDLE.models[e.file]})).filter(x=>x.model);
 
+const SUPPORT2_ID='HS-SUPPORT2-HOSPDEATH-001';
+const support2Pair=models.find(x=>x.model.model_id===SUPPORT2_ID)||null;
 const THYROID_ID='HS-UCI-THYREC-001';
 const thyroidPair=models.find(x=>x.model.model_id===THYROID_ID)||null;
 const thyroidLabel={
@@ -367,6 +392,39 @@ function thyroidEncodedCase(model,age,sex){
     const v=raw('hs48_'+spec.key);
     rawValues[spec.key]=v===''?null:v;
   }
+  const out={};
+  for(const feature of model.features){
+    const enc=(model.encoding_map||{})[feature];
+    if(!enc){out[feature]=null;continue;}
+    const rv=rawValues[enc.raw_key];
+    if(enc.kind==='numeric'){
+      const n=Number(rv);out[feature]=(rv===null||rv===undefined||rv===''||!Number.isFinite(n))?null:n;
+    }else{
+      out[feature]=(rv===null||rv===undefined||rv==='')?null:(String(rv)===String(enc.category)?1:0);
+    }
+  }
+  return out;
+}
+function support2EncodedCase(model,age,sex){
+  if(!model) return {};
+  const rawValues={
+    age,
+    sex:sex===1?'male':sex===0?'female':null,
+    dzgroup:raw('hs53_dzgroup')||null,
+    'num.co':num('hs53_numco'),
+    scoma:num('hs53_scoma'),
+    hday:num('hs53_hday'),
+    diabetes:num('hs53_diabetes'),
+    dementia:num('hs53_dementia'),
+    ca:raw('hs53_ca')||null,
+    meanbp:num('hs53_meanbp'),
+    wblc:num('hs53_wblc'),
+    hrt:first(num('ci_pulse'),num('hs53_hrt')),
+    resp:num('hs53_resp'),
+    temp:num('hs53_temp'),
+    crea:first(num('ci_creatinine'),num('hs53_crea')),
+    sod:first(num('ci_sodium'),num('hs53_sod'))
+  };
   const out={};
   for(const feature of model.features){
     const enc=(model.encoding_map||{})[feature];
@@ -494,6 +552,7 @@ function dossierCase(){
     sex_0male_1female:sv===1?0:sv===0?1:null,
     episode_number:num('hs51_episode_number')
   };
+  const support2=support2EncodedCase(support2Pair?.model||null,age,sv);
   const miFatal={
     AGE:age,
     SEX:sv,
@@ -529,7 +588,8 @@ function dossierCase(){
     'HS-UCI-HFDEATH-001':heartFailure,
     'HS-CDC-DIABIND-001':cdcDiabetes,
     'HS-UCI-SEPSISDEATH-001':sepsis,
-    'HS-UCI-MIFATAL-001':miFatal
+    'HS-UCI-MIFATAL-001':miFatal,
+    'HS-SUPPORT2-HOSPDEATH-001':support2
   };
 }
 function readiness(model,values){
@@ -580,7 +640,9 @@ function renderResult(entry,model,res){
         ? `<div class="notice"><b>Esito ospedaliero con durata variabile.</b> Il paper usa “circa 9,351 giorni” perché è la durata media del ricovero, ma i ricoveri variano da 0 a 499 giorni: non è un endpoint fisso a 9 giorni né una probabilità di sopravvivenza. <b>Validazione esterna debole:</b> coorte sudcoreana n=137, AUROC 0.548; non generalizzare clinicamente.</div>`
         : model.model_id==='HS-UCI-MIFATAL-001'
           ? `<div class="notice"><b>LET_IS sorgente, non score clinico.</b> La classe positiva raggruppa sette cause di esito letale registrate nel dataset UCI 579. Il modello usa 21 feature di ingresso congelate prima del fitting e non include variabili dinamiche dei giorni successivi né farmaci. Il profiling preliminare aveva però visto associazioni univariate con l'outcome: le metriche interne sono esplorative e possono essere ottimistiche. La soglia interna privilegia sensibilità e non è un cut-off di triage.</div>`
-          : '';
+          : model.model_id==='HS-SUPPORT2-HOSPDEATH-001'
+            ? `<div class="notice"><b>SUPPORT2 hospdead, stato clinico giorno 3.</b> Stima del label di decesso intraospedaliero nella coorte SUPPORT2. Non è mortalità a 30/90 giorni e non è una survival probability. Il protocollo ha effettuato lo split prima di qualunque screening e ha escluso score/probabilità prognostiche preesistenti, prognosi del medico e DNR. Validazione interna storica, non validazione clinica contemporanea.</div>`
+            : '';
   d.innerHTML=`
     <div class="eyebrow">${model.model_id}</div>
     <h3>${titleFor(entry)}</h3>
