@@ -1,8 +1,6 @@
 name: HealthSolver 0.49 UCI Heart Failure Mortality
 on:
-  push:
-    branches: ['main']
-    paths: ['.github/workflows/hs049-uci-heart-failure.yml']
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
@@ -112,20 +110,24 @@ jobs:
 
           model={
             'schema':'healthsolver.predictive_model.v1',
-            'model_id':'HS-UCI-HFDEATH-001','version':'1.0.0',
-            'release':'HealthSolver 0.49 UCI Heart Failure Clinical Records Integration',
-            'task':'Binary research prediction of death during the source follow-up period among patients with heart failure in UCI 519, excluding follow-up duration (time) from predictors.',
+            'model_id':'HS-UCI-HFDEATH-001','version':'1.0.1',
+            'release':'HealthSolver 0.49.1 Scientific Semantics Remediation',
+            'task':"Binary research classification of source DEATH_EVENT (0/1) within UCI 519's 2015 Faisalabad cohort of patients with left ventricular systolic dysfunction and previous NYHA III-IV heart failure, excluding follow-up duration (time); this is not a fixed-horizon mortality or survival probability.",
             'research_only':True,'not_clinically_validated':True,
             'dataset':{
               'name':'UCI Heart Failure Clinical Records','uci_id':519,'doi':'10.24432/C5Z89R',
               'license':'CC BY 4.0','source':'https://archive.ics.uci.edu/dataset/519/heart+failure+clinical+records',
               'instances':int(len(y)),
-              'source_note':'Medical records of 299 patients with heart failure collected during follow-up.'
+              'source_note':'Medical records of 299 patients collected at Faisalabad Institute of Cardiology and Allied Hospital in Faisalabad, Punjab, Pakistan, during April-December 2015.',
+              'cohort_scope':{'location':'Faisalabad, Punjab, Pakistan','sites':['Faisalabad Institute of Cardiology','Allied Hospital'],'collection_period':'April-December 2015','clinical_domain':'All 299 patients had left ventricular systolic dysfunction and previous heart failure classified NYHA III or IV.','sex_counts':{'women':105,'men':194},'age_range_years':[40,95]},
+              'follow_up':{'min_days':4,'max_days':285,'mean_days':130,'variable_duration':True}
             },
             'features':features,
             'field_meta':field_meta,
             'excluded_source_features':excluded,
-            'leakage_control':'The source variable time is follow-up duration and is excluded from browser inference to avoid using post-index observation duration.',
+            'leakage_control':'The source variable time is follow-up duration and is excluded from browser predictors to avoid post-index observation-time leakage. Excluding time makes this a binary source-label classifier, not a time-to-event model.',
+            'time_to_event_limitation':'DEATH_EVENT was observed over variable follow-up (4-285 days; mean about 130 days). The classifier does not model censoring or time-to-event, so its output is not mortality at 30, 90, 365 days, any other fixed horizon, or a survival probability.',
+            'output_semantics':'Calibrated research probability of the source binary DEATH_EVENT label under the UCI 519 development setup and source-cohort distribution; not a general heart-failure mortality-risk estimate.',
             'imputation':{'strategy':'training median','values':{f:float(med[f]) for f in features}},
             'standardization':{'mean':{f:float(mu[f]) for f in features},'scale':{f:float(sd[f]) for f in features}},
             'logistic':{'intercept':float(base.intercept_[0]),'coefficients':{f:float(v) for f,v in zip(features,base.coef_[0])}},
@@ -140,7 +142,9 @@ jobs:
             'target_definition':{
               'positive':'DEATH_EVENT=1, patient died during source follow-up',
               'negative':'DEATH_EVENT=0, no death recorded during source follow-up',
-              'excluded_feature':'time excluded because it is follow-up duration rather than a baseline predictor'
+              'excluded_feature':'time excluded because it is follow-up duration rather than a baseline predictor',
+              'fixed_horizon':False,'time_horizon':'variable source follow-up: 4-285 days, mean about 130 days','survival_model':False,
+              'interpretation':'Source-cohort DEATH_EVENT classification only; not mortality by a defined time horizon.'
             }
           }
 
@@ -148,14 +152,17 @@ jobs:
           (out/'model-heart-failure-mortality-v1.json').write_text(json.dumps(model,indent=2,sort_keys=True))
           (out/'model-heart-failure-mortality-v1-report.json').write_text(json.dumps(metrics,indent=2,sort_keys=True))
           reg=json.loads((out/'model-registry-v2.json').read_text())
-          reg['version']='0.49.0'
+          reg['version']='0.49.1'
           reg['models']=[m for m in reg['models'] if m['model_id']!='HS-UCI-HFDEATH-001']
           reg['models'].append({
             'model_id':model['model_id'],
-            'title':'Mortalità nel follow-up · insufficienza cardiaca',
+            'title':'DEATH_EVENT UCI 519 · insufficienza cardiaca',
             'file':'model-heart-failure-mortality-v1.json',
             'task':model['task'],
-            'metrics_test':metrics
+            'metrics_test':metrics,
+            'output_semantics':model['output_semantics'],
+            'cohort_scope':'Faisalabad 2015 · LV systolic dysfunction · previous NYHA III-IV heart failure',
+            'fixed_horizon':False
           })
           (out/'model-registry-v2.json').write_text(json.dumps(reg,indent=2,sort_keys=True))
           print(json.dumps({'excluded':excluded,'features':features,'metrics':metrics},indent=2))
