@@ -1,7 +1,7 @@
 {
   "app": "HealthSolver",
-  "version": "0.53.1",
-  "release": "Code Audit Remediation + SUPPORT2 Hospital Death Integration + Predictive-First UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition",
+  "version": "0.54.0",
+  "release": "eICU Demo Hospital Death Integration + SUPPORT2 + Predictive-First UI + Multi-Outcome Predictive Engine + Clinical Coach Research Edition",
   "base_release": "0.38.0",
   "base_source_sha256": "c1bef787551183db369643036e9fc9a7f64ddec515ad804066b9a37279df6b68",
   "predictive_registry": "predictive/model-registry-v2.json",
@@ -18,15 +18,16 @@
     "HS-CDC-DIABIND-001",
     "HS-UCI-SEPSISDEATH-001",
     "HS-UCI-MIFATAL-001",
-    "HS-SUPPORT2-HOSPDEATH-001"
+    "HS-SUPPORT2-HOSPDEATH-001",
+    "HS-EICU-DEMO-HOSPDEATH-001"
   ],
   "payload_parts": 7,
-  "source_sha256": "45eb13dfa830e8d80278f94918bb145ff89894707094a70acda72f5bc8e43b32",
+  "source_sha256": "7664990883e887536554c5184c2a5009dd4f2f281bd00362243bea24e072f707",
   "predictive_modules_embedded": true,
   "integrated_predictive_ui": true,
   "predictive_first_ui": true,
   "uci_hcv_integrated": true,
-  "predictive_model_count": 13,
+  "predictive_model_count": 14,
   "nhanes_2017_2018_integrated": true,
   "nhis_2023_integrated": true,
   "uci_diabetes_readmission_integrated": true,
@@ -39,5 +40,6 @@
   "sepsis_audit_semantics_remediation": true,
   "uci_mi_fatal_outcome_integrated": true,
   "support2_hospital_death_integrated": true,
-  "code_audit_remediation": true
+  "code_audit_remediation": true,
+  "eicu_demo_hospital_death_integrated": true
 }

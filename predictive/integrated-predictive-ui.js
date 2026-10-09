@@ -1,6 +1,9 @@
 (()=>{
 'use strict';
-if(window.__HS_INTEGRATED_PREDICTIVE_0531__) return;
+if(window.__HS_INTEGRATED_PREDICTIVE_0540__) return;
+window.__HS_INTEGRATED_PREDICTIVE_0540__=true;
+// Preserve the previous marker so historical regression checks can still
+// identify the 0.53.1-compatible integrated runtime.
 window.__HS_INTEGRATED_PREDICTIVE_0531__=true;
 
 const BUNDLE=window.__HS_PREDICTIVE_BUNDLE__||null;
@@ -15,9 +18,9 @@ document.getElementById('hs-router041')?.remove();
 // while updating only visible application-release branding.
 (function reconcileReleaseBranding(){
   const replacements=[
-    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.53.1'],
+    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.54.0'],
     [/^HealthSolver\s+0\.38\.0\s*·\s*Massive Public Data \+ Clinical Coach Research Edition\s*·\s*Riccardo Scaringi\s*·\s*Non uso clinico\.?$/i,
-     'HealthSolver 0.53.1 · Code Audit Remediation + SUPPORT2 Hospital Death Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
+     'HealthSolver 0.54.0 · eICU Demo Hospital Death Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
   ];
   const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
   const nodes=[];
@@ -120,11 +123,11 @@ wrap.className='card';
 wrap.innerHTML=`
   <div class="hs43-hero">
     <div>
-      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.53.1</div>
+      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.54.0</div>
       <h2 class="hs43-title">Predizioni cliniche di ricerca</h2>
       <p class="hs43-sub">HealthSolver usa lo stesso dossier che hai già compilato per verificare quali modelli sono applicabili e calcolare le stime disponibili. Le funzioni predittive sono qui, in primo piano. Ogni nuovo database entra nello stesso registry e nello stesso dossier.</p>
     </div>
-    <div class="hs43-badge">13 MODELLI SUPERVISIONATI</div>
+    <div class="hs43-badge">14 MODELLI SUPERVISIONATI</div>
   </div>
   <div id="hs42Coverage" class="metrics"></div>
   <div class="actions" style="margin-top:8px">
@@ -323,6 +326,24 @@ wrap.innerHTML=`
     <div class="notice" style="margin-top:10px"><b>Leakage control:</b> esclusi outcome/follow-up, costi e utilizzo futuro, TISS giorni 3–25, punteggi SUPPORT/APACHE, probabilità di sopravvivenza già calcolate, prognosi del medico e variabili DNR. Il modello usa la fisiologia grezza del giorno 3 come index time.</div>
     <div class="notice" style="margin-top:10px"><b>Fairness/portabilità:</b> razza, reddito e istruzione non sono usati come predittori. La performance resta una validazione interna sullo stesso studio storico e richiede validazione esterna contemporanea.</div>
   </details>
+  <details id="hs54EicuDetails">
+    <summary><b>eICU Demo · decesso ospedaliero</b> · first APACHE day</summary>
+    <p class="hint">Modello di ricerca sulla demo pubblica eICU. L'index time è la fine del primo APACHE day: i valori fisiologici devono quindi rappresentare esplicitamente le peggiori misure delle prime 24 ore. Solo età e sesso vengono riutilizzati dal dossier generale.</p>
+    <div class="grid">
+      <label>GCS totale peggiore nel primo APACHE day<input id="hs54_gcs_total" type="number" min="3" max="15" step="1"></label>
+      <label>GCS non valutabile per farmaci<select id="hs54_gcs_meds"><option value="">—</option><option value="0">No</option><option value="1">Sì</option></select></label>
+      <label>Temperatura peggiore prime 24h (°C)<input id="hs54_temperature" type="number" step="any"></label>
+      <label>Frequenza respiratoria peggiore prime 24h (atti/min)<input id="hs54_respiratoryrate" type="number" min="0" step="any"></label>
+      <label>Frequenza cardiaca peggiore prime 24h (bpm)<input id="hs54_heartrate" type="number" min="0" step="any"></label>
+      <label>Pressione arteriosa media peggiore prime 24h (mmHg)<input id="hs54_meanbp" type="number" step="any"></label>
+      <label>Glucosio peggiore prime 24h (mg/dL)<input id="hs54_glucose" type="number" min="0" step="any"></label>
+      <label>Sodio peggiore prime 24h (mEq/L)<input id="hs54_sodium" type="number" step="any"></label>
+      <label>Creatinina peggiore prime 24h (mg/dL)<input id="hs54_creatinine" type="number" min="0" step="any"></label>
+    </div>
+    <div class="notice" style="margin-top:10px"><b>Target:</b> <code>hospitalDischargeStatus = Expired</code> contro <code>Alive</code>. Non è mortalità a 24 ore, 30 o 90 giorni e non è una probabilità di sopravvivenza.</div>
+    <div class="notice" style="margin-top:10px"><b>Leakage control:</b> nessun APACHE score o predicted mortality/LOS, nessun outcome/actual result, nessun campo di dimissione e nessun identificativo ospedale è usato come predittore. Lo stesso paziente non compare in più partizioni di sviluppo.</div>
+    <div class="notice" style="margin-top:10px"><b>Validazione:</b> metriche interne patient-disjoint sulla demo eICU; non è validazione esterna, clinica o prospettica. Software di ricerca.</div>
+  </details>
   <h3 style="margin:24px 0 10px;font-size:1.25rem">Risultati predittivi</h3>
   <div id="hs42Results" class="grid"></div>
   <div class="notice" style="margin-top:16px"><b>Interpretazione.</b> Ogni percentuale appartiene al proprio modello e al proprio dataset. Non sono probabilità concorrenti di una singola diagnosi e non vanno sommate. Software di ricerca, non diagnosi clinica.</div>
@@ -352,6 +373,8 @@ const models=registry.models.map(e=>({entry:e,model:BUNDLE.models[e.file]})).fil
 
 const SUPPORT2_ID='HS-SUPPORT2-HOSPDEATH-001';
 const support2Pair=models.find(x=>x.model.model_id===SUPPORT2_ID)||null;
+const EICU_ID='HS-EICU-DEMO-HOSPDEATH-001';
+const eicuPair=models.find(x=>x.model.model_id===EICU_ID)||null;
 const THYROID_ID='HS-UCI-THYREC-001';
 const thyroidPair=models.find(x=>x.model.model_id===THYROID_ID)||null;
 const thyroidLabel={
@@ -434,6 +457,41 @@ function support2EncodedCase(model,age,sex){
       const n=Number(rv);out[feature]=(rv===null||rv===undefined||rv===''||!Number.isFinite(n))?null:n;
     }else{
       out[feature]=(rv===null||rv===undefined||rv==='')?null:(String(rv)===String(enc.category)?1:0);
+    }
+  }
+  return out;
+}
+function eicuEncodedCase(model,age,sex){
+  if(!model) return {};
+  const rawValues={
+    age,
+    sex:sex===1?'male':sex===0?'female':null,
+    gcs_total:num('hs54_gcs_total'),
+    gcs_unscorable_meds:num('hs54_gcs_meds'),
+    temperature:num('hs54_temperature'),
+    respiratoryrate:num('hs54_respiratoryrate'),
+    heartrate:num('hs54_heartrate'),
+    meanbp:num('hs54_meanbp'),
+    glucose:num('hs54_glucose'),
+    sodium:num('hs54_sodium'),
+    creatinine:num('hs54_creatinine')
+  };
+  const out={};
+  for(const feature of model.features){
+    const enc=(model.encoding_map||{})[feature];
+    if(!enc){out[feature]=null;continue;}
+    const rv=rawValues[enc.raw_key];
+    if(feature==='age_numeric'){
+      const n=Number(rv);
+      out[feature]=(rv===null||rv===undefined||rv===''||!Number.isFinite(n))?null:Math.min(n,90);
+    }else if(feature==='age_over_89'){
+      const n=Number(rv);
+      out[feature]=(rv===null||rv===undefined||rv===''||!Number.isFinite(n))?null:(n>89?1:0);
+    }else if(enc.kind==='category'){
+      out[feature]=(rv===null||rv===undefined||rv==='')?null:(String(rv)===String(enc.category)?1:0);
+    }else{
+      const n=Number(rv);
+      out[feature]=(rv===null||rv===undefined||rv===''||!Number.isFinite(n))?null:n;
     }
   }
   return out;
@@ -553,6 +611,7 @@ function dossierCase(){
     episode_number:num('hs51_episode_number')
   };
   const support2=support2EncodedCase(support2Pair?.model||null,age,sv);
+  const eicu=eicuEncodedCase(eicuPair?.model||null,age,sv);
   const miFatal={
     AGE:age,
     SEX:sv,
@@ -589,7 +648,8 @@ function dossierCase(){
     'HS-CDC-DIABIND-001':cdcDiabetes,
     'HS-UCI-SEPSISDEATH-001':sepsis,
     'HS-UCI-MIFATAL-001':miFatal,
-    'HS-SUPPORT2-HOSPDEATH-001':support2
+    'HS-SUPPORT2-HOSPDEATH-001':support2,
+    'HS-EICU-DEMO-HOSPDEATH-001':eicu
   };
 }
 function readiness(model,values){
@@ -659,7 +719,9 @@ function renderResult(entry,model,res){
           ? `<div class="notice"><b>LET_IS sorgente, non score clinico.</b> La classe positiva raggruppa sette cause di esito letale registrate nel dataset UCI 579. Il modello usa 21 feature di ingresso congelate prima del fitting e non include variabili dinamiche dei giorni successivi né farmaci. Il profiling preliminare aveva però visto associazioni univariate con l'outcome: le metriche interne sono esplorative e possono essere ottimistiche. La soglia interna privilegia sensibilità e non è un cut-off di triage.</div>`
           : model.model_id==='HS-SUPPORT2-HOSPDEATH-001'
             ? `<div class="notice"><b>SUPPORT2 hospdead, stato clinico giorno 3.</b> Stima del label di decesso intraospedaliero nella coorte SUPPORT2. I parametri fisiologici usati sono esplicitamente quelli del giorno 3; non vengono sostituiti con valori generici del dossier. Non è mortalità a 30/90 giorni e non è una survival probability. Il protocollo ha effettuato lo split prima di qualunque screening e ha escluso score/probabilità prognostiche preesistenti, prognosi del medico e DNR. Validazione interna storica, non validazione clinica contemporanea.</div>`
-            : '';
+            : model.model_id==='HS-EICU-DEMO-HOSPDEATH-001'
+              ? `<div class="notice"><b>eICU Demo hospitalDischargeStatus, first APACHE day.</b> La classe positiva è <code>Expired</code> alla dimissione ospedaliera dopo la prima ICU stay indicizzata. Le variabili fisiologiche sono peggiori valori delle prime 24 ore e devono essere inserite esplicitamente nel pannello eICU; i valori generici del dossier non vengono riutilizzati. APACHE score, predicted mortality/LOS, outcome actual, campi di dimissione e hospital ID sono esclusi. Split patient-disjoint; validazione interna sulla demo, non validazione clinica o prospettica.</div>`
+              : '';
   d.innerHTML=`
     <div class="eyebrow">${model.model_id}</div>
     <h3>${titleFor(entry)}</h3>
