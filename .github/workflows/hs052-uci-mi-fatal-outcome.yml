@@ -1,0 +1,227 @@
+name: HealthSolver 0.52 UCI MI Fatal Outcome
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs052-uci-mi-fatal-outcome.yml']
+permissions:
+  contents: write
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Train admission-time MI fatal-outcome classifier
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install --disable-pip-version-check -q numpy==2.5.3 pandas==3.0.6 scikit-learn==1.9.1
+          python - <<'PY'
+          import io,json,math,pathlib,time,urllib.request,zipfile
+          import numpy as np,pandas as pd
+          from sklearn.linear_model import LogisticRegression
+          from sklearn.metrics import accuracy_score,roc_auc_score,average_precision_score,brier_score_loss,confusion_matrix,roc_curve
+          from sklearn.model_selection import train_test_split
+
+          url='https://archive.ics.uci.edu/static/public/579/myocardial+infarction+complications.zip'
+          blob=None;last=None
+          for attempt in range(1,6):
+              try:
+                  req=urllib.request.Request(url,headers={'User-Agent':'HealthSolver/0.52 research build'})
+                  with urllib.request.urlopen(req,timeout=120) as r: blob=r.read()
+                  if blob and len(blob)>1000: break
+              except Exception as e:
+                  last=e; print('DOWNLOAD_RETRY',attempt,type(e).__name__,str(e)[:220]); time.sleep(attempt*3)
+          assert blob and len(blob)>1000,last
+          print('ZIP_BYTES',len(blob))
+          with zipfile.ZipFile(io.BytesIO(blob)) as z:
+              names=z.namelist();print('ZIP_NAMES',names)
+              data_name=next(n for n in names if n.lower().endswith('mi.data'))
+              raw=pd.read_csv(z.open(data_name),header=None,na_values='?')
+          print('RAW_SHAPE',raw.shape)
+          assert raw.shape==(1700,124),raw.shape
+
+          # Original UCI 1-based column numbers. These 21 predictors are all
+          # available at admission according to UCI's timing guidance.
+          colnum={
+            'AGE':2,'SEX':3,'INF_ANAM':4,'STENOK_AN':5,'FK_STENOK':6,'IBS_POST':7,
+            'GB':9,'SIM_GIPERT':10,'ZSN_A':12,'S_AD_ORIT':37,'D_AD_ORIT':38,
+            'O_L_POST':39,'K_SH_POST':40,'MP_TP_POST':41,'FIB_G_POST':44,'IM_PG_P':49,
+            'K_BLOOD':84,'NA_BLOOD':86,'L_BLOOD':90,'ROE':91,'TIME_B_S':92,
+            'LET_IS':124
+          }
+          features=[k for k in colnum if k!='LET_IS']
+          X=pd.DataFrame({k:pd.to_numeric(raw.iloc[:,n-1],errors='coerce') for k,n in colnum.items() if k!='LET_IS'})
+          let=pd.to_numeric(raw.iloc[:,colnum['LET_IS']-1],errors='raise').astype(int)
+          y=(let!=0).astype(int)
+          assert list(X.columns)==features
+          assert len(features)==21
+          assert set(let.unique())==set(range(8)),sorted(let.unique())
+          assert int(y.sum())==271 and int((1-y).sum())==1429
+          print('LET_IS_COUNTS',let.value_counts().sort_index().to_dict())
+
+          # Explicit no-leakage guard: only predeclared admission-time source columns.
+          forbidden={93,94,95,100,101,102,103,104,105}
+          assert not any(colnum[f] in forbidden for f in features)
+          assert all(colnum[f]<=112 for f in features)
+          print('ADMISSION_FEATURES',[(f,colnum[f]) for f in features])
+
+          idx=np.arange(len(y))
+          tr,tmp=train_test_split(idx,test_size=.40,random_state=5201,stratify=y)
+          cal,te=train_test_split(tmp,test_size=.50,random_state=5202,stratify=y.iloc[tmp])
+          Xtr,Xca,Xte=X.iloc[tr].copy(),X.iloc[cal].copy(),X.iloc[te].copy()
+          ytr,yca,yte=y.iloc[tr].to_numpy(),y.iloc[cal].to_numpy(),y.iloc[te].to_numpy()
+
+          # Missingness policy learned from training only.
+          miss=Xtr.isna().mean()
+          assert float(miss.max())<=0.26,miss.sort_values(ascending=False).head()
+          med=Xtr.median().reindex(features)
+          Xtr=Xtr.fillna(med); Xca=Xca.fillna(med); Xte=Xte.fillna(med)
+          mu=Xtr.mean().reindex(features)
+          sd=Xtr.std(ddof=0).replace(0,1).reindex(features)
+          lo=Xtr.min().reindex(features); hi=Xtr.max().reindex(features)
+          Ztr=(Xtr-mu)/sd; Zca=(Xca-mu)/sd; Zte=(Xte-mu)/sd
+
+          base=LogisticRegression(max_iter=5000,C=.5,solver='lbfgs',class_weight='balanced',random_state=5203)
+          base.fit(Ztr,ytr)
+          platt=LogisticRegression(max_iter=5000,C=1e6,solver='lbfgs',random_state=5204)
+          cs=base.decision_function(Zca).reshape(-1,1)
+          platt.fit(cs,yca)
+          pca=platt.predict_proba(cs)[:,1]
+          fpr,tpr,thr=roc_curve(yca,pca)
+          valid=np.isfinite(thr)
+          threshold=float(thr[valid][np.argmax((tpr-fpr)[valid])])
+
+          p=platt.predict_proba(base.decision_function(Zte).reshape(-1,1))[:,1]
+          pred=(p>=threshold).astype(int)
+          tn,fp,fn,tp=confusion_matrix(yte,pred,labels=[0,1]).ravel()
+          metrics={
+            'n_total':int(len(y)),'n_train':int(len(tr)),'n_calibration':int(len(cal)),'n_test':int(len(te)),
+            'positive_prevalence_fatal_outcome':float(y.mean()),
+            'auroc':float(roc_auc_score(yte,p)),
+            'auprc':float(average_precision_score(yte,p)),
+            'accuracy':float(accuracy_score(yte,pred)),
+            'brier':float(brier_score_loss(yte,p)),
+            'sensitivity_fatal':float(tp/(tp+fn)) if tp+fn else None,
+            'specificity_nonfatal':float(tn/(tn+fp)) if tn+fp else None,
+            'threshold':threshold,
+            'confusion_matrix':{'tn_nonfatal':int(tn),'fp_fatal':int(fp),'fn_fatal':int(fn),'tp_fatal':int(tp)}
+          }
+
+          labels={
+            'AGE':('Età','anni'),
+            'SEX':('Sesso sorgente','0=donna, 1=uomo'),
+            'INF_ANAM':('Numero di infarti miocardici in anamnesi','0=0, 1=1, 2=2, 3=3+'),
+            'STENOK_AN':('Anamnesi di angina da sforzo','0=mai, 1=<1 anno, 2=1 anno, 3=2 anni, 4=3 anni, 5=4-5 anni, 6=>5 anni'),
+            'FK_STENOK':('Classe funzionale angina nell’ultimo anno','0=nessuna, 1=I, 2=II, 3=III, 4=IV'),
+            'IBS_POST':('CHD nelle settimane/giorni precedenti','0=nessuna, 1=angina da sforzo, 2=angina instabile'),
+            'GB':('Ipertensione essenziale','0=nessuna, 1=stadio 1, 2=stadio 2, 3=stadio 3'),
+            'SIM_GIPERT':('Ipertensione sintomatica','0=no, 1=sì'),
+            'ZSN_A':('Scompenso cardiaco cronico in anamnesi','0=nessuno, 1=I, 2=II dx, 3=II sx, 4=IIB bilaterale'),
+            'S_AD_ORIT':('Pressione sistolica in ICU all’ingresso','mmHg'),
+            'D_AD_ORIT':('Pressione diastolica in ICU all’ingresso','mmHg'),
+            'O_L_POST':('Edema polmonare all’ingresso in ICU','0=no, 1=sì'),
+            'K_SH_POST':('Shock cardiogeno all’ingresso in ICU','0=no, 1=sì'),
+            'MP_TP_POST':('FA parossistica all’ingresso/pre-ospedaliero','0=no, 1=sì'),
+            'FIB_G_POST':('Fibrillazione ventricolare all’ingresso/pre-ospedaliero','0=no, 1=sì'),
+            'IM_PG_P':('Infarto ventricolare destro','0=no, 1=sì'),
+            'K_BLOOD':('Potassio sierico','mmol/L'),
+            'NA_BLOOD':('Sodio sierico','mmol/L'),
+            'L_BLOOD':('Leucociti','10^9/L'),
+            'ROE':('VES','mm/h'),
+            'TIME_B_S':('Tempo da inizio attacco CHD a ospedale','1=<2h, 2=2-4h, 3=4-6h, 4=6-8h, 5=8-12h, 6=12-24h, 7=>1g, 8=>2g, 9=>3g')
+          }
+          field_meta={}
+          for f in features:
+              label,unit=labels[f]
+              field_meta[f]={
+                'label':label,'unit':unit,'source_column_number':colnum[f],
+                'training_min':float(lo[f]),'training_max':float(hi[f]),
+                'median':float(med[f]),'training_missing_fraction':float(miss[f])
+              }
+
+          model={
+            'schema':'healthsolver.predictive_model.v1',
+            'model_id':'HS-UCI-MIFATAL-001',
+            'version':'1.0.0',
+            'release':'HealthSolver 0.52 UCI Myocardial Infarction Fatal Outcome Integration',
+            'task':'Binary research classification of the UCI LET_IS lethal-outcome label from a predeclared 21-feature admission-time subset; positive class means LET_IS is one of causes 1-7 rather than source value 0.',
+            'research_only':True,
+            'not_clinically_validated':True,
+            'dataset':{
+              'name':'Myocardial infarction complications',
+              'uci_id':579,
+              'doi':'10.24432/C53P5M',
+              'license':'CC BY 4.0',
+              'source':'https://archive.ics.uci.edu/dataset/579/myocardial+infarction+complications',
+              'instances':1700,
+              'source_features':111,
+              'source_outcomes':12,
+              'collection_site':'Krasnoyarsk Interdistrict Clinical Hospital, Russia',
+              'collection_period':'1992-1995',
+              'missing_values':True
+            },
+            'runtime_environment':{'python':'3.13','numpy':'2.5.3','pandas':'3.0.6','scikit_learn':'1.9.1'},
+            'features':features,
+            'field_meta':field_meta,
+            'source_column_numbers':{f:colnum[f] for f in features},
+            'excluded_dynamic_source_columns':[93,94,95,100,101,102,103,104,105],
+            'feature_selection_policy':'Predeclared compact admission-time clinical subset. No outcome-driven feature selection and no medication variables. All selected columns are allowed at admission by UCI timing guidance.',
+            'imputation':{'strategy':'training median','values':{f:float(med[f]) for f in features}},
+            'standardization':{'mean':{f:float(mu[f]) for f in features},'scale':{f:float(sd[f]) for f in features}},
+            'logistic':{'intercept':float(base.intercept_[0]),'coefficients':{f:float(v) for f,v in zip(features,base.coef_[0])}},
+            'calibration':{'method':'Platt scaling on held-out calibration split','intercept':float(platt.intercept_[0]),'slope':float(platt.coef_[0,0])},
+            'threshold':threshold,
+            'threshold_selection':'Youden J maximum on held-out calibration split; evaluated once on independent held-out test split',
+            'metrics_test':metrics,
+            'abstention':{
+              'max_missing_features':4,
+              'message':'Prediction withheld when more than four of the 21 source-domain admission features are missing.'
+            },
+            'target_definition':{
+              'source_name':'LET_IS',
+              'negative':'0 = source record alive / no lethal cause recorded',
+              'positive':'1-7 = lethal outcome cause recorded (cardiogenic shock, pulmonary edema, myocardial rupture, CHF progression, thromboembolism, asystole, or ventricular fibrillation)',
+              'binary_mapping':'HealthSolver positive = LET_IS != 0',
+              'clinical_diagnosis':False,
+              'interpretation':'Classification of the source lethal-outcome label among hospitalized acute-MI records; not a general-population mortality probability.'
+            },
+            'temporal_semantics':'Prediction uses only UCI columns permitted at hospital admission. Dynamic source columns from the first three hospital days are excluded. Secondary analyses of this database describe fatal acute complications during the first 72 hours; HealthSolver labels the output as the source acute/hospital lethal-outcome class rather than claiming a universally validated fixed-horizon mortality score.',
+            'leakage_review':'Outcome columns 113-124 are never predictors. UCI dynamic input columns 93,94,95,100,101,102,103,104,105 are excluded. Medication variables are additionally excluded by the compact feature policy. Admission shock, pulmonary edema and arrhythmias are retained because UCI explicitly records them at ICU admission or pre-hospital stage; they are baseline severity signals but can be clinically close to later lethal causes, so the model must remain source-domain research only.'
+          }
+
+          out=pathlib.Path('predictive')
+          (out/'model-mi-fatal-outcome-v1.json').write_text(json.dumps(model,indent=2,sort_keys=True))
+          (out/'model-mi-fatal-outcome-v1-report.json').write_text(json.dumps(metrics,indent=2,sort_keys=True))
+
+          reg=json.loads((out/'model-registry-v2.json').read_text())
+          assert reg['version']=='0.51.1',reg['version']
+          old=[m for m in reg['models'] if m['model_id']!='HS-UCI-MIFATAL-001']
+          assert len(old)==11,[m['model_id'] for m in old]
+          reg['version']='0.52.0'
+          reg['models']=old+[{
+            'model_id':model['model_id'],
+            'title':'Esito letale acuto post-IMA · admission',
+            'file':'model-mi-fatal-outcome-v1.json',
+            'task':model['task'],
+            'metrics_test':metrics,
+            'target_semantics':'LET_IS != 0 from an admission-time compact feature subset; research source-label classifier, not validated mortality score.'
+          }]
+          (out/'model-registry-v2.json').write_text(json.dumps(reg,indent=2,sort_keys=True))
+          print(json.dumps({'metrics':metrics,'features':features,'registry_models':len(reg['models'])},indent=2))
+          PY
+      - name: Commit model and registry
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name "healthsolver-bot"
+          git config user.email "healthsolver-bot@users.noreply.github.com"
+          git add predictive/model-mi-fatal-outcome-v1.json predictive/model-mi-fatal-outcome-v1-report.json predictive/model-registry-v2.json
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: add UCI myocardial infarction fatal-outcome model HS-UCI-MIFATAL-001"
+          git push
