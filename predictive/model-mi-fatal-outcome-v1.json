@@ -32,7 +32,7 @@
     104,
     105
   ],
-  "feature_selection_policy": "Predeclared compact admission-time clinical subset. No outcome-driven feature selection and no medication variables. All selected columns are allowed at admission by UCI timing guidance.",
+  "feature_selection_policy": "Compact admission-time clinical subset fixed before model fitting. Selection used timing/clinical interpretability after exploratory source profiling that included descriptive univariate outcome correlations; therefore feature selection was not fully outcome-blind. No iterative feature changes were made in response to held-out test performance. Medication variables and UCI dynamic day-1/day-2/day-3 variables are excluded.",
   "features": [
     "AGE",
     "SEX",
@@ -58,74 +58,74 @@
   ],
   "field_meta": {
     "AGE": {
-      "label": "Et\u00e0",
-      "median": 63.0,
+      "label": "Età",
+      "median": 63,
       "source_column_number": 2,
-      "training_max": 92.0,
-      "training_min": 27.0,
+      "training_max": 92,
+      "training_min": 27,
       "training_missing_fraction": 0.004901960784313725,
       "unit": "anni"
     },
     "D_AD_ORIT": {
-      "label": "Pressione diastolica in ICU all\u2019ingresso",
-      "median": 80.0,
+      "label": "Pressione diastolica in ICU all’ingresso",
+      "median": 80,
       "source_column_number": 38,
-      "training_max": 140.0,
-      "training_min": 0.0,
+      "training_max": 140,
+      "training_min": 0,
       "training_missing_fraction": 0.15294117647058825,
       "unit": "mmHg"
     },
     "FIB_G_POST": {
-      "label": "Fibrillazione ventricolare all\u2019ingresso/pre-ospedaliero",
-      "median": 0.0,
+      "label": "Fibrillazione ventricolare all’ingresso/pre-ospedaliero",
+      "median": 0,
       "source_column_number": 44,
-      "training_max": 1.0,
-      "training_min": 0.0,
+      "training_max": 1,
+      "training_min": 0,
       "training_missing_fraction": 0.0058823529411764705,
-      "unit": "0=no, 1=s\u00ec"
+      "unit": "0=no, 1=sì"
     },
     "FK_STENOK": {
-      "label": "Classe funzionale angina nell\u2019ultimo anno",
-      "median": 2.0,
+      "label": "Classe funzionale angina nell’ultimo anno",
+      "median": 2,
       "source_column_number": 6,
-      "training_max": 4.0,
-      "training_min": 0.0,
+      "training_max": 4,
+      "training_min": 0,
       "training_missing_fraction": 0.045098039215686274,
       "unit": "0=nessuna, 1=I, 2=II, 3=III, 4=IV"
     },
     "GB": {
       "label": "Ipertensione essenziale",
-      "median": 2.0,
+      "median": 2,
       "source_column_number": 9,
-      "training_max": 3.0,
-      "training_min": 0.0,
+      "training_max": 3,
+      "training_min": 0,
       "training_missing_fraction": 0.0029411764705882353,
       "unit": "0=nessuna, 1=stadio 1, 2=stadio 2, 3=stadio 3"
     },
     "IBS_POST": {
       "label": "CHD nelle settimane/giorni precedenti",
-      "median": 1.0,
+      "median": 1,
       "source_column_number": 7,
-      "training_max": 2.0,
-      "training_min": 0.0,
+      "training_max": 2,
+      "training_min": 0,
       "training_missing_fraction": 0.028431372549019607,
       "unit": "0=nessuna, 1=angina da sforzo, 2=angina instabile"
     },
     "IM_PG_P": {
       "label": "Infarto ventricolare destro",
-      "median": 0.0,
+      "median": 0,
       "source_column_number": 49,
-      "training_max": 1.0,
-      "training_min": 0.0,
+      "training_max": 1,
+      "training_min": 0,
       "training_missing_fraction": 0.000980392156862745,
-      "unit": "0=no, 1=s\u00ec"
+      "unit": "0=no, 1=sì"
     },
     "INF_ANAM": {
       "label": "Numero di infarti miocardici in anamnesi",
-      "median": 0.0,
+      "median": 0,
       "source_column_number": 4,
-      "training_max": 3.0,
-      "training_min": 0.0,
+      "training_max": 3,
+      "training_min": 0,
       "training_missing_fraction": 0.00196078431372549,
       "unit": "0=0, 1=1, 2=2, 3=3+"
     },
@@ -139,110 +139,110 @@
       "unit": "mmol/L"
     },
     "K_SH_POST": {
-      "label": "Shock cardiogeno all\u2019ingresso in ICU",
-      "median": 0.0,
+      "label": "Shock cardiogeno all’ingresso in ICU",
+      "median": 0,
       "source_column_number": 40,
-      "training_max": 1.0,
-      "training_min": 0.0,
+      "training_max": 1,
+      "training_min": 0,
       "training_missing_fraction": 0.00784313725490196,
-      "unit": "0=no, 1=s\u00ec"
+      "unit": "0=no, 1=sì"
     },
     "L_BLOOD": {
       "label": "Leucociti",
       "median": 8.1,
       "source_column_number": 90,
-      "training_max": 25.0,
-      "training_min": 2.0,
+      "training_max": 25,
+      "training_min": 2,
       "training_missing_fraction": 0.06764705882352941,
       "unit": "10^9/L"
     },
     "MP_TP_POST": {
-      "label": "FA parossistica all\u2019ingresso/pre-ospedaliero",
-      "median": 0.0,
+      "label": "FA parossistica all’ingresso/pre-ospedaliero",
+      "median": 0,
       "source_column_number": 41,
-      "training_max": 1.0,
-      "training_min": 0.0,
+      "training_max": 1,
+      "training_min": 0,
       "training_missing_fraction": 0.00784313725490196,
-      "unit": "0=no, 1=s\u00ec"
+      "unit": "0=no, 1=sì"
     },
     "NA_BLOOD": {
       "label": "Sodio sierico",
-      "median": 136.0,
+      "median": 136,
       "source_column_number": 86,
-      "training_max": 163.0,
-      "training_min": 117.0,
+      "training_max": 163,
+      "training_min": 117,
       "training_missing_fraction": 0.22058823529411764,
       "unit": "mmol/L"
     },
     "O_L_POST": {
-      "label": "Edema polmonare all\u2019ingresso in ICU",
-      "median": 0.0,
+      "label": "Edema polmonare all’ingresso in ICU",
+      "median": 0,
       "source_column_number": 39,
-      "training_max": 1.0,
-      "training_min": 0.0,
+      "training_max": 1,
+      "training_min": 0,
       "training_missing_fraction": 0.0058823529411764705,
-      "unit": "0=no, 1=s\u00ec"
+      "unit": "0=no, 1=sì"
     },
     "ROE": {
       "label": "VES",
-      "median": 10.0,
+      "median": 10,
       "source_column_number": 91,
-      "training_max": 65.0,
-      "training_min": 1.0,
+      "training_max": 65,
+      "training_min": 1,
       "training_missing_fraction": 0.11470588235294117,
       "unit": "mm/h"
     },
     "SEX": {
       "label": "Sesso sorgente",
-      "median": 1.0,
+      "median": 1,
       "source_column_number": 3,
-      "training_max": 1.0,
-      "training_min": 0.0,
-      "training_missing_fraction": 0.0,
+      "training_max": 1,
+      "training_min": 0,
+      "training_missing_fraction": 0,
       "unit": "0=donna, 1=uomo"
     },
     "SIM_GIPERT": {
       "label": "Ipertensione sintomatica",
-      "median": 0.0,
+      "median": 0,
       "source_column_number": 10,
-      "training_max": 1.0,
-      "training_min": 0.0,
+      "training_max": 1,
+      "training_min": 0,
       "training_missing_fraction": 0.00196078431372549,
-      "unit": "0=no, 1=s\u00ec"
+      "unit": "0=no, 1=sì"
     },
     "STENOK_AN": {
       "label": "Anamnesi di angina da sforzo",
-      "median": 2.0,
+      "median": 2,
       "source_column_number": 5,
-      "training_max": 6.0,
-      "training_min": 0.0,
+      "training_max": 6,
+      "training_min": 0,
       "training_missing_fraction": 0.061764705882352944,
       "unit": "0=mai, 1=<1 anno, 2=1 anno, 3=2 anni, 4=3 anni, 5=4-5 anni, 6=>5 anni"
     },
     "S_AD_ORIT": {
-      "label": "Pressione sistolica in ICU all\u2019ingresso",
-      "median": 130.0,
+      "label": "Pressione sistolica in ICU all’ingresso",
+      "median": 130,
       "source_column_number": 37,
-      "training_max": 240.0,
-      "training_min": 0.0,
+      "training_max": 240,
+      "training_min": 0,
       "training_missing_fraction": 0.15294117647058825,
       "unit": "mmHg"
     },
     "TIME_B_S": {
       "label": "Tempo da inizio attacco CHD a ospedale",
-      "median": 4.0,
+      "median": 4,
       "source_column_number": 92,
-      "training_max": 9.0,
-      "training_min": 1.0,
+      "training_max": 9,
+      "training_min": 1,
       "training_missing_fraction": 0.08627450980392157,
       "unit": "1=<2h, 2=2-4h, 3=4-6h, 4=6-8h, 5=8-12h, 6=12-24h, 7=>1g, 8=>2g, 9=>3g"
     },
     "ZSN_A": {
       "label": "Scompenso cardiaco cronico in anamnesi",
-      "median": 0.0,
+      "median": 0,
       "source_column_number": 12,
-      "training_max": 4.0,
-      "training_min": 0.0,
+      "training_max": 4,
+      "training_min": 0,
       "training_missing_fraction": 0.03235294117647059,
       "unit": "0=nessuno, 1=I, 2=II dx, 3=II sx, 4=IIB bilaterale"
     }
@@ -250,27 +250,27 @@
   "imputation": {
     "strategy": "training median",
     "values": {
-      "AGE": 63.0,
-      "D_AD_ORIT": 80.0,
-      "FIB_G_POST": 0.0,
-      "FK_STENOK": 2.0,
-      "GB": 2.0,
-      "IBS_POST": 1.0,
-      "IM_PG_P": 0.0,
-      "INF_ANAM": 0.0,
+      "AGE": 63,
+      "D_AD_ORIT": 80,
+      "FIB_G_POST": 0,
+      "FK_STENOK": 2,
+      "GB": 2,
+      "IBS_POST": 1,
+      "IM_PG_P": 0,
+      "INF_ANAM": 0,
       "K_BLOOD": 4.1,
-      "K_SH_POST": 0.0,
+      "K_SH_POST": 0,
       "L_BLOOD": 8.1,
-      "MP_TP_POST": 0.0,
-      "NA_BLOOD": 136.0,
-      "O_L_POST": 0.0,
-      "ROE": 10.0,
-      "SEX": 1.0,
-      "SIM_GIPERT": 0.0,
-      "STENOK_AN": 2.0,
-      "S_AD_ORIT": 130.0,
-      "TIME_B_S": 4.0,
-      "ZSN_A": 0.0
+      "MP_TP_POST": 0,
+      "NA_BLOOD": 136,
+      "O_L_POST": 0,
+      "ROE": 10,
+      "SEX": 1,
+      "SIM_GIPERT": 0,
+      "STENOK_AN": 2,
+      "S_AD_ORIT": 130,
+      "TIME_B_S": 4,
+      "ZSN_A": 0
     }
   },
   "leakage_review": "Outcome columns 113-124 are never predictors. UCI dynamic input columns 93,94,95,100,101,102,103,104,105 are excluded. Medication variables are additionally excluded by the compact feature policy. Admission shock, pulmonary edema and arrhythmias are retained because UCI explicitly records them at ICU admission or pre-hospital stage; they are baseline severity signals but can be clinically close to later lethal causes, so the model must remain source-domain research only.",
@@ -406,7 +406,7 @@
     "binary_mapping": "HealthSolver positive = LET_IS != 0",
     "clinical_diagnosis": false,
     "interpretation": "Classification of the source lethal-outcome label among hospitalized acute-MI records; not a general-population mortality probability.",
-    "negative": "0 = source record alive / no lethal cause recorded",
+    "negative": "0 = unknown (alive) in the UCI source coding",
     "positive": "1-7 = lethal outcome cause recorded (cardiogenic shock, pulmonary edema, myocardial rupture, CHF progression, thromboembolism, asystole, or ventricular fibrillation)",
     "source_name": "LET_IS"
   },
@@ -414,5 +414,6 @@
   "temporal_semantics": "Prediction uses only UCI columns permitted at hospital admission. Dynamic source columns from the first three hospital days are excluded. Secondary analyses of this database describe fatal acute complications during the first 72 hours; HealthSolver labels the output as the source acute/hospital lethal-outcome class rather than claiming a universally validated fixed-horizon mortality score.",
   "threshold": 0.09213198859855104,
   "threshold_selection": "Youden J maximum on held-out calibration split; evaluated once on independent held-out test split",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "feature_selection_limitation": "Because exploratory profiling computed univariate associations with LET_IS on the full dataset before the 21-feature shortlist was frozen, the final held-out test is independent of model fitting/calibration/threshold selection but not fully independent of feature-screening knowledge. Internal performance may therefore be optimistic and must be treated as exploratory until validated on an external cohort."
 }
