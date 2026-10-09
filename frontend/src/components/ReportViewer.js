@@ -1,5 +1,6 @@
 // frontend/src/components/ReportViewer.js
 import React, { useState, useEffect } from 'react';
+import { apiUrl } from '../apiBase';
 
 const ReportViewer = () => {
   // Rinominiamo lo stato per chiarezza
@@ -14,7 +15,7 @@ const ReportViewer = () => {
       setAlerts([]); // Pulisci alert precedenti
       try {
         // Chiama l'endpoint attivato per gli alert
-        const response = await fetch('http://localhost:8000/admin/alerts'); // URL aggiornato
+        const response = await fetch(apiUrl('/admin/alerts')); // URL aggiornato
 
         if (!response.ok) {
           const errorData = await response.json();
