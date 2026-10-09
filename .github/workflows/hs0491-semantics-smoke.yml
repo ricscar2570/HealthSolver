@@ -1,0 +1,60 @@
+name: HealthSolver 0.49.1 Scientific Semantics Smoke
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs0491-semantics-smoke.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify semantics and frozen numerical core
+        shell: bash
+        run: |
+          set -euxo pipefail
+          node --check predictive/integrated-predictive-ui.js
+          git show 14ad568fba33b6e69c399103f78dd2bbedbba6c3:predictive/model-heart-failure-mortality-v1.json > /tmp/hf-0490.json
+          git show 14ad568fba33b6e69c399103f78dd2bbedbba6c3:predictive/model-heart-failure-mortality-v1-report.json > /tmp/hf-0490-report.json
+          python - <<'PY'
+          import json,pathlib
+          old=json.load(open('/tmp/hf-0490.json'))
+          new=json.load(open('predictive/model-heart-failure-mortality-v1.json'))
+          reg=json.load(open('predictive/model-registry-v2.json'))
+          assert reg['version']=='0.49.1'
+          assert len(reg['models'])==9
+          assert new['version']=='1.0.1'
+          frozen_keys=['features','field_meta','imputation','standardization','logistic','calibration','threshold','threshold_selection','metrics_test','abstention','excluded_source_features']
+          for k in frozen_keys:
+              assert new[k]==old[k],f'numerical/core drift in {k}'
+          assert json.load(open('/tmp/hf-0490-report.json'))==json.load(open('predictive/model-heart-failure-mortality-v1-report.json'))
+          scope=new['dataset']['cohort_scope']
+          assert scope['location']=='Faisalabad, Punjab, Pakistan'
+          assert scope['sites']==['Faisalabad Institute of Cardiology','Allied Hospital']
+          assert scope['collection_period']=='April-December 2015'
+          assert 'left ventricular systolic dysfunction' in scope['clinical_domain']
+          assert 'NYHA III or IV' in scope['clinical_domain']
+          assert scope['sex_counts']=={'women':105,'men':194}
+          assert scope['age_range_years']==[40,95]
+          fu=new['dataset']['follow_up']
+          assert fu=={'min_days':4,'max_days':285,'mean_days':130,'variable_duration':True}
+          assert new['target_definition']['fixed_horizon'] is False
+          assert new['target_definition']['survival_model'] is False
+          assert 'not mortality at 30, 90, 365 days' in new['time_to_event_limitation']
+          assert 'not a general heart-failure mortality-risk estimate' in new['output_semantics']
+          e=next(x for x in reg['models'] if x['model_id']=='HS-UCI-HFDEATH-001')
+          assert e['title']=='DEATH_EVENT UCI 519 · insufficienza cardiaca'
+          assert e['fixed_horizon'] is False
+          print('SCIENTIFIC SEMANTICS + NUMERICAL FREEZE PASS')
+          PY
+          grep -q 'HS_INTEGRATED_PREDICTIVE_0491' predictive/integrated-predictive-ui.js
+          grep -q 'DEATH_EVENT coorte UCI 519' predictive/integrated-predictive-ui.js
+          grep -q 'follow-up 4–285 giorni' predictive/integrated-predictive-ui.js
+          grep -q 'non è una probabilità di sopravvivenza' predictive/integrated-predictive-ui.js
