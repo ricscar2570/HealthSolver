@@ -1,0 +1,134 @@
+{
+  "leave_one_source_out_transport": {
+    "eicu_demo": {
+      "accuracy": 0.36641604010025064,
+      "auprc": 0.15685015301202054,
+      "auroc": 0.6778431825176977,
+      "brier": 0.08359632934404623,
+      "n": 1995,
+      "prevalence_death": 0.08571428571428572,
+      "sensitivity_death": 0.8771929824561403,
+      "specificity_survival": 0.31853070175438597,
+      "threshold": 0.15847363956740743,
+      "train_sources": [
+        "sepsis_uci827",
+        "support2"
+      ]
+    },
+    "sepsis_uci827": {
+      "accuracy": 0.5242750686108859,
+      "auprc": 0.12739383303144222,
+      "auroc": 0.6688269057480055,
+      "brier": 0.0812845463408989,
+      "n": 102389,
+      "prevalence_death": 0.07863149361747844,
+      "sensitivity_death": 0.7409017513352378,
+      "specificity_survival": 0.5057876995484323,
+      "threshold": 0.1819174823971447,
+      "train_sources": [
+        "eicu_demo",
+        "support2"
+      ]
+    },
+    "support2": {
+      "accuracy": 0.5068643602416255,
+      "auprc": 0.2852867818538634,
+      "auroc": 0.5298120390496412,
+      "brier": 0.22709186945385257,
+      "n": 9105,
+      "prevalence_death": 0.2591982427237781,
+      "sensitivity_death": 0.5385593220338983,
+      "specificity_survival": 0.49577464788732395,
+      "threshold": 0.06504148506353712,
+      "train_sources": [
+        "eicu_demo",
+        "sepsis_uci827"
+      ]
+    }
+  },
+  "model_id": "HS-COMMON-HOSPDEATH-TRANSPORT-001",
+  "partition_counts": {
+    "eicu_demo": {
+      "calibration": 399,
+      "test": 399,
+      "train": 1197
+    },
+    "sepsis_uci827": {
+      "calibration": 20478,
+      "test": 20478,
+      "train": 61433
+    },
+    "support2": {
+      "calibration": 1821,
+      "test": 1821,
+      "train": 5463
+    }
+  },
+  "per_source_heldout_test": {
+    "eicu_demo": {
+      "accuracy": 0.5839598997493735,
+      "auprc": 0.1294675500608501,
+      "auroc": 0.6435535858178889,
+      "brier": 0.07914191709361607,
+      "n": 399,
+      "prevalence_death": 0.08521303258145363,
+      "sensitivity_death": 0.6470588235294118,
+      "specificity_survival": 0.5780821917808219,
+      "threshold": 0.14233116231535944
+    },
+    "sepsis_uci827": {
+      "accuracy": 0.473288407071003,
+      "auprc": 0.1325377784218373,
+      "auroc": 0.6824395242791699,
+      "brier": 0.0752247435745535,
+      "n": 20478,
+      "prevalence_death": 0.07862095907803496,
+      "sensitivity_death": 0.8093167701863354,
+      "specificity_survival": 0.44461522153911387,
+      "threshold": 0.14233116231535944
+    },
+    "support2": {
+      "accuracy": 0.5518945634266886,
+      "auprc": 0.2900453342548589,
+      "auroc": 0.549068833159528,
+      "brier": 0.20581472975119605,
+      "n": 1821,
+      "prevalence_death": 0.2591982427237781,
+      "sensitivity_death": 0.4872881355932203,
+      "specificity_survival": 0.5744996293550778,
+      "threshold": 0.14233116231535944
+    }
+  },
+  "pooled_source_balanced_test": {
+    "accuracy": 0.5363809567490218,
+    "auprc": 0.16767510528385526,
+    "auroc": 0.5785998749545924,
+    "brier": 0.12006046347312191,
+    "n": 22698,
+    "sensitivity_death": 0.5793207084673112,
+    "specificity_survival": 0.5293320136634281,
+    "threshold": 0.14233116231535944
+  },
+  "pooled_unweighted_test": {
+    "accuracy": 0.48154022380826506,
+    "auprc": 0.13572713796002983,
+    "auroc": 0.637000903665526,
+    "brier": 0.08577048844466417,
+    "n": 22698,
+    "sensitivity_death": 0.7348771266540642,
+    "specificity_survival": 0.4554950927995336,
+    "threshold": 0.14233116231535944
+  },
+  "prevalence_by_source": {
+    "eicu_demo": 0.08571428571428572,
+    "sepsis_uci827": 0.07863149361747844,
+    "support2": 0.2591982427237781
+  },
+  "release": "HealthSolver 0.56.0 Common-Outcome Transport Layer",
+  "scientific_interpretation": "Cross-source generalization is heterogeneous; this compact age/sex model is not a clinical mortality score and must not be interpreted as a general patient-specific hospital mortality probability.",
+  "source_rows_used": {
+    "eicu_demo": 1995,
+    "sepsis_uci827": 102389,
+    "support2": 9105
+  }
+}

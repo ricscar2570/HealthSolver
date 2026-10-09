@@ -1,14 +1,16 @@
 (()=>{
 'use strict';
-if(window.__HS_INTEGRATED_PREDICTIVE_0550__) return;
-window.__HS_INTEGRATED_PREDICTIVE_0550__=true;
+if(window.__HS_INTEGRATED_PREDICTIVE_0560__) return;
+window.__HS_INTEGRATED_PREDICTIVE_0560__=true;
 // Preserve prior release markers so historical regression checks remain valid.
+window.__HS_INTEGRATED_PREDICTIVE_0550__=true;
 window.__HS_INTEGRATED_PREDICTIVE_0541__=true;
 window.__HS_INTEGRATED_PREDICTIVE_0540__=true;
 window.__HS_INTEGRATED_PREDICTIVE_0531__=true;
 
 const BUNDLE=window.__HS_PREDICTIVE_BUNDLE__||null;
 const ENSEMBLE=window.__HS_ENSEMBLE_CONFIG__||null;
+const COMMON_OUTCOME=window.__HS_COMMON_OUTCOME_TRANSPORT__||null;
 if(!BUNDLE?.registry||!BUNDLE?.models) return;
 
 document.getElementById('hs-pe040')?.remove();
@@ -20,9 +22,9 @@ document.getElementById('hs-router041')?.remove();
 // while updating only visible application-release branding.
 (function reconcileReleaseBranding(){
   const replacements=[
-    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.55.0'],
+    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.56.0'],
     [/^HealthSolver\s+0\.38\.0\s*·\s*Massive Public Data \+ Clinical Coach Research Edition\s*·\s*Riccardo Scaringi\s*·\s*Non uso clinico\.?$/i,
-     'HealthSolver 0.55.0 · Ensemble Intelligence Layer + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
+     'HealthSolver 0.56.0 · Common-Outcome Transport Layer + Ensemble Intelligence + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
   ];
   const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
   const nodes=[];
@@ -124,6 +126,13 @@ style.textContent=`
 #hs55Ensemble .hs55-chip.on{border-color:#7a4e00;background:#fff8df}
 #hs55Ensemble .hs55-chip.off{border-color:#3f6b62;background:#f2fbf8}
 #hs55Ensemble .hs55-warning{margin-top:12px;padding:11px 13px;border-radius:10px;background:#fff4e5;color:#694100;font-size:.88rem;line-height:1.4}
+#hs56Transport{margin-top:22px;border:2px solid #d09a2d;border-radius:16px;padding:18px;background:linear-gradient(180deg,#fffaf0,#fff)}
+#hs56Transport .hs56-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
+#hs56Transport .hs56-badge{background:#7a4e00;color:#fff;border-radius:999px;padding:7px 10px;font-size:.72rem;font-weight:900;letter-spacing:.05em}
+#hs56Transport .hs56-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:12px}
+#hs56Transport .hs56-card{border:1px solid #ead5a8;border-radius:12px;padding:13px;background:#fff}
+#hs56Transport .hs56-value{font-size:1.75rem;font-weight:900;color:#5b3a00}
+#hs56Transport .hs56-warning{margin-top:12px;padding:12px 14px;border-radius:10px;background:#fff0cf;color:#5b3a00;line-height:1.45}
 aside .nav[data-page="intelligence"] .hs43-nav-badge{display:inline-block;margin-left:7px;padding:2px 6px;border-radius:999px;background:#0d8f80;color:#fff;font-size:.62rem;font-weight:800;letter-spacing:.06em;vertical-align:middle}
 @media(max-width:760px){#hs-predictive-integrated #hs42Coverage{grid-template-columns:1fr}#hs-predictive-integrated .hs43-title{font-size:1.75rem}}
 `;
@@ -140,11 +149,11 @@ wrap.className='card';
 wrap.innerHTML=`
   <div class="hs43-hero">
     <div>
-      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.55.0</div>
+      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.56.0</div>
       <h2 class="hs43-title">Predizioni cliniche di ricerca</h2>
       <p class="hs43-sub">HealthSolver usa lo stesso dossier che hai già compilato per verificare quali modelli sono applicabili e calcolare le stime disponibili. Le funzioni predittive sono qui, in primo piano. Ogni nuovo database entra nello stesso registry e nello stesso dossier.</p>
     </div>
-    <div class="hs43-badge">14 MODELLI SUPERVISIONATI</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><div class="hs43-badge">14 MODELLI SUPERVISIONATI</div><div class="hs43-badge" style="background:#7a4e00">1 TRANSPORT LAYER SPERIMENTALE</div></div>
   </div>
   <div id="hs42Coverage" class="metrics"></div>
   <div class="actions" style="margin-top:8px">
@@ -364,6 +373,17 @@ wrap.innerHTML=`
   </details>
   <h3 style="margin:24px 0 10px;font-size:1.25rem">Risultati predittivi</h3>
   <div id="hs42Results" class="grid"></div>
+  <section id="hs56Transport">
+    <div class="hs56-head">
+      <div>
+        <div class="eyebrow">COMMON-OUTCOME TRANSPORT · 0.56</div>
+        <h3 style="margin:4px 0 6px">Modello cross-dataset sul decesso intraospedaliero</h3>
+        <p class="hint" style="margin:0">Modello separato dai 14 modelli base. Usa soltanto età e sesso, le uniche variabili pulitamente armonizzabili tra UCI Sepsis Survival, SUPPORT2 ed eICU Demo.</p>
+      </div>
+      <div class="hs56-badge">GENERALIZZAZIONE DEBOLE</div>
+    </div>
+    <div id="hs56TransportBody"><div class="hs56-warning">Compila età e sesso, quindi premi <b>CALCOLA PREDIZIONI</b>. Questa funzione è sperimentale e non è un punteggio clinico.</div></div>
+  </section>
   <section id="hs55Ensemble">
     <div class="hs55-head">
       <div>
@@ -773,6 +793,54 @@ function renderResult(entry,model,res){
   return d;
 }
 
+
+function hs56TransportInfer(){
+  if(!COMMON_OUTCOME) return {status:'unavailable'};
+  const age=first(num('ciAge'),num('coachAge'));
+  const male=sexVal();
+  if(age===null||male===null||!Number.isFinite(Number(age))) return {status:'abstain'};
+  const vals={age:Number(age),male:Number(male)};
+  let score=Number(COMMON_OUTCOME.logistic.intercept);
+  const contributions=[];
+  for(const f of COMMON_OUTCOME.features||[]){
+    const z=(vals[f]-Number(COMMON_OUTCOME.standardization.mean[f]))/Number(COMMON_OUTCOME.standardization.scale[f]);
+    const part=z*Number(COMMON_OUTCOME.logistic.coefficients[f]);
+    score+=part;contributions.push([f,part]);
+  }
+  const p=sigmoid(Number(COMMON_OUTCOME.calibration.intercept)+Number(COMMON_OUTCOME.calibration.slope)*score);
+  return {status:'predicted',p,threshold:Number(COMMON_OUTCOME.threshold),values:vals,contributions};
+}
+function renderTransport(){
+  const box=$('hs56TransportBody');
+  if(!box) return;
+  if(!COMMON_OUTCOME){
+    box.innerHTML='<div class="hs56-warning"><b>Layer 0.56 non disponibile.</b> Le 14 predizioni e l’Ensemble Intelligence restano operative.</div>';
+    return;
+  }
+  const r=hs56TransportInfer();
+  if(r.status==='abstain'){
+    box.innerHTML='<div class="hs56-warning"><b>Astensione.</b> Il layer cross-dataset richiede età e sesso. Non vengono imputati perché sono le sole due variabili condivise dal modello.</div>';
+    window.__HS_LAST_TRANSPORT__={status:'abstain',qualification:COMMON_OUTCOME.qualification_status};
+    return;
+  }
+  if(r.status!=='predicted'){
+    box.innerHTML='<div class="hs56-warning"><b>Layer non disponibile.</b></div>';return;
+  }
+  const m=COMMON_OUTCOME.metrics||{}, pooled=m.pooled_source_balanced_test||{}, loso=m.leave_one_source_out_transport||{};
+  const minAuc=Number(m.minimum_loso_auroc);
+  const pct=r.p*100, above=r.p>=r.threshold;
+  const losoRows=Object.entries(loso).map(([k,v])=>'<li><b>'+k+'</b>: AUROC '+Number(v.auroc).toFixed(3)+' · n='+Number(v.n).toLocaleString('it-IT')+'</li>').join('');
+  box.innerHTML=
+    '<div class="hs56-grid">'+
+      '<div class="hs56-card"><div class="hs56-value">'+pct.toFixed(1)+'%</div><b>output modellistico del label condiviso</b><p class="hint">Non è una probabilità clinica generale di mortalità.</p></div>'+
+      '<div class="hs56-card"><div class="hs56-value">'+(above?'SOPRA':'SOTTO')+'</div><b>soglia interna '+(r.threshold*100).toFixed(1)+'%</b><p class="hint">Soglia di ricerca, non di triage.</p></div>'+
+      '<div class="hs56-card"><div class="hs56-value">'+Number(pooled.auroc).toFixed(3)+'</div><b>AUROC test bilanciata per sorgente</b><p class="hint">Valutazione pooled, non validazione clinica.</p></div>'+
+      '<div class="hs56-card"><div class="hs56-value">'+minAuc.toFixed(3)+'</div><b>peggior AUROC leave-one-source-out</b><p class="hint">Misura la fragilità del trasporto fra dataset.</p></div>'+
+    '</div>'+
+    '<div class="hs56-warning"><b>WEAK_TRANSPORT_GENERALIZATION.</b> Il modello usa solo età e sesso perché sono le sole feature comuni pulitamente armonizzabili fra i tre dataset. Il trasporto verso SUPPORT2 è quasi casuale: non usare questo numero per diagnosi, triage, trattamento, ricovero, dimissione o decisioni di fine vita.</div>'+
+    '<details style="margin-top:12px"><summary><b>Validazione cross-dataset e limiti</b></summary><p class="hint">Leave-one-source-out: il modello viene riaddestrato su due sorgenti e valutato sulla terza mai vista. Le coorti hanno criteri di inclusione e index time differenti; il solo elemento comune è il label di esito ospedaliero, non un orizzonte temporale fisso.</p><ul>'+losoRows+'</ul><p class="hint">Questo layer <b>non</b> è uno stacker delle 14 probabilità HealthSolver: non esiste un dataset comune che contenga simultaneamente tutti gli input necessari a produrre quelle 14 uscite sullo stesso paziente.</p></details>';
+  window.__HS_LAST_TRANSPORT__={status:'predicted',p:r.p,threshold:r.threshold,above_threshold:above,qualification:COMMON_OUTCOME.qualification_status,minimum_loso_auroc:minAuc};
+}
 const mean=xs=>xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:null;
 function hs55Threshold(model){
   const t=Number(model?.threshold);
@@ -889,6 +957,7 @@ function runAll(){
     out.append(renderResult(entry,model,res));
   }
   renderCoverage();
+  renderTransport();
   renderEnsemble(ensembleRows);
   $('hs42Status').textContent=`Analisi completata: ${done}/${models.length} modelli applicabili con i dati correnti. Ensemble Intelligence aggiornato sui soli modelli effettivamente predetti.`;
 }
@@ -906,4 +975,5 @@ $('hs54_gcs_meds')?.addEventListener('change',()=>{syncEicuGcs();renderCoverage(
 host.addEventListener('input',e=>{if(e.target!==$('hs42Run')) renderCoverage();});
 syncEicuGcs();
 renderCoverage();
+renderTransport();
 })();

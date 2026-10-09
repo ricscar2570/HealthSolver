@@ -1,7 +1,7 @@
 {
   "app": "HealthSolver",
-  "version": "0.55.0",
-  "release": "Ensemble Intelligence Layer + 14-Model Predictive-First UI + Clinical Coach Research Edition",
+  "version": "0.56.0",
+  "release": "Common-Outcome Transport Layer + Ensemble Intelligence + 14-Model Predictive-First UI + Clinical Coach Research Edition",
   "base_release": "0.38.0",
   "base_source_sha256": "c1bef787551183db369643036e9fc9a7f64ddec515ad804066b9a37279df6b68",
   "predictive_registry": "predictive/model-registry-v2.json",
@@ -22,7 +22,7 @@
     "HS-EICU-DEMO-HOSPDEATH-001"
   ],
   "payload_parts": 7,
-  "source_sha256": "8cc31810bd2b1cfd30840122e4d3fb390dc19764dea4679150a5433b524afc08",
+  "source_sha256": "4ee7c62c581272b979e3b32366d5b2027ba52ada96e415b0811763e521f81a1c",
   "predictive_modules_embedded": true,
   "integrated_predictive_ui": true,
   "predictive_first_ui": true,
@@ -44,5 +44,9 @@
   "eicu_demo_hospital_death_integrated": true,
   "eicu_semantics_remediation": true,
   "ensemble_intelligence_integrated": true,
-  "ensemble_intelligence_version": "1.0.0"
+  "ensemble_intelligence_version": "1.0.0",
+  "common_outcome_transport_integrated": true,
+  "common_outcome_transport_version": "1.0.0",
+  "common_outcome_transport_model_id": "HS-COMMON-HOSPDEATH-TRANSPORT-001",
+  "common_outcome_transport_qualification": "WEAK_TRANSPORT_GENERALIZATION"
 }
