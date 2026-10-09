@@ -1,4 +1,4 @@
-name: HealthSolver 0.54 Full Static Release Audit
+name: HealthSolver 0.54.1 Full Static Release Audit
 on:
   push:
     branches: ['main']
@@ -59,6 +59,24 @@ jobs:
           print('PRE-EICU MODEL ARTIFACT FREEZE PASS',len(frozen))
           PY
 
+
+      - name: Freeze eICU numerical core against 0.54.0
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import json,subprocess,pathlib
+          baseline='5af80dc6fae7603368ec4a61dc14fb5d00e3dbe1'
+          old=json.loads(subprocess.check_output(['git','show',f'{baseline}:predictive/model-eicu-demo-hospital-death-v1.json'],text=True))
+          new=json.loads(pathlib.Path('predictive/model-eicu-demo-hospital-death-v1.json').read_text())
+          frozen=['features','raw_features','encoding_map','abstention','field_meta','imputation','standardization','logistic','calibration','threshold','threshold_selection','metrics_test','target_definition','temporal_semantics','cohort_policy','split_policy','feature_policy','missing_value_policy','excluded_source_fields']
+          for k in frozen:
+              assert new[k]==old[k],f'eICU numerical/semantic core drift in {k}'
+          assert new['version']=='1.0.1'
+          assert 'meds=1' in new['input_consistency_policy']
+          print('EICU 0.54.0 NUMERICAL CORE FREEZE PASS')
+          PY
+
       - name: Verify current registry and eICU semantics
         shell: bash
         run: |
@@ -67,7 +85,7 @@ jobs:
           import json,pathlib,math
           root=pathlib.Path('predictive')
           reg=json.loads((root/'model-registry-v2.json').read_text())
-          assert reg['version']=='0.54.0'
+          assert reg['version']=='0.54.1'
           assert len(reg['models'])==14
           ids=[e['model_id'] for e in reg['models']]
           assert len(ids)==len(set(ids))
@@ -91,6 +109,9 @@ jobs:
           for f in m['features']:
               assert math.isfinite(float(m['logistic']['coefficients'][f]))
               assert float(m['standardization']['scale'][f])>0
+          assert m['version']=='1.0.1'
+          assert 'meds=1' in m['input_consistency_policy']
+          assert '186 distinct hospitalid' in m['dataset']['source_metadata_note']
           print('FOURTEEN MODEL STATIC INTEGRITY PASS')
           PY
 
@@ -98,13 +119,13 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          grep -q 'HS_INTEGRATED_PREDICTIVE_0540' predictive/integrated-predictive-ui.js
+          grep -q 'HS_INTEGRATED_PREDICTIVE_0541' predictive/integrated-predictive-ui.js
           grep -q '14 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
           grep -q 'hs54EicuDetails' predictive/integrated-predictive-ui.js
           grep -q 'HS-EICU-DEMO-HOSPDEATH-001' predictive/integrated-predictive-ui.js
           grep -q "v\['version'\]='0.54.0'" .github/workflows/hs041-repack-pages.yml
           grep -q 'eicu_demo_hospital_death_integrated' .github/workflows/hs041-repack-pages.yml
           grep -q "shutil.copytree(main/'predictive',public_predictive)" .github/workflows/hs041-repack-pages.yml
-          grep -q "expected_release='0.54.0'" .github/workflows/hs-published-smoke.yml
-          grep -q "expected_registry='0.54.0'" .github/workflows/hs-published-smoke.yml
+          grep -q "expected_release='0.54.1'" .github/workflows/hs-published-smoke.yml
+          grep -q "expected_registry='0.54.1'" .github/workflows/hs-published-smoke.yml
           echo '0.54 PACKAGING INVARIANTS PASS'
