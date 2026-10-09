@@ -59,33 +59,33 @@
   ],
   "field_meta": {
     "age_years": {
-      "label": "Et\u00e0",
-      "median": 69.0,
-      "training_max": 100.0,
-      "training_min": 0.0,
+      "label": "Età",
+      "median": 69,
+      "training_max": 100,
+      "training_min": 0,
       "unit": "anni"
     },
     "episode_number": {
       "label": "Numero episodio settico",
-      "median": 1.0,
-      "training_max": 5.0,
-      "training_min": 1.0,
+      "median": 1,
+      "training_max": 5,
+      "training_min": 1,
       "unit": "1=primo episodio, 2=secondo, ..."
     },
     "sex_0male_1female": {
       "label": "Sesso sorgente",
-      "median": 0.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
+      "median": 0,
+      "training_max": 1,
+      "training_min": 0,
       "unit": "0=uomo, 1=donna"
     }
   },
   "imputation": {
     "strategy": "training median",
     "values": {
-      "age_years": 69.0,
-      "episode_number": 1.0,
-      "sex_0male_1female": 0.0
+      "age_years": 69,
+      "episode_number": 1,
+      "sex_0male_1female": 0
     }
   },
   "leakage_review": "Only age, sex and septic episode number are predictors; length of stay and hospital outcome are not predictors. The minimal released table lacks a patient identifier, so the internal split is admission-level and repeated admissions from one subject cannot be group-separated. External South Korean validation is reported separately to mitigate, not eliminate, this limitation.",
@@ -149,5 +149,7 @@
   "temporal_semantics": "Hospital length of stay in the source spans 0-499 days with mean about 9.351 days. Length of stay was excluded by the published study because it relates to survival. The HealthSolver output therefore must not be described as 9-day mortality.",
   "threshold": 0.06872795821072762,
   "threshold_selection": "Youden J maximum on held-out Norwegian calibration split; unchanged for internal test and external South Korean validation",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "external_validation_interpretation": "External South Korean discrimination is weak (AUROC 0.548; death-positive AUPRC 0.209 with death prevalence 0.175). Treat the model as a research/methodological demonstration and do not generalize its probability clinically outside the development domain.",
+  "external_validation_status": "WEAK_GENERALIZATION"
 }
