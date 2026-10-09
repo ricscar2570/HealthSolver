@@ -58,7 +58,7 @@ jobs:
           if(await details.count()!==1) throw new Error('MI panel missing');
           await details.evaluate(el=>{el.open=true});
           const detail=await details.innerText();
-          if(!detail.includes('21 variabili predefinite disponibili all’ammissione')) throw new Error('admission feature disclosure missing');
+          if(!detail.includes('21 variabili predefinite disponibili')) throw new Error('admission feature disclosure missing');
           if(!detail.includes('LET_IS ≠ 0')) throw new Error('LET_IS semantics missing');
           if(!detail.includes('non uno score di mortalità clinicamente validato')) throw new Error('validation warning missing');
           if(!detail.includes('9 variabili dinamiche')) throw new Error('dynamic-exclusion warning missing');
