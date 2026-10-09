@@ -1,4 +1,4 @@
-# HealthSolver 0.53 — SUPPORT2 Hospital Death Integration + Predictive-First UI
+# HealthSolver 0.54 — eICU Demo Hospital Death Integration + Predictive-First UI
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.53 line.
+The current public build is deployed from the `gh-pages` branch and corresponds to **HealthSolver 0.54.0**.
 
 ## What HealthSolver does
 
@@ -1223,6 +1223,74 @@ Both the panel and result card state that:
 - race/income/education are not predictors;
 - performance is an internal historical validation only.
 
+## eICU Collaborative Research Database Demo integration 0.54
+
+HealthSolver 0.54 adds database macrostep **#11** using the open-access **eICU Collaborative Research Database Demo v2.0.1** from PhysioNet (DOI `10.13026/4mxk-na84`, Open Data Commons ODbL 1.0).
+
+The source demo contains **2,520 ICU unit stays from 1,841 unique patients**. HealthSolver defines its development cohort before model fitting as the first ICU stay of each hospital admission (`unitvisitnumber=1`), a known hospital-discharge outcome, and an available `apacheApsVar` first-APACHE-day row. This yields **2,004 hospital admissions from 1,713 unique patients**, with **173 hospital deaths** and **1,831 survivors**.
+
+### Target and time index
+
+New model:
+
+**HS-EICU-DEMO-HOSPDEATH-001 — eICU Demo · decesso ospedaliero · first APACHE day**
+
+Target:
+
+`hospitalDischargeStatus`
+
+- `Alive` = negative class;
+- `Expired` = positive class.
+
+The prediction index is the **end of the first APACHE day**, i.e. the first 24 hours after ICU admission. Physiologic predictors are source-defined worst values from that first APACHE day. The model is therefore **not an admission-time model**, not 24-hour mortality, not 30/90-day mortality and not a survival probability.
+
+### Patient-disjoint split
+
+Because the demo contains repeat encounters, HealthSolver does not randomly split individual ICU rows. It uses a deterministic **StratifiedGroupKFold** assignment grouped by `uniquePID`, so the same patient can never occur in more than one development partition:
+
+- training: **1,200** admissions, 103 deaths;
+- calibration: **402** admissions, 35 deaths;
+- untouched test: **402** admissions, 35 deaths.
+
+### Compact first-day feature policy
+
+The browser model uses 11 raw clinical inputs encoded into 12 numeric model features:
+
+- age, including the eICU `> 89` top-code represented by a separate indicator;
+- sex;
+- GCS total and whether GCS was unscorable because of medication;
+- temperature;
+- respiratory rate;
+- heart rate;
+- mean arterial pressure;
+- glucose;
+- sodium;
+- creatinine.
+
+The feature set was declared from source semantics and **training-partition missingness**, without feature/outcome association screening. High-missingness urine, WBC and BUN were excluded. HealthSolver also excludes APACHE/acute-physiology scores, predicted mortality/LOS, actual outcome fields, discharge fields, hospital identifiers, diagnosis text, ethnicity, and intervention flags such as ventilation/intubation/dialysis.
+
+Only age and sex can be reused from the generic dossier. All first-APACHE-day physiology must be entered explicitly in the eICU panel, preventing accidental substitution with measurements from an incompatible timepoint.
+
+### Held-out research metrics
+
+On the patient-group-disjoint test partition:
+
+- AUROC: **0.8225**
+- AUPRC: **0.3517**
+- Brier score: **0.0693**
+- accuracy at the calibration-selected threshold: **0.8159**
+- sensitivity for hospital death: **0.6571**
+- specificity for hospital survival: **0.8311**
+- threshold: **0.09266**
+
+These are internal research metrics on the open demo dataset, **not external, prospective or clinical validation**.
+
+### Reproducibility
+
+The 0.54 workflow verifies the PhysioNet checksums and license, uses a pinned scientific-Python stack, and independently re-downloads the source in a second workflow that reproduces the cohort, patient-group split, training medians, standardization, coefficients, Platt calibration, threshold and held-out metrics.
+
+HealthSolver 0.54 exposes **14 supervised predictive models** in the Predictive-First Expert Mode.
+
 ## Machine learning and predictive research
 
 HealthSolver is being developed toward a broader machine-learning research architecture in which structured symptoms, history, vital signs, laboratory data and observations can be used as model inputs.
@@ -1325,9 +1393,9 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.53.1 — Code Audit Remediation / SUPPORT2 Hospital Death Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
+**HealthSolver 0.54.0 — eICU Demo Hospital Death Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
 
-The current predictive release is represented by the 0.53.0 SUPPORT2 checkpoint plus the 0.53.1 code-audit remediation checkpoint, the Predictive-First Expert Mode UI, the versioned predictive registry and thirteen supervised model artifacts under `predictive/`.
+The current predictive release is represented by the 0.54.0 eICU checkpoint line, built on the frozen 0.53.1 remediation baseline, the Predictive-First Expert Mode UI, the versioned predictive registry and **fourteen** supervised model artifacts under `predictive/`.
 
 The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
