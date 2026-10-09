@@ -1,0 +1,103 @@
+name: HealthSolver 0.55 Full Static Release Audit
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'predictive/**'
+      - '.github/workflows/hs055-full-static-audit.yml'
+      - '.github/workflows/hs041-repack-pages.yml'
+      - '.github/workflows/hs-published-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Repository and syntax integrity
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git fsck --full
+          node --check predictive/integrated-predictive-ui.js
+          node --check predictive/predictive-engine.js
+          node --check predictive/unified-case-router.js
+          python - <<'PY'
+          import json,pathlib
+          for p in pathlib.Path('predictive').glob('*.json'):
+              json.loads(p.read_text())
+          print('0.55 PARSE PASS')
+          PY
+
+      - name: Freeze 0.54.1 predictive numerical artifacts
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import pathlib,subprocess
+          baseline='b78f9f3b320647a8713877ec8938a517440d29fb'
+          names=subprocess.check_output(['git','ls-tree','-r','--name-only',baseline,'predictive'],text=True).splitlines()
+          frozen=[
+              n for n in names
+              if n.startswith('predictive/')
+              and n!='predictive/integrated-predictive-ui.js'
+          ]
+          assert 'predictive/model-registry-v2.json' in frozen
+          assert 'predictive/predictive-engine.js' in frozen
+          assert 'predictive/unified-case-router.js' in frozen
+          for path in frozen:
+              old=subprocess.check_output(['git','show',f'{baseline}:{path}'])
+              new=pathlib.Path(path).read_bytes()
+              assert old==new,path
+          print('0.54.1 PREDICTIVE CORE BYTE FREEZE PASS',len(frozen))
+          PY
+
+      - name: Verify ensemble config coverage and boundaries
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          root=pathlib.Path('predictive')
+          reg=json.loads((root/'model-registry-v2.json').read_text())
+          e=json.loads((root/'ensemble-intelligence-v1.json').read_text())
+          ids=[x['model_id'] for x in reg['models']]
+          assert reg['version']=='0.54.1'
+          assert len(ids)==14 and len(set(ids))==14
+          assert e['version']=='1.0.0'
+          assert e['release']=='HealthSolver 0.55.0 Ensemble Intelligence Layer'
+          assigned=[m for d in e['domains'] for m in d['models']]
+          assert len(assigned)==14 and len(set(assigned))==14
+          assert set(assigned)==set(ids)
+          assert e['global_probability'] is False
+          assert e['clinically_validated'] is False
+          assert e['aggregation']['no_cross_model_probability_averaging'] is True
+          assert e['aggregation']['no_recalibration'] is True
+          assert len(e['concordance_groups'])==1
+          print('0.55 ENSEMBLE CONFIG PASS')
+          PY
+
+      - name: Verify packaging invariants
+        shell: bash
+        run: |
+          set -euxo pipefail
+          grep -q 'HS_INTEGRATED_PREDICTIVE_0550' predictive/integrated-predictive-ui.js
+          grep -q '14 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -q 'ENSEMBLE INTELLIGENCE · 0.55' predictive/integrated-predictive-ui.js
+          grep -q 'window.__HS_ENSEMBLE_CONFIG__' predictive/integrated-predictive-ui.js
+          grep -q "ensemble=json.loads((main/'predictive'/'ensemble-intelligence-v1.json').read_text())" .github/workflows/hs041-repack-pages.yml
+          grep -q 'window.__HS_ENSEMBLE_CONFIG__' .github/workflows/hs041-repack-pages.yml
+          grep -q "v\['version'\]='0.55.0'" .github/workflows/hs041-repack-pages.yml
+          grep -q "v\['ensemble_intelligence_integrated'\]=True" .github/workflows/hs041-repack-pages.yml
+          grep -q "expected_release='0.55.0'" .github/workflows/hs-published-smoke.yml
+          grep -q "expected_registry='0.54.1'" .github/workflows/hs-published-smoke.yml
+          echo '0.55 PACKAGING INVARIANTS PASS'
