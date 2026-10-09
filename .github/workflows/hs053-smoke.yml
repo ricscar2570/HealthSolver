@@ -1,0 +1,84 @@
+name: HealthSolver 0.53 SUPPORT2 Smoke
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'predictive/**'
+      - '.github/workflows/hs053-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: node --check predictive/integrated-predictive-ui.js
+      - name: Verify SUPPORT2 model and registry
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import json,math,pathlib
+          root=pathlib.Path('predictive')
+          reg=json.loads((root/'model-registry-v2.json').read_text())
+          assert reg['schema']=='healthsolver.predictive_registry.v2'
+          assert reg['version']=='0.53.0'
+          assert len(reg['models'])==13
+          ids=[e['model_id'] for e in reg['models']]
+          assert len(ids)==len(set(ids))
+          assert ids[-1]=='HS-SUPPORT2-HOSPDEATH-001'
+
+          m=json.loads((root/'model-support2-hospital-death-v1.json').read_text())
+          assert m['model_id']=='HS-SUPPORT2-HOSPDEATH-001'
+          assert m['dataset']['instances']==9105
+          assert m['dataset']['centers']==5
+          assert m['dataset']['country']=='United States'
+          assert 'Permission granted' in m['dataset']['permission']
+          assert m['runtime_environment']=={'python':'3.13','numpy':'2.5.3','pandas':'3.0.6','scikit_learn':'1.9.1'}
+          assert len(m['raw_features'])==16
+          assert len(m['features'])==25
+          assert m['target_definition']['source_name']=='hospdead'
+          assert m['target_definition']['fixed_horizon'] is False
+          assert m['target_definition']['survival_probability'] is False
+          assert 'day-3' in m['temporal_semantics'].lower()
+          assert 'Split performed before any screening' in m['feature_policy']
+          assert 'no outcome association' in m['feature_policy']
+          for x in ['sps','aps','surv2m','surv6m','prg2m','prg6m','dnr','dnrday','avtisst','sfdm2','race','income','edu']:
+              assert x in m['excluded_source_fields'],x
+          q=m['metrics_test']
+          assert q['n_total']==9105 and q['n_train']==5463 and q['n_calibration']==1821 and q['n_test']==1821
+          assert abs(q['positive_prevalence_hospital_death']-(2360/9105))<1e-15
+          assert q['auroc']>0.81 and q['auprc']>0.62
+          assert 0<=q['brier']<=1
+          assert q['sensitivity_hospital_death']>0.76
+          assert q['specificity_hospital_survival']>0.72
+          assert 0<m['threshold']<1
+          score=float(m['logistic']['intercept'])
+          for f in m['features']:
+              scale=float(m['standardization']['scale'][f]); assert scale>0
+              v=float(m['imputation']['values'][f])
+              score+=(v-float(m['standardization']['mean'][f]))/scale*float(m['logistic']['coefficients'][f])
+          z=float(m['calibration']['intercept'])+float(m['calibration']['slope'])*score
+          p=1/(1+math.exp(-max(-35,min(35,z))))
+          assert math.isfinite(p) and 0<p<1
+          assert json.loads((root/'model-support2-hospital-death-v1-report.json').read_text())==q
+          e=next(e for e in reg['models'] if e['model_id']==m['model_id'])
+          assert e['metrics_test']==q
+          print({'median_probability':p,'metrics':q})
+          PY
+      - name: Verify Predictive-First UI
+        shell: bash
+        run: |
+          grep -q 'HS_INTEGRATED_PREDICTIVE_053' predictive/integrated-predictive-ui.js
+          grep -q '13 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -q 'HS-SUPPORT2-HOSPDEATH-001' predictive/integrated-predictive-ui.js
+          grep -q 'hs53Support2Details' predictive/integrated-predictive-ui.js
+          grep -q 'hospdead=1' predictive/integrated-predictive-ui.js
+          grep -q 'Validazione interna storica' predictive/integrated-predictive-ui.js
