@@ -169,7 +169,8 @@ jobs:
             'field_meta':field_meta,
             'source_column_numbers':{f:colnum[f] for f in features},
             'excluded_dynamic_source_columns':[93,94,95,100,101,102,103,104,105],
-            'feature_selection_policy':'Predeclared compact admission-time clinical subset. No outcome-driven feature selection and no medication variables. All selected columns are allowed at admission by UCI timing guidance.',
+            'feature_selection_policy':'Compact admission-time clinical subset fixed before model fitting. Selection used timing/clinical interpretability after exploratory source profiling that included descriptive univariate outcome correlations; therefore feature selection was not fully outcome-blind. No iterative feature changes were made in response to held-out test performance. Medication variables and UCI dynamic day-1/day-2/day-3 variables are excluded.',
+            'feature_selection_limitation':'Because exploratory profiling computed univariate associations with LET_IS on the full dataset before the 21-feature shortlist was frozen, the final held-out test is independent of model fitting/calibration/threshold selection but not fully independent of feature-screening knowledge. Internal performance may therefore be optimistic and must be treated as exploratory until validated on an external cohort.',
             'imputation':{'strategy':'training median','values':{f:float(med[f]) for f in features}},
             'standardization':{'mean':{f:float(mu[f]) for f in features},'scale':{f:float(sd[f]) for f in features}},
             'logistic':{'intercept':float(base.intercept_[0]),'coefficients':{f:float(v) for f,v in zip(features,base.coef_[0])}},
@@ -183,7 +184,7 @@ jobs:
             },
             'target_definition':{
               'source_name':'LET_IS',
-              'negative':'0 = source record alive / no lethal cause recorded',
+              'negative':'0 = unknown (alive) in the UCI source coding',
               'positive':'1-7 = lethal outcome cause recorded (cardiogenic shock, pulmonary edema, myocardial rupture, CHF progression, thromboembolism, asystole, or ventricular fibrillation)',
               'binary_mapping':'HealthSolver positive = LET_IS != 0',
               'clinical_diagnosis':False,
