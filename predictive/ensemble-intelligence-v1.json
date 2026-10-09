@@ -1,0 +1,106 @@
+{
+  "schema": "healthsolver.ensemble_intelligence.v1",
+  "version": "1.0.0",
+  "release": "HealthSolver 0.55.0 Ensemble Intelligence Layer",
+  "research_only": true,
+  "clinically_validated": false,
+  "global_probability": false,
+  "purpose": "Deterministic second-level synthesis of already-generated HealthSolver model outputs. It creates descriptive threshold-position patterns, applicability, co-activation and limited concordance summaries without claiming a new calibrated clinical probability.",
+  "aggregation": {
+    "threshold_position_formula": "If p<=t: 0.5*(p/t); if p>t: 0.5+0.5*((p-t)/(1-t)). Range 0..1; 0.5 is the model's own frozen decision threshold.",
+    "domain_index": "Equal-weight arithmetic mean of available model threshold-position values in the domain, multiplied by 100.",
+    "domain_index_semantics": "Unitless Research Activation Index (RAI), not risk, probability, prevalence, severity or prognosis.",
+    "separation": "Mean absolute distance from threshold position 0.5, rescaled to 0..100; descriptive only.",
+    "coverage": "Applicable model count divided by configured model count in the domain.",
+    "no_cross_model_probability_averaging": true,
+    "no_recalibration": true
+  },
+  "domains": [
+    {
+      "id": "cardiometabolic",
+      "label": "Cardiometabolico",
+      "models": [
+        "HS-UCI-HD-001",
+        "HS-NHANES-DM-001",
+        "HS-NHIS-HYP-001",
+        "HS-CDC-DIABIND-001"
+      ],
+      "interpretation": "Cross-model descriptive pattern spanning distinct cardiovascular/metabolic source labels. Models do not share one outcome."
+    },
+    {
+      "id": "renal",
+      "label": "Renale",
+      "models": [
+        "HS-UCI-CKD-001"
+      ],
+      "interpretation": "Single-model renal signal. No within-domain concordance can be inferred."
+    },
+    {
+      "id": "hepatic",
+      "label": "Epatico",
+      "models": [
+        "HS-UCI-HCV-001"
+      ],
+      "interpretation": "Single-model hepatic signal. No within-domain concordance can be inferred."
+    },
+    {
+      "id": "oncologic",
+      "label": "Oncologico",
+      "models": [
+        "HS-UCI-BC-001",
+        "HS-UCI-THYREC-001"
+      ],
+      "interpretation": "Descriptive co-activation across distinct malignancy/recurrence labels; not one cancer-risk outcome."
+    },
+    {
+      "id": "utilization",
+      "label": "Utilizzo / riammissione",
+      "models": [
+        "HS-UCI-DMREADM-001"
+      ],
+      "interpretation": "Single readmission model; not a general utilization probability."
+    },
+    {
+      "id": "acute_critical_outcomes",
+      "label": "Outcome acuti / critical care",
+      "models": [
+        "HS-UCI-HFDEATH-001",
+        "HS-UCI-SEPSISDEATH-001",
+        "HS-UCI-MIFATAL-001",
+        "HS-SUPPORT2-HOSPDEATH-001",
+        "HS-EICU-DEMO-HOSPDEATH-001"
+      ],
+      "interpretation": "Broad acute/critical-outcome activation pattern across different cohorts, index times and target definitions. Never interpreted as one mortality probability."
+    }
+  ],
+  "concordance_groups": [
+    {
+      "id": "hospital_outcome_core",
+      "label": "Concordanza core esito ospedaliero",
+      "models": [
+        "HS-UCI-SEPSISDEATH-001",
+        "HS-SUPPORT2-HOSPDEATH-001",
+        "HS-EICU-DEMO-HOSPDEATH-001"
+      ],
+      "min_applicable": 2,
+      "semantics": "Compares only above/below each model's own frozen threshold. Even here, cohorts and index times differ; concordance is a model-state descriptor, not a combined mortality estimate."
+    }
+  ],
+  "display_rules": {
+    "domain_below_max": 39.999,
+    "domain_mixed_max": 60,
+    "labels": {
+      "below": "prevalentemente sotto le soglie interne",
+      "mixed": "pattern intermedio/misto",
+      "above": "prevalentemente sopra le soglie interne"
+    }
+  },
+  "hard_boundaries": [
+    "Never average raw probabilities across models as if they estimated the same outcome.",
+    "Never label the Research Activation Index as probability, risk percentage, mortality probability or diagnostic confidence.",
+    "Never use an ensemble threshold as a treatment, diagnosis or triage cutoff.",
+    "A domain with one applicable model is a single-model signal, not model agreement.",
+    "Abstaining models contribute neither zero nor an imputed ensemble output.",
+    "No new patient-level outcome is learned or validated in this release."
+  ]
+}
