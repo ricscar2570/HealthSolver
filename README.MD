@@ -1,4 +1,4 @@
-# HealthSolver 0.51 — UCI Sepsis Survival Integration + Predictive-First UI
+# HealthSolver 0.51.1 — Sepsis Audit & Scientific Semantics Remediation + Predictive-First UI
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.51 line.
+The current public build is deployed from the `gh-pages` branch and corresponds to the HealthSolver 0.51.1 line.
 
 ## What HealthSolver does
 
@@ -44,7 +44,7 @@ For the deployed GitHub Pages build:
 - core application state, backup and recovery workflows are handled client-side;
 - large static resources are packaged for browser delivery.
 
-The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.51 application.
+The repository also contains historical backend, Docker and experimental components from earlier generations of HealthSolver. They should not be confused with the current browser-based 0.51.1 application.
 
 ## Clinical Coach
 
@@ -826,9 +826,9 @@ The new section:
 
 contains the survey-domain inputs and shows the target limitation both before prediction and again on the result card.
 
-## UCI Sepsis Survival Minimal Clinical Records integration 0.51
+## UCI Sepsis Survival Minimal Clinical Records integration 0.51 / audit remediation 0.51.1
 
-HealthSolver 0.51 adds one complete database macrostep based on **Sepsis Survival Minimal Clinical Records** (UCI ID 827, DOI `10.24432/C53C8N`, CC BY 4.0).
+HealthSolver 0.51 adds one complete database macrostep based on **Sepsis Survival Minimal Clinical Records** (UCI ID 827, DOI `10.24432/C53C8N`, CC BY 4.0). HealthSolver 0.51.1 is a post-integration scientific-semantics and reproducibility remediation: it does not retrain the model or change its numerical core.
 
 The source package contains three related files:
 
@@ -861,9 +861,9 @@ with:
 
 HealthSolver inverts this solely for risk-oriented display so that its positive class is **hospital-outcome death**.
 
-This does **not** mean “9-day mortality”.
+The associated publication describes survival/death prediction at approximately **9.351 days after record collection** because **9.351 days is the mean hospital length of stay**. Individual hospital length of stay ranges from **0 to 499 days**. Length of stay is excluded from the predictors because it is strongly related to survival.
 
-The associated publication reports hospital length of stay ranging from 0 to 499 days with mean about 9.351 days. Length of stay is excluded from the predictors because it is related to survival. Therefore the HealthSolver output is a binary hospital-outcome source label with **no fixed time horizon**, not a time-to-event or survival probability.
+HealthSolver 0.51.1 therefore preserves the paper's wording while avoiding a stronger claim than the source supports: 9.351 days is **not treated as a fixed per-patient prediction horizon**. The browser output is presented as the hospital-outcome source label observed over variable hospitalization duration, not as fixed 9-day mortality and not as a time-to-event/survival probability.
 
 ### Internal split limitation
 
@@ -925,23 +925,39 @@ The original Chicco/Jurman paper likewise reported only modest external ROC AUC 
 
 New model:
 
-**HS-UCI-SEPSISDEATH-001 — Esito ospedaliero · decesso · coorte sepsi**
+**HS-UCI-SEPSISDEATH-001 — Esito ospedaliero · primary cohort infezioni/SIRS/sepsi**
 
-HealthSolver 0.51 exposes **11 supervised predictive models** in Predictive-First Expert Mode.
+HealthSolver 0.51.1 exposes **11 supervised predictive models** in Predictive-First Expert Mode.
 
 The new section:
 
-**Sepsi / infezione · esito ospedaliero**
+**Infezione / SIRS / sepsi · esito ospedaliero**
 
 requires only the septic episode number because age and sex are reused from the common dossier.
 
 Both the specialist panel and the result card display:
 
-- no fixed mortality horizon;
+- the paper's approximately 9.351-day wording together with the 0–499 day individual LOS range;
+- that the mean LOS is not treated as a fixed per-patient horizon;
 - not a survival probability;
 - external validation n=137;
 - external AUROC 0.548;
-- explicit weak-generalization warning.
+- explicit weak-generalization warning;
+- the distinction between an independent external-dataset evaluation and clinical/prospective validation.
+
+### 0.51.1 audit remediation
+
+The post-release audit found **no numerical model defect**. It did identify three release-quality semantic/reproducibility issues and corrected them:
+
+- the generic result-card sentence could be read as denying the existence of the independently evaluated South Korean cohort; it now says that the **internal metrics** are not clinical/prospective validation, while the sepsis-specific row explicitly identifies the independent external-dataset evaluation and states that it is not equivalent to clinical/prospective validation;
+- the primary Norwegian cohort label was too easy to read as “all admissions are Sepsis-3”; 0.51.1 explicitly states that the primary cohort contains infection, SIRS, microbiological-sepsis and septic-shock records under pre-Sepsis-3-era definitions, while the 19,051-admission study cohort is the later Sepsis-3-compatible subset;
+- the scientific-Python dependencies were previously unpinned. The reproducible workflow is now pinned to **Python 3.13, NumPy 2.5.3, pandas 3.0.6 and scikit-learn 1.9.1**, the exact environment that independently regenerated the stored model.
+
+The septic-episode input is also constrained to the source-observed range **1–5**.
+
+A fresh independent audit re-downloaded the UCI source package and reproduced the source counts, train/calibration/test split, coefficients, standardization, Platt calibration, threshold, internal metrics and external metrics. The live browser audit additionally verifies the HealthSolver-to-UCI sex conversion in **both directions**: male maps to source 0 and female maps to source 1.
+
+The 0.51.1 static freeze compares the numerical/core fields against the frozen 0.51.0 model and confirms that there is no model drift.
 
 ## Machine learning and predictive research
 
@@ -1043,9 +1059,9 @@ For the current public Research Edition, the release checkpoints and the `gh-pag
 
 ## Current release
 
-**HealthSolver 0.51 — UCI Sepsis Survival Integration / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
+**HealthSolver 0.51.1 — Sepsis Audit & Scientific Semantics Remediation / Predictive-First UI / Multi-Outcome Predictive Engine / Clinical Coach Research Edition**
 
-Current predictive release is represented by the 0.51 checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and eleven supervised model artifacts under `predictive/`.
+Current predictive release is represented by the 0.51.1 audit checkpoint, the predictive-first Expert Mode UI, the versioned predictive registry and eleven supervised model artifacts under `predictive/`.
 
 The active development baseline is `main`; the older `macrostep/v0.38.0-massive-public-data` branch remains as the completed 0.38 milestone.
 
