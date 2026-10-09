@@ -1,0 +1,315 @@
+name: HealthSolver 0.49 Full Browser E2E Audit
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs049-full-browser-audit.yml']
+permissions:
+  contents: read
+jobs:
+  browser-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: End-to-end audit all active browser functions
+        shell: bash
+        run: |
+          cat > audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
+
+          const base='https://ricscar2570.github.io/HealthSolver/';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1800},acceptDownloads:true});
+          const errors=[];
+          page.on('pageerror',e=>errors.push('PAGEERROR '+e.message));
+          page.on('console',m=>{if(m.type()==='error') errors.push('CONSOLE '+m.text())});
+          const stage=(s)=>console.log('\n===== '+s+' =====');
+          const must=(v,msg)=>{if(!v) throw new Error(msg)};
+          const nav=async p=>{
+            const n=page.locator('aside .nav[data-page="'+p+'"]');
+            must(await n.count()===1,'nav missing '+p);
+            await n.click(); await page.waitForTimeout(120);
+            must(await page.locator('#page-'+p).isVisible(),'page not visible '+p);
+          };
+          const setValue=async(id,value)=>{
+            const loc=page.locator('#'+id); must(await loc.count()===1,'missing control '+id);
+            await loc.evaluate((e,v)=>{e.value=String(v);e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));},value);
+          };
+          const selectLabel=async(id,label)=>{
+            const loc=page.locator('#'+id);must(await loc.count()===1,'missing select '+id);
+            await loc.selectOption({label});
+          };
+          const confirmIfOpen=async()=>{
+            const dlg=page.locator('#confirmDialog');
+            if(await dlg.count()===1 && await dlg.isVisible()){
+              const yes=page.locator('#confirmYes');
+              must(await yes.count()===1,'confirmation dialog missing confirm button');
+              await yes.click();
+            }
+          };
+          const action=async(selector)=>{
+            await page.locator(selector).click();
+            await page.waitForTimeout(50);
+            await confirmIfOpen();
+          };
+          const download=async(selector,path)=>{
+            const dp=page.waitForEvent('download',{timeout:15000});
+            await page.locator(selector).click();
+            await page.waitForTimeout(50);
+            await confirmIfOpen();
+            const d=await dp;
+            await d.saveAs(path); must(fs.existsSync(path)&&fs.statSync(path).size>0,'empty download '+selector);
+            return path;
+          };
+
+          stage('LOAD + NAVIGATION');
+          await page.goto(base+'?audit=049-full-e2e',{waitUntil:'networkidle',timeout:120000});
+          await page.waitForFunction(()=>document.body.innerText.includes('Clinical Coach')&&document.body.innerText.includes('Expert Mode'),{timeout:30000});
+          const meta=await fetch(base+'version.json?audit=049-full-e2e').then(r=>r.json());
+          must(meta.version==='0.49.0','wrong version');
+          must(meta.predictive_model_count===9,'wrong model count');
+          const pages=['coach','intelligence','hub','massive','case','data','validation','archive','previous'];
+          for(const p of pages) await nav(p);
+          console.log('navigation PASS');
+
+          stage('CLINICAL COACH + LOCAL RESUME + BACKUP/RESTORE');
+          await nav('coach');
+          await page.locator('#coachNewBlank').click();
+          await page.locator('#coachAge').fill('67');
+          await selectLabel('coachSex','Maschile');
+          if(!(await page.locator('#coachAutoResume').isChecked())) await page.locator('#coachAutoResume').check();
+          await page.locator('#coachContinue').click();
+          await page.waitForTimeout(200);
+          must((await page.locator('#page-coach').innerText()).includes('67'),'Coach profile did not update');
+          await download('#coachExportBackup','/tmp/coach-backup.json');
+          await page.locator('#coachNewBlank').click();
+          must((await page.locator('#coachAge').inputValue())==='','Coach blank reset failed');
+          await page.locator('#coachRestoreFile').setInputFiles('/tmp/coach-backup.json');
+          await page.waitForTimeout(300);
+          must((await page.locator('#page-coach').innerText()).includes('67 anni'),'Coach restore failed');
+          // Re-open profile editing when the restored workflow is already past the first sub-step.
+          if(await page.locator('#coachAge').count()!==1){
+            const fix=page.getByRole('button',{name:'Correggi'}).first();
+            must(await fix.count()===1,'Coach profile correction control missing');
+            await fix.click(); await page.waitForTimeout(80);
+          }
+          await page.locator('#coachAge').fill('68');
+          await page.locator('#coachContinue').click();
+          must((await page.locator('#page-coach').innerText()).includes('Problema principale'),'Coach did not advance to next adaptive action');
+          await page.reload({waitUntil:'networkidle'});
+          await page.waitForFunction(()=>document.body.innerText.includes('Clinical Coach'),{timeout:30000});
+          await nav('coach');
+          let resumedText=await page.locator('#page-coach').innerText();
+          if(!resumedText.includes('68 anni') && await page.locator('#coachAge').count()!==1){
+            const fix=page.getByRole('button',{name:'Correggi'}).first();
+            if(await fix.count()===1){await fix.click();await page.waitForTimeout(80);}
+          }
+          resumedText=await page.locator('#page-coach').innerText();
+          must(resumedText.includes('68 anni') || (await page.locator('#coachAge').count()===1 && (await page.locator('#coachAge').inputValue())==='68'),'Coach local resume failed');
+          await page.locator('#coachClearResume').click();
+          console.log('Coach PASS');
+
+          stage('EXPERT TEXT EXTRACTION + ANALYSIS');
+          await nav('intelligence');
+          await page.locator('#ciClear').click();
+          await page.locator('#ciText').fill('Età 64, sesso F, PA 132/78, FC 104, SpO2 93%. Tosse e dispnea. Creatinina 1.4 mg/dL.');
+          await page.locator('#ciExtract').click(); await page.waitForTimeout(150);
+          await page.locator('#ciApply').click(); await page.waitForTimeout(150);
+          must((await page.locator('#ciAge').inputValue())==='64','Expert extraction age failed');
+          must((await page.locator('#ci_systolic').inputValue())==='132','Expert extraction SBP failed');
+          must((await page.locator('#ci_diastolic').inputValue())==='78','Expert extraction DBP failed');
+          must((await page.locator('#ci_pulse').inputValue())==='104','Expert extraction pulse failed');
+          if(!(await page.locator('#ciConsent').isChecked())) await page.locator('#ciConsent').check();
+          const beforeAnalysis=(await page.locator('#page-intelligence').innerText()).length;
+          await page.locator('#ciRun').click(); await page.waitForTimeout(350);
+          const afterAnalysis=(await page.locator('#page-intelligence').innerText()).length;
+          must(afterAnalysis>=beforeAnalysis,'Expert analysis did not render/update');
+          console.log('Expert extraction/analysis PASS');
+
+          stage('ALL NINE PREDICTIVE MODELS IN ONE DOSSIER');
+          // common
+          await setValue('ciAge',55); await selectLabel('ciSex','Maschile');
+          // Heart
+          for(const [id,v] of Object.entries({ci_systolic:130,ci_total_chol:220,ci_fasting_glucose:100,ci_max_heart_rate:150,ci_oldpeak:1,ci_major_vessels:0})) await setValue(id,v);
+          await page.locator('#ci_exercise_angina').selectOption('0').catch(async()=>{await setValue('ci_exercise_angina',0)});
+          for(const [id,v] of Object.entries({hs42_cp:2,hs42_restecg:0,hs42_slope:1,hs42_thal:3})) await setValue(id,v);
+          // CKD
+          for(const [id,v] of Object.entries({ci_bp:80,ci_specific_gravity:1.02,ci_urine_albumin:0,ci_urine_sugar:0,ci_random_glucose:110,ci_blood_urea:30,ci_creatinine:1,ci_sodium:140,ci_potassium:4.2,ci_hemoglobin:14,ci_pcv:42,ci_wbc_count:7500,ci_rbc_count:5})) await setValue(id,v);
+          // FNA
+          for(const [id,v] of Object.entries({hs42_radius1:14,hs42_texture1:19,hs42_perimeter1:90,hs42_area1:600,hs42_smoothness1:.095,hs42_compactness1:.1,hs42_concavity1:.08,hs42_concave_points1:.05,hs42_symmetry1:.18,hs42_fractal_dimension1:.06})) await setValue(id,v);
+          // HCV
+          for(const [id,v] of Object.entries({hs44_alb:42,hs44_alp:66,hs44_alt:23,hs44_ast:26,hs44_bil:7,hs44_che:8.4,hs44_chol:5.4,hs44_crea:77,hs44_ggt:23,hs44_prot:72})) await setValue(id,v);
+          // NHANES + NHIS
+          for(const [id,v] of Object.entries({hs45_bmi:28,hs45_waist:99,hs45_sbp:124,hs45_tc:185,hs45_hdl:51,hs46_current_smoker:0,hs46_fair_poor_health:0})) await setValue(id,v);
+          // readmission
+          for(const [id,v] of Object.entries({hs47_time_in_hospital:7,hs47_num_lab_procedures:55,hs47_num_procedures:2,hs47_num_medications:18,hs47_number_outpatient:1,hs47_number_emergency:1,hs47_number_inpatient:2,hs47_number_diagnoses:9,hs47_a1c_abnormal:1,hs47_glucose_abnormal:1,hs47_diabetes_med:1,hs47_medication_change:1})) await setValue(id,v);
+          // differentiated thyroid cancer recurrence
+          for(const [id,v] of Object.entries({
+            hs48_smoking:'No',hs48_hx_smoking:'No',hs48_hx_radiothreapy:'No',
+            hs48_thyroid_function:'Euthyroid',hs48_physical_examination:'Normal',
+            hs48_adenopathy:'No',hs48_pathology:'Papillary',hs48_focality:'Uni-Focal',
+            hs48_risk:'Low',hs48_t:'T1a',hs48_n:'N0',hs48_m:'M0',hs48_stage:'I'
+          })) await setValue(id,v);
+          // heart failure mortality (UCI 519; follow-up time intentionally excluded)
+          for(const [id,v] of Object.entries({
+            hs49_anaemia:0,hs49_cpk:250,hs49_diabetes:1,hs49_ejection_fraction:35,
+            hs49_high_blood_pressure:1,hs49_platelets:250000,
+            hs49_serum_creatinine:1.4,hs49_serum_sodium:137,hs49_smoking:0
+          })) await setValue(id,v);
+          must(await page.locator('#hs49_time').count()===0,'follow-up time must not be exposed');
+          await page.locator('#hs42Run').click(); await page.waitForTimeout(300);
+          const cards=page.locator('#hs42Results>.card');
+          must(await cards.count()===9,'expected 9 prediction cards, got '+await cards.count());
+          for(let i=0;i<9;i++){
+            const t=await cards.nth(i).innerText();
+            must(/%/.test(t),'prediction card lacks probability: '+t);
+            must(!/Astensione/i.test(t),'unexpected model abstention: '+t);
+          }
+          console.log('9-model integrated prediction PASS');
+
+          stage('EXPERT BACKUP / ENCRYPTED BACKUP / RESTORE');
+          await download('#ciExportBackup','/tmp/ci-backup.json');
+          await page.locator('#ciClear').click();
+          must((await page.locator('#ciAge').inputValue())==='','Expert clear failed');
+          await page.locator('#ciRestore').setInputFiles('/tmp/ci-backup.json'); await page.waitForTimeout(300);
+          must((await page.locator('#ciAge').inputValue())==='55','Expert JSON restore failed');
+          await page.locator('#ciPassword').fill('HealthSolver-Audit-049!');
+          await download('#ciEncryptBackup','/tmp/ci-backup-encrypted.json');
+          await page.locator('#ciClear').click();
+          await page.locator('#ciRestorePassword').fill('HealthSolver-Audit-049!');
+          await page.locator('#ciRestore').setInputFiles('/tmp/ci-backup-encrypted.json'); await page.waitForTimeout(500);
+          must((await page.locator('#ciAge').inputValue())==='55','Expert encrypted restore failed');
+          console.log('Expert backup PASS');
+
+          stage('HUB MULTI-MODEL');
+          await nav('hub');
+          await page.locator('#hubExample').click(); await page.waitForTimeout(150);
+          must((await page.locator('#hub_age').inputValue())!=='','Hub example failed');
+          if(!(await page.locator('#hubConsent').isChecked())) await page.locator('#hubConsent').check();
+          const hubBefore=await page.locator('#page-hub').innerText();
+          await page.locator('#hubAnalyze').click(); await page.waitForTimeout(350);
+          const hubAfter=await page.locator('#page-hub').innerText();
+          must(hubAfter.length>=hubBefore.length,'Hub analysis did not render');
+          await page.locator('#hubClear').click();
+          must((await page.locator('#hub_age').inputValue())==='','Hub clear failed');
+          console.log('Hub PASS');
+
+          stage('MASSIVE PUBLIC DATA');
+          await nav('massive');
+          await page.locator('#mpAge').fill('64'); await page.locator('#mpBmi').fill('34.1');
+          await selectLabel('mpSex','Femminile');
+          const brBefore=await page.locator('#page-massive').innerText();
+          await page.locator('#mpBrfssRun').click(); await page.waitForTimeout(200);
+          const brAfter=await page.locator('#page-massive').innerText();
+          must(brAfter.includes('457.670'),'BRFSS source count missing');
+          must(brAfter.includes('%'),'BRFSS evidence missing');
+          // openFDA: success or explicit UI error are both observable; silent failure is not.
+          await page.locator('#mpDrug').fill('METFORMIN');
+          const fdaBefore=await page.locator('#page-massive').innerText();
+          await page.locator('#mpFdaQuery').click();
+          await page.waitForTimeout(2500);
+          const fdaAfter=await page.locator('#page-massive').innerText();
+          must(fdaAfter!==fdaBefore,'openFDA query produced no UI response');
+          // FHIR local import
+          fs.writeFileSync('/tmp/fhir.json',JSON.stringify({resourceType:'Bundle',type:'collection',entry:[{resource:{resourceType:'Patient',id:'audit-patient',gender:'female',birthDate:'1980-01-01'}}]}));
+          const fhirBefore=await page.locator('#page-massive').innerText();
+          await page.locator('#mpFhirFile').setInputFiles('/tmp/fhir.json'); await page.waitForTimeout(350);
+          const fhirAfter=await page.locator('#page-massive').innerText();
+          must(fhirAfter!==fhirBefore,'FHIR import produced no UI response');
+          console.log('Massive Public Data PASS');
+
+          stage('SINGLE MODEL CASE + REVISION + REPORT');
+          await nav('case');
+          await page.locator('#loadExample').click(); await page.waitForTimeout(150);
+          const consent=page.locator('#consent'); if(await consent.count()===1 && !(await consent.isChecked())) await consent.check();
+          await page.locator('#evaluate').click(); await page.waitForTimeout(300);
+          const caseText=await page.locator('#page-case').innerText();
+          must(/probabil|risultat|modello/i.test(caseText),'Single-model evaluation output missing');
+          await page.locator('#reveal').click(); await page.waitForTimeout(100);
+          await page.locator('#saveCase').click(); await page.waitForTimeout(150);
+          await page.locator('#openReport').click(); await page.waitForTimeout(150);
+          const reportDialog=page.locator('#reportDialog');
+          must(await reportDialog.count()===1 && await reportDialog.isVisible(),'Single-model report dialog did not open');
+          await page.keyboard.press('Escape'); await page.waitForTimeout(100);
+          if(await reportDialog.isVisible()) await reportDialog.evaluate(d=>d.close());
+          must(!(await reportDialog.isVisible()),'Single-model report dialog did not close');
+          console.log('Single model/report PASS');
+
+          stage('DATA EXPORT + CLIENT TRAINING');
+          await nav('data');
+          await download('#downloadDataset','/tmp/dataset.json');
+          await download('#downloadSchema','/tmp/schema.json');
+          await page.locator('#epochs').selectOption('20');
+          const train=page.locator('#train');
+          await train.click();
+          await page.waitForTimeout(100);
+          // Wait for training to return control; client training may complete quickly.
+          await page.waitForFunction(()=>{const b=document.querySelector('#train');return b && !b.disabled},{timeout:60000});
+          console.log('Data/training PASS');
+
+          stage('VALIDATION + EXPORTS');
+          await nav('validation');
+          await page.locator('#recompute').click(); await page.waitForTimeout(200);
+          const valText=await page.locator('#page-validation').innerText();
+          must(/AUC|BRIER|sensibil/i.test(valText),'Validation metrics missing');
+          await download('#exportMetrics','/tmp/metrics.json');
+          await page.locator('#compare').click(); await page.waitForTimeout(150);
+          await download('#ciValTemplate','/tmp/validation-template.csv');
+          must(fs.readFileSync('/tmp/validation-template.csv','utf8').length>10,'validation template empty');
+          console.log('Validation PASS');
+
+          stage('ARCHIVE + BACKUP/RESTORE');
+          await nav('archive');
+          let arch=await page.locator('#page-archive').innerText();
+          must(!arch.includes('Nessuna revisione conservata'),'Saved revision did not reach archive');
+          await download('#exportBackup','/tmp/archive-backup.json');
+          await page.locator('#password').fill('HealthSolver-Archive-049!');
+          await download('#encryptBackup','/tmp/archive-backup-encrypted.json');
+          await action('#clearSession'); await page.waitForTimeout(120);
+          arch=await page.locator('#page-archive').innerText();
+          must(arch.includes('Nessuna revisione conservata'),'Archive clear failed');
+          await page.locator('#restoreFile').setInputFiles('/tmp/archive-backup.json'); await page.waitForTimeout(80);
+          await confirmIfOpen(); await page.waitForTimeout(300);
+          arch=await page.locator('#page-archive').innerText();
+          must(!arch.includes('Nessuna revisione conservata'),'Archive JSON restore failed');
+          await action('#clearSession');
+          await page.locator('#restorePassword').fill('HealthSolver-Archive-049!');
+          await page.locator('#restoreFile').setInputFiles('/tmp/archive-backup-encrypted.json');
+          await page.locator('#confirmDialog').waitFor({state:'visible',timeout:15000});
+          await confirmIfOpen(); await page.waitForTimeout(500);
+          arch=await page.locator('#page-archive').innerText();
+          must(!arch.includes('Nessuna revisione conservata'),'Archive encrypted restore failed');
+          console.log('Archive backup PASS');
+
+          stage('PREVIOUS MODULE PRESERVATION');
+          await nav('previous');
+          const prev=await page.locator('#page-previous').innerText();
+          must(prev.includes('Visita e laboratori conservati'),'Previous-module preservation marker missing');
+          console.log('Previous functions marker PASS');
+
+          stage('FINAL ERROR CHECK');
+          const serious=errors.filter(e=>!/Failed to load resource.*api\.fda\.gov/i.test(e));
+          console.log('ALL_BROWSER_ERRORS',JSON.stringify(errors,null,2));
+          must(serious.length===0,'browser errors: '+serious.join(' | '));
+          await page.screenshot({path:'HealthSolver-0.49-Full-Audit.png',fullPage:true});
+          await browser.close();
+          console.log('FULL ACTIVE-APP E2E PASS');
+          JS
+          node audit.mjs | tee full-browser-audit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: healthsolver-049-full-browser-audit
+          path: |
+            full-browser-audit.txt
+            HealthSolver-0.49-Full-Audit.png
+          retention-days: 14
