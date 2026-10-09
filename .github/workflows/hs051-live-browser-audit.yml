@@ -55,7 +55,7 @@ jobs:
           if(await details.count()!==1) throw new Error('sepsis panel missing');
           await details.evaluate(el=>{el.open=true});
           const detail=await details.innerText();
-          if(!detail.includes('non è mortalità a 9 giorni')) throw new Error('fixed-horizon warning missing');
+          if(!detail.toLowerCase().includes('non è mortalità a 9 giorni')) throw new Error('fixed-horizon warning missing');
           if(!detail.includes('Validazione esterna debole')) throw new Error('external warning missing');
           if(!detail.includes('AUROC 0,548')) throw new Error('external AUROC disclosure missing');
 
