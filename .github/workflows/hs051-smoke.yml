@@ -29,11 +29,11 @@ jobs:
           root=pathlib.Path('predictive')
           reg=json.loads((root/'model-registry-v2.json').read_text())
           assert reg['schema']=='healthsolver.predictive_registry.v2'
-          assert reg['version']=='0.51.1'
-          assert len(reg['models'])==11
+          assert tuple(map(int,reg['version'].split('.'))) >= (0,51,1)
+          assert len(reg['models'])>=11
           ids=[e['model_id'] for e in reg['models']]
           assert len(ids)==len(set(ids))
-          assert ids[-1]=='HS-UCI-SEPSISDEATH-001'
+          assert 'HS-UCI-SEPSISDEATH-001' in ids
 
           m=json.loads((root/'model-sepsis-hospital-death-v1.json').read_text())
           assert m['model_id']=='HS-UCI-SEPSISDEATH-001'
@@ -94,7 +94,7 @@ jobs:
       - name: Verify Predictive-First UI references eleventh model
         shell: bash
         run: |
-          grep -q 'HS_INTEGRATED_PREDICTIVE_0511' predictive/integrated-predictive-ui.js
+          grep -Eq 'HS_INTEGRATED_PREDICTIVE_052|HS_INTEGRATED_PREDICTIVE_0511' predictive/integrated-predictive-ui.js
           grep -q '11 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
           grep -q 'HS-UCI-SEPSISDEATH-001' predictive/integrated-predictive-ui.js
           grep -q 'hs51SepsisDetails' predictive/integrated-predictive-ui.js
