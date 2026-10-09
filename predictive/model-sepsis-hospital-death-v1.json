@@ -24,8 +24,9 @@
       "admissions": 110204,
       "country": "Norway",
       "period": "2011-2012",
-      "scope": "Admissions with infections, SIRS, sepsis by causative microbes, or septic shock under pre-Sepsis-3-era definitions.",
-      "subjects": 84811
+      "scope": "Admissions with infections, SIRS, sepsis by causative microbes, or septic shock under pre-Sepsis-3-era definitions; not every admission can be asserted to satisfy the later Sepsis-3 definition.",
+      "subjects": 84811,
+      "sepsis3_scope": "The Sepsis-3-compatible study cohort is a 19,051-admission subset; it is not appended to primary training."
     },
     "source": "https://archive.ics.uci.edu/dataset/827/sepsis+survival+minimal+clinical+records",
     "study_cohort": {
@@ -120,7 +121,7 @@
   },
   "model_id": "HS-UCI-SEPSISDEATH-001",
   "not_clinically_validated": true,
-  "release": "HealthSolver 0.51 UCI Sepsis Survival Integration",
+  "release": "HealthSolver 0.51.1 Sepsis Audit & Scientific Semantics Remediation",
   "research_only": true,
   "schema": "healthsolver.predictive_model.v1",
   "split_limitation": "Primary cohort has 110,204 admissions from 84,811 subjects, but the minimal released model table exposes no patient identifier. Internal train/calibration/test splitting is therefore admission-level rather than subject-grouped.",
@@ -139,17 +140,23 @@
   "target_definition": {
     "fixed_horizon": false,
     "healthsolver_positive": "death = 1 (inversion of source 0=dead for risk-oriented display)",
-    "interpretation": "Hospital-outcome death label in the source cohort; not mortality at a fixed number of days and not a time-to-event/survival probability.",
+    "interpretation": "Hospital-outcome death label in the source cohort. The associated paper loosely describes the prediction as occurring about 9.351 days after record collection because 9.351 days is the mean hospital length of stay; individual length of stay spans 0-499 days, so HealthSolver does not treat 9.351 days as a fixed per-patient prediction horizon or as a time-to-event/survival probability.",
     "source_name": "hospital_outcome_1alive_0dead",
     "source_negative": "0 = dead at hospital outcome",
     "source_positive": "1 = alive at hospital outcome",
     "survival_probability": false
   },
-  "task": "Binary research classification of the source hospital outcome among admissions in the Norwegian primary cohort; HealthSolver positive class is in-hospital death (source outcome 0=dead), using age, source-encoded sex, and septic episode number.",
-  "temporal_semantics": "Hospital length of stay in the source spans 0-499 days with mean about 9.351 days. Length of stay was excluded by the published study because it relates to survival. The HealthSolver output therefore must not be described as 9-day mortality.",
+  "task": "Binary research classification of hospital outcome among admissions in the Norwegian primary cohort of infection/SIRS/sepsis-potential-precondition records; HealthSolver positive class is in-hospital death (source outcome 0=dead), using age, source-encoded sex, and septic episode number. Not every primary-cohort admission can be asserted to satisfy the later Sepsis-3 definition.",
+  "temporal_semantics": "The paper describes survival/death prediction at about 9.351 days after record collection, where 9.351 days is the mean hospital length of stay. Individual length of stay spans 0-499 days. Length of stay was excluded because it strongly relates to survival. HealthSolver therefore treats the endpoint as hospital outcome with variable observation duration, not as a fixed 9-day mortality endpoint.",
   "threshold": 0.06872795821072762,
   "threshold_selection": "Youden J maximum on held-out Norwegian calibration split; unchanged for internal test and external South Korean validation",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "external_validation_interpretation": "External South Korean discrimination is weak (AUROC 0.548; death-positive AUPRC 0.209 with death prevalence 0.175). Treat the model as a research/methodological demonstration and do not generalize its probability clinically outside the development domain.",
-  "external_validation_status": "WEAK_GENERALIZATION"
+  "external_validation_status": "WEAK_GENERALIZATION",
+  "runtime_environment": {
+    "python": "3.13",
+    "numpy": "2.5.3",
+    "pandas": "3.0.6",
+    "scikit_learn": "1.9.1"
+  }
 }
