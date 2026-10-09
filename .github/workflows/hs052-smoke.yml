@@ -56,11 +56,13 @@ jobs:
             'FIB_G_POST':44,'IM_PG_P':49,'K_BLOOD':84,'NA_BLOOD':86,'L_BLOOD':90,'ROE':91,'TIME_B_S':92
           }
           assert m['excluded_dynamic_source_columns']==[93,94,95,100,101,102,103,104,105]
-          assert 'No outcome-driven feature selection' in m['feature_selection_policy']
-          assert 'no medication variables' in m['feature_selection_policy']
+          assert 'not fully outcome-blind' in m['feature_selection_policy']
+          assert 'Medication variables' in m['feature_selection_policy']
+          assert 'feature-screening knowledge' in m['feature_selection_limitation']
           assert m['target_definition']['source_name']=='LET_IS'
           assert m['target_definition']['binary_mapping']=='HealthSolver positive = LET_IS != 0'
           assert m['target_definition']['clinical_diagnosis'] is False
+          assert m['target_definition']['negative']=='0 = unknown (alive) in the UCI source coding'
           assert 'not a general-population mortality probability' in m['target_definition']['interpretation']
           assert 'dynamic source columns' in m['temporal_semantics'].lower()
           assert 'Outcome columns 113-124 are never predictors' in m['leakage_review']
@@ -101,3 +103,4 @@ jobs:
           grep -q 'hs52MiFatalDetails' predictive/integrated-predictive-ui.js
           grep -q 'LET_IS ≠ 0' predictive/integrated-predictive-ui.js
           grep -q 'non uno score di mortalità clinicamente validato' predictive/integrated-predictive-ui.js
+          grep -q 'il test finale non è completamente indipendente' predictive/integrated-predictive-ui.js
