@@ -18,7 +18,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          python -m pip install --disable-pip-version-check -q numpy pandas scikit-learn
+          python -m pip install --disable-pip-version-check -q numpy==2.5.3 pandas==3.0.6 scikit-learn==1.9.1
           python - <<'PY'
           import io,json,math,pathlib,time,urllib.request,zipfile
           import numpy as np,pandas as pd
@@ -144,9 +144,9 @@ jobs:
           model={
             'schema':'healthsolver.predictive_model.v1',
             'model_id':'HS-UCI-SEPSISDEATH-001',
-            'version':'1.0.0',
-            'release':'HealthSolver 0.51 UCI Sepsis Survival Integration',
-            'task':'Binary research classification of the source hospital outcome among admissions in the Norwegian primary cohort; HealthSolver positive class is in-hospital death (source outcome 0=dead), using age, source-encoded sex, and septic episode number.',
+            'version':'1.0.1',
+            'release':'HealthSolver 0.51.1 Sepsis Audit & Scientific Semantics Remediation',
+            'task':'Binary research classification of hospital outcome among admissions in the Norwegian primary cohort of infection/SIRS/sepsis-potential-precondition records; HealthSolver positive class is in-hospital death (source outcome 0=dead), using age, source-encoded sex, and septic episode number. Not every primary-cohort admission can be asserted to satisfy the later Sepsis-3 definition.',
             'research_only':True,
             'not_clinically_validated':True,
             'dataset':{
@@ -158,7 +158,8 @@ jobs:
               'introductory_paper_doi':'10.1038/s41598-020-73558-3',
               'primary_cohort':{
                 'country':'Norway','period':'2011-2012','admissions':110204,'subjects':84811,
-                'scope':'Admissions with infections, SIRS, sepsis by causative microbes, or septic shock under pre-Sepsis-3-era definitions.'
+                'scope':'Admissions with infections, SIRS, sepsis by causative microbes, or septic shock under pre-Sepsis-3-era definitions; not every admission can be asserted to satisfy the later Sepsis-3 definition.',
+                'sepsis3_scope':'The Sepsis-3-compatible study cohort is a 19,051-admission subset; it is not appended to primary training.'
               },
               'study_cohort':{
                 'country':'Norway','admissions':19051,
@@ -170,6 +171,7 @@ jobs:
               },
               'missing_values':False
             },
+            'runtime_environment':{'python':'3.13','numpy':'2.5.3','pandas':'3.0.6','scikit_learn':'1.9.1'},
             'features':features,
             'field_meta':field_meta,
             'imputation':{'strategy':'training median','values':{f:float(med[f]) for f in features}},
@@ -193,9 +195,9 @@ jobs:
               'healthsolver_positive':'death = 1 (inversion of source 0=dead for risk-oriented display)',
               'fixed_horizon':False,
               'survival_probability':False,
-              'interpretation':'Hospital-outcome death label in the source cohort; not mortality at a fixed number of days and not a time-to-event/survival probability.'
+              'interpretation':'Hospital-outcome death label in the source cohort. The associated paper loosely describes the prediction as occurring about 9.351 days after record collection because 9.351 days is the mean hospital length of stay; individual length of stay spans 0-499 days, so HealthSolver does not treat 9.351 days as a fixed per-patient prediction horizon or as a time-to-event/survival probability.'
             },
-            'temporal_semantics':'Hospital length of stay in the source spans 0-499 days with mean about 9.351 days. Length of stay was excluded by the published study because it relates to survival. The HealthSolver output therefore must not be described as 9-day mortality.',
+            'temporal_semantics':'The paper describes survival/death prediction at about 9.351 days after record collection, where 9.351 days is the mean hospital length of stay. Individual length of stay spans 0-499 days. Length of stay was excluded because it strongly relates to survival. HealthSolver therefore treats the endpoint as hospital outcome with variable observation duration, not as a fixed 9-day mortality endpoint.',
             'leakage_review':'Only age, sex and septic episode number are predictors; length of stay and hospital outcome are not predictors. The minimal released table lacks a patient identifier, so the internal split is admission-level and repeated admissions from one subject cannot be group-separated. External South Korean validation is reported separately to mitigate, not eliminate, this limitation.',
             'split_limitation':'Primary cohort has 110,204 admissions from 84,811 subjects, but the minimal released model table exposes no patient identifier. Internal train/calibration/test splitting is therefore admission-level rather than subject-grouped.'
           }
@@ -206,20 +208,20 @@ jobs:
           (out/'model-sepsis-hospital-death-v1-report.json').write_text(json.dumps(report,indent=2,sort_keys=True))
 
           reg=json.loads((out/'model-registry-v2.json').read_text())
-          assert reg['version'] in {'0.50.0','0.51.0'},reg['version']
+          assert reg['version'] in {'0.50.0','0.51.0','0.51.1'},reg['version']
           preserved=[m for m in reg['models'] if m['model_id']!='HS-UCI-SEPSISDEATH-001']
           assert len(preserved)==10,[m['model_id'] for m in preserved]
-          reg['version']='0.51.0'
+          reg['version']='0.51.1'
           reg['models']=preserved
           reg['models'].append({
             'model_id':model['model_id'],
-            'title':'Esito ospedaliero · decesso · coorte sepsi',
+            'title':'Esito ospedaliero · primary cohort infezioni/SIRS/sepsi',
             'file':'model-sepsis-hospital-death-v1.json',
             'task':model['task'],
             'metrics_test':metrics,
             'external_validation':external_metrics,
             'external_validation_status':'WEAK_GENERALIZATION',
-            'target_semantics':'Hospital-outcome death label; no fixed time horizon; not survival probability.'
+            'target_semantics':'Hospital-outcome death label in a broad Norwegian infection/SIRS/sepsis-potential-precondition primary cohort; no fixed horizon; not a survival probability.'
           })
           (out/'model-registry-v2.json').write_text(json.dumps(reg,indent=2,sort_keys=True))
           print(json.dumps({'metrics_internal':metrics,'metrics_external':external_metrics,'registry_models':len(reg['models'])},indent=2))
