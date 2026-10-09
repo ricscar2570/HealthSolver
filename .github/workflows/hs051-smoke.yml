@@ -1,4 +1,4 @@
-name: HealthSolver 0.51 UCI Sepsis Survival Smoke
+name: HealthSolver 0.51.1 Sepsis Audit Remediation Smoke
 on:
   push:
     branches: ['main']
@@ -29,14 +29,14 @@ jobs:
           root=pathlib.Path('predictive')
           reg=json.loads((root/'model-registry-v2.json').read_text())
           assert reg['schema']=='healthsolver.predictive_registry.v2'
-          assert reg['version']=='0.51.0'
+          assert reg['version']=='0.51.1'
           assert len(reg['models'])==11
           ids=[e['model_id'] for e in reg['models']]
           assert len(ids)==len(set(ids))
           assert ids[-1]=='HS-UCI-SEPSISDEATH-001'
 
           m=json.loads((root/'model-sepsis-hospital-death-v1.json').read_text())
-          assert m['model_id']=='HS-UCI-SEPSISDEATH-001'
+          assert m['model_id']=='HS-UCI-SEPSISDEATH-001'\n          assert m['version']=='1.0.1'
           assert m['dataset']['uci_id']==827
           assert m['dataset']['doi']=='10.24432/C53C8N'
           assert m['dataset']['license']=='CC BY 4.0'
@@ -49,9 +49,9 @@ jobs:
           assert m['target_definition']['source_name']=='hospital_outcome_1alive_0dead'
           assert m['target_definition']['fixed_horizon'] is False
           assert m['target_definition']['survival_probability'] is False
-          assert 'not mortality at a fixed number of days' in m['target_definition']['interpretation']
-          assert 'must not be described as 9-day mortality' in m['temporal_semantics']
-          assert 'admission-level' in m['split_limitation']
+          assert 'does not treat 9.351 days as a fixed per-patient prediction horizon' in m['target_definition']['interpretation']
+          assert 'not as a fixed 9-day mortality endpoint' in m['temporal_semantics']
+          assert 'admission-level' in m['split_limitation']\n          assert m['runtime_environment']=={'python':'3.13','numpy':'2.5.3','pandas':'3.0.6','scikit_learn':'1.9.1'}\n          assert 'not every admission can be asserted to satisfy the later Sepsis-3 definition' in m['dataset']['primary_cohort']['scope']
           assert m['external_validation_status']=='WEAK_GENERALIZATION'
           assert 'AUROC 0.548' in m['external_validation_interpretation']
 
@@ -91,9 +91,9 @@ jobs:
       - name: Verify Predictive-First UI references eleventh model
         shell: bash
         run: |
-          grep -q 'HS_INTEGRATED_PREDICTIVE_051' predictive/integrated-predictive-ui.js
+          grep -q 'HS_INTEGRATED_PREDICTIVE_0511' predictive/integrated-predictive-ui.js
           grep -q '11 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
           grep -q 'HS-UCI-SEPSISDEATH-001' predictive/integrated-predictive-ui.js
           grep -q 'hs51SepsisDetails' predictive/integrated-predictive-ui.js
-          grep -q 'non mortalità a 9 giorni' predictive/integrated-predictive-ui.js
-          grep -q 'Validazione esterna debole' predictive/integrated-predictive-ui.js
+          grep -q 'circa 9,351 giorni' predictive/integrated-predictive-ui.js\n          grep -q 'non tutti i 110.204 ricoveri possono essere qualificati come Sepsis-3' predictive/integrated-predictive-ui.js\n          grep -q 'max="5"' predictive/integrated-predictive-ui.js
+          grep -q 'Validazione esterna debole' predictive/integrated-predictive-ui.js\n          grep -q 'Le metriche interne non costituiscono validazione clinica/prospettica' predictive/integrated-predictive-ui.js
