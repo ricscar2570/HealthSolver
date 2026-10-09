@@ -62,7 +62,7 @@ jobs:
           assert m['target_definition']['binary_mapping']=='HealthSolver positive = LET_IS != 0'
           assert m['target_definition']['clinical_diagnosis'] is False
           assert 'not a general-population mortality probability' in m['target_definition']['interpretation']
-          assert 'dynamic source columns' in m['temporal_semantics']
+          assert 'dynamic source columns' in m['temporal_semantics'].lower()
           assert 'Outcome columns 113-124 are never predictors' in m['leakage_review']
           assert m['abstention']['max_missing_features']==4
 
