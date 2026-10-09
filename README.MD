@@ -1,4 +1,4 @@
-# HealthSolver 0.55.0 — Ensemble Intelligence Layer + Predictive-First UI
+# HealthSolver 0.56.0 — Common-Outcome Transport Layer + Ensemble Intelligence + Predictive-First UI
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to **HealthSolver 0.55.0**.
+The current public build is deployed from the `gh-pages` branch and corresponds to **HealthSolver 0.56.0**.
 
 ## What HealthSolver does
 
@@ -1386,6 +1386,73 @@ The ensemble specification explicitly sets:
 - `no_recalibration = true`.
 
 A future true meta-model would require a common patient-level dataset with a predeclared outcome and index time, split-first training and independent validation. HealthSolver 0.55 deliberately does not pretend that such a dataset already exists.
+
+## Common-Outcome Transport Layer 0.56
+
+HealthSolver 0.56 adds a separate cross-dataset research model for the shared **in-hospital death / survived hospitalization** label across three already-integrated public cohorts:
+
+- UCI Sepsis Survival primary cohort;
+- SUPPORT2;
+- eICU Collaborative Research Database Demo.
+
+This layer is **not** a fifteenth base-registry model and does not alter any of the fourteen frozen predictive models. The base registry remains version **0.54.1** with exactly **14** models.
+
+### Why it uses only age and sex
+
+A true stacked meta-model over the fourteen HealthSolver probabilities would require a patient-level dataset on which all fourteen component predictions could be computed for the same individuals under a common outcome and index time. The currently integrated source datasets do not provide that feature intersection.
+
+Across the three hospital-outcome cohorts, the clean common predictor intersection is only:
+
+- age;
+- sex.
+
+HealthSolver therefore does not fabricate missing cross-model features. The 0.56 layer trains a compact common-outcome transport model only on those two harmonizable variables.
+
+### Training protocol
+
+The build is fully reproducible in GitHub Actions and re-downloads the three source datasets from their public sources.
+
+The protocol uses:
+
+- deterministic source-stratified 60/20/20 train/calibration/test partitions;
+- equal total sample weight for each source cohort during pooled fitting;
+- weighted standardization learned on training data only;
+- logistic regression;
+- Platt calibration on held-out calibration partitions;
+- a Youden-J research threshold selected on the source-balanced calibration set;
+- leave-one-source-out transport validation.
+
+Complete-case rows used by the final build are:
+
+- eICU Demo: **1,995**;
+- UCI Sepsis Survival: **102,389**;
+- SUPPORT2: **9,105**.
+
+### Qualification result
+
+The model is deliberately classified as:
+
+**WEAK_TRANSPORT_GENERALIZATION**
+
+Key results:
+
+- source-balanced pooled held-out AUROC: **0.579**;
+- leave-one-source-out AUROC when eICU is unseen: **0.678**;
+- leave-one-source-out AUROC when UCI Sepsis is unseen: **0.669**;
+- leave-one-source-out AUROC when SUPPORT2 is unseen: **0.530**.
+
+The SUPPORT2 transport result is close to random discrimination. HealthSolver therefore exposes the model as a methodological research experiment, not as a validated mortality score.
+
+The displayed percentage is the output of the fitted cross-cohort source-label model. It must **not** be interpreted as a general patient-specific probability of hospital mortality, and the research threshold must not be used for diagnosis, triage, treatment, admission, discharge or end-of-life decisions.
+
+### Relationship to Ensemble Intelligence 0.55
+
+The two layers answer different questions:
+
+- **0.55 Ensemble Intelligence** summarizes the positions of the existing heterogeneous model outputs relative to their own frozen thresholds without creating a new probability;
+- **0.56 Common-Outcome Transport** fits a new research classifier only where a shared outcome and genuinely common raw predictors exist.
+
+The 0.56 result therefore does not replace the 0.55 ensemble and is displayed separately.
 
 ## Machine learning and predictive research
 
