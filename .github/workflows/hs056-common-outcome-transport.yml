@@ -190,7 +190,7 @@ jobs:
 
           # Conservative status: this model is only a qualified research transport baseline.
           min_loso_auc=min(v['auroc'] for v in loso.values())
-          status='RESEARCH_TRANSPORT_BASELINE'
+          status=('WEAK_TRANSPORT_GENERALIZATION' if min_loso_auc < 0.60 else ('LIMITED_TRANSPORT_GENERALIZATION' if min_loso_auc < 0.70 else 'RESEARCH_TRANSPORT_BASELINE'))
           transport_note=('Cross-source generalization is heterogeneous; this compact age/sex model is not a '
                           'clinical mortality score and must not be interpreted as a general patient-specific '
                           'hospital mortality probability.')
@@ -289,6 +289,8 @@ jobs:
           assert set(m['metrics']['leave_one_source_out_transport'])=={'sepsis_uci827','support2','eicu_demo'}
           assert all(math.isfinite(v['auroc']) and 0<=v['auroc']<=1 for v in m['metrics']['leave_one_source_out_transport'].values())
           assert r['model_id']==m['model_id']
+          assert m['qualification_status']=='WEAK_TRANSPORT_GENERALIZATION'
+          assert m['metrics']['minimum_loso_auroc'] < 0.60
           print('HS056 ARTIFACT AUDIT PASS')
           PY
 
