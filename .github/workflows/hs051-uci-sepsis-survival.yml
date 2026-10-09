@@ -1,8 +1,6 @@
 name: HealthSolver 0.51 UCI Sepsis Survival
 on:
-  push:
-    branches: ['main']
-    paths: ['.github/workflows/hs051-uci-sepsis-survival.yml']
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
@@ -208,7 +206,7 @@ jobs:
           (out/'model-sepsis-hospital-death-v1-report.json').write_text(json.dumps(report,indent=2,sort_keys=True))
 
           reg=json.loads((out/'model-registry-v2.json').read_text())
-          assert reg['version']=='0.50.0',reg['version']
+          assert reg['version'] in {'0.50.0','0.51.0'},reg['version']
           preserved=[m for m in reg['models'] if m['model_id']!='HS-UCI-SEPSISDEATH-001']
           assert len(preserved)==10,[m['model_id'] for m in preserved]
           reg['version']='0.51.0'
