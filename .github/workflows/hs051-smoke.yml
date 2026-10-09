@@ -36,7 +36,8 @@ jobs:
           assert ids[-1]=='HS-UCI-SEPSISDEATH-001'
 
           m=json.loads((root/'model-sepsis-hospital-death-v1.json').read_text())
-          assert m['model_id']=='HS-UCI-SEPSISDEATH-001'\n          assert m['version']=='1.0.1'
+          assert m['model_id']=='HS-UCI-SEPSISDEATH-001'
+          assert m['version']=='1.0.1'
           assert m['dataset']['uci_id']==827
           assert m['dataset']['doi']=='10.24432/C53C8N'
           assert m['dataset']['license']=='CC BY 4.0'
@@ -51,7 +52,9 @@ jobs:
           assert m['target_definition']['survival_probability'] is False
           assert 'does not treat 9.351 days as a fixed per-patient prediction horizon' in m['target_definition']['interpretation']
           assert 'not as a fixed 9-day mortality endpoint' in m['temporal_semantics']
-          assert 'admission-level' in m['split_limitation']\n          assert m['runtime_environment']=={'python':'3.13','numpy':'2.5.3','pandas':'3.0.6','scikit_learn':'1.9.1'}\n          assert 'not every admission can be asserted to satisfy the later Sepsis-3 definition' in m['dataset']['primary_cohort']['scope']
+          assert 'admission-level' in m['split_limitation']
+          assert m['runtime_environment']=={'python':'3.13','numpy':'2.5.3','pandas':'3.0.6','scikit_learn':'1.9.1'}
+          assert 'not every admission can be asserted to satisfy the later Sepsis-3 definition' in m['dataset']['primary_cohort']['scope']
           assert m['external_validation_status']=='WEAK_GENERALIZATION'
           assert 'AUROC 0.548' in m['external_validation_interpretation']
 
