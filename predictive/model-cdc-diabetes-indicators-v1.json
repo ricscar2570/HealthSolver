@@ -12,13 +12,14 @@
     "doi": "10.24432/C53919",
     "features": 21,
     "instances": 253680,
-    "license": "CC0 / Public Domain for processed dataset; upstream CDC BRFSS public-domain data",
+    "license": "UCI external record: see linked dataset for licensing; linked processed dataset reported as CC0/Public Domain; upstream CDC BRFSS federal data/materials are generally public domain.",
     "missing_values": false,
     "name": "CDC Diabetes Health Indicators",
     "source": "https://archive.ics.uci.edu/dataset/891/cdc+diabetes+health+indicators",
     "survey_semantics": "Cross-sectional/self-reported health-indicator dataset derived from BRFSS; not a prospective clinical cohort.",
     "uci_id": 891,
-    "upstream_source": "CDC Behavioral Risk Factor Surveillance System (BRFSS)"
+    "upstream_source": "CDC Behavioral Risk Factor Surveillance System (BRFSS)",
+    "license_note": "The current UCI external-dataset page does not assign its own license and directs users to the linked dataset. HealthSolver retains attribution to UCI, the linked processed dataset, and CDC BRFSS rather than relying on a broader license claim."
   },
   "features": [
     "high_bp",
@@ -45,177 +46,177 @@
   ],
   "field_meta": {
     "age_category": {
-      "label": "Categoria et\u00e0 BRFSS",
-      "median": 8.0,
-      "training_max": 13.0,
-      "training_min": 1.0,
+      "label": "Categoria età BRFSS",
+      "median": 8,
+      "training_max": 13,
+      "training_min": 1,
       "unit": "1=18-24 ... 13=80+"
     },
     "any_healthcare": {
       "label": "Copertura sanitaria",
-      "median": 1.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
-      "unit": "0=no, 1=s\u00ec"
+      "median": 1,
+      "training_max": 1,
+      "training_min": 0,
+      "unit": "0=no, 1=sì"
     },
     "bmi": {
       "label": "BMI",
-      "median": 27.0,
-      "training_max": 98.0,
-      "training_min": 12.0,
-      "unit": "kg/m\u00b2"
+      "median": 27,
+      "training_max": 98,
+      "training_min": 12,
+      "unit": "kg/m²"
     },
     "chol_check": {
       "label": "Controllo colesterolo negli ultimi 5 anni",
-      "median": 1.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
-      "unit": "0=no, 1=s\u00ec"
+      "median": 1,
+      "training_max": 1,
+      "training_min": 0,
+      "unit": "0=no, 1=sì"
     },
     "difficulty_walking": {
-      "label": "Difficolt\u00e0 a camminare/salire scale",
-      "median": 0.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
-      "unit": "0=no, 1=s\u00ec"
+      "label": "Difficoltà a camminare/salire scale",
+      "median": 0,
+      "training_max": 1,
+      "training_min": 0,
+      "unit": "0=no, 1=sì"
     },
     "education": {
       "label": "Istruzione BRFSS",
-      "median": 5.0,
-      "training_max": 6.0,
-      "training_min": 1.0,
+      "median": 5,
+      "training_max": 6,
+      "training_min": 1,
       "unit": "1-6"
     },
     "fruits_daily": {
-      "label": "Frutta \u22651 volta/giorno",
-      "median": 1.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
-      "unit": "0=no, 1=s\u00ec"
+      "label": "Frutta ≥1 volta/giorno",
+      "median": 1,
+      "training_max": 1,
+      "training_min": 0,
+      "unit": "0=no, 1=sì"
     },
     "general_health": {
       "label": "Salute generale riferita",
-      "median": 2.0,
-      "training_max": 5.0,
-      "training_min": 1.0,
+      "median": 2,
+      "training_max": 5,
+      "training_min": 1,
       "unit": "1=ottima ... 5=scarsa"
     },
     "heart_disease_or_attack": {
       "label": "CHD o infarto riferito",
-      "median": 0.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
-      "unit": "0=no, 1=s\u00ec"
+      "median": 0,
+      "training_max": 1,
+      "training_min": 0,
+      "unit": "0=no, 1=sì"
     },
     "heavy_alcohol": {
       "label": "Consumo elevato di alcol",
-      "median": 0.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
-      "unit": "0=no, 1=s\u00ec"
+      "median": 0,
+      "training_max": 1,
+      "training_min": 0,
+      "unit": "0=no, 1=sì"
     },
     "high_bp": {
       "label": "Pressione alta riferita",
-      "median": 0.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
-      "unit": "0=no, 1=s\u00ec"
+      "median": 0,
+      "training_max": 1,
+      "training_min": 0,
+      "unit": "0=no, 1=sì"
     },
     "high_chol": {
       "label": "Colesterolo alto riferito",
-      "median": 0.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
-      "unit": "0=no, 1=s\u00ec"
+      "median": 0,
+      "training_max": 1,
+      "training_min": 0,
+      "unit": "0=no, 1=sì"
     },
     "income": {
       "label": "Reddito BRFSS",
-      "median": 7.0,
-      "training_max": 8.0,
-      "training_min": 1.0,
+      "median": 7,
+      "training_max": 8,
+      "training_min": 1,
       "unit": "1-8"
     },
     "mental_health_days": {
       "label": "Giorni salute mentale non buona",
-      "median": 0.0,
-      "training_max": 30.0,
-      "training_min": 0.0,
+      "median": 0,
+      "training_max": 30,
+      "training_min": 0,
       "unit": "0-30"
     },
     "no_doctor_due_cost": {
       "label": "Rinuncia al medico per costo",
-      "median": 0.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
-      "unit": "0=no, 1=s\u00ec"
+      "median": 0,
+      "training_max": 1,
+      "training_min": 0,
+      "unit": "0=no, 1=sì"
     },
     "physical_activity": {
-      "label": "Attivit\u00e0 fisica negli ultimi 30 giorni",
-      "median": 1.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
-      "unit": "0=no, 1=s\u00ec"
+      "label": "Attività fisica negli ultimi 30 giorni",
+      "median": 1,
+      "training_max": 1,
+      "training_min": 0,
+      "unit": "0=no, 1=sì"
     },
     "physical_health_days": {
       "label": "Giorni salute fisica non buona",
-      "median": 0.0,
-      "training_max": 30.0,
-      "training_min": 0.0,
+      "median": 0,
+      "training_max": 30,
+      "training_min": 0,
       "unit": "0-30"
     },
     "sex": {
       "label": "Sesso",
-      "median": 0.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
+      "median": 0,
+      "training_max": 1,
+      "training_min": 0,
       "unit": "0=donna, 1=uomo"
     },
     "smoker_100": {
-      "label": "\u2265100 sigarette nella vita",
-      "median": 0.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
-      "unit": "0=no, 1=s\u00ec"
+      "label": "≥100 sigarette nella vita",
+      "median": 0,
+      "training_max": 1,
+      "training_min": 0,
+      "unit": "0=no, 1=sì"
     },
     "stroke_history": {
       "label": "Ictus riferito",
-      "median": 0.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
-      "unit": "0=no, 1=s\u00ec"
+      "median": 0,
+      "training_max": 1,
+      "training_min": 0,
+      "unit": "0=no, 1=sì"
     },
     "veggies_daily": {
-      "label": "Verdura \u22651 volta/giorno",
-      "median": 1.0,
-      "training_max": 1.0,
-      "training_min": 0.0,
-      "unit": "0=no, 1=s\u00ec"
+      "label": "Verdura ≥1 volta/giorno",
+      "median": 1,
+      "training_max": 1,
+      "training_min": 0,
+      "unit": "0=no, 1=sì"
     }
   },
   "imputation": {
     "strategy": "training median",
     "values": {
-      "age_category": 8.0,
-      "any_healthcare": 1.0,
-      "bmi": 27.0,
-      "chol_check": 1.0,
-      "difficulty_walking": 0.0,
-      "education": 5.0,
-      "fruits_daily": 1.0,
-      "general_health": 2.0,
-      "heart_disease_or_attack": 0.0,
-      "heavy_alcohol": 0.0,
-      "high_bp": 0.0,
-      "high_chol": 0.0,
-      "income": 7.0,
-      "mental_health_days": 0.0,
-      "no_doctor_due_cost": 0.0,
-      "physical_activity": 1.0,
-      "physical_health_days": 0.0,
-      "sex": 0.0,
-      "smoker_100": 0.0,
-      "stroke_history": 0.0,
-      "veggies_daily": 1.0
+      "age_category": 8,
+      "any_healthcare": 1,
+      "bmi": 27,
+      "chol_check": 1,
+      "difficulty_walking": 0,
+      "education": 5,
+      "fruits_daily": 1,
+      "general_health": 2,
+      "heart_disease_or_attack": 0,
+      "heavy_alcohol": 0,
+      "high_bp": 0,
+      "high_chol": 0,
+      "income": 7,
+      "mental_health_days": 0,
+      "no_doctor_due_cost": 0,
+      "physical_activity": 1,
+      "physical_health_days": 0,
+      "sex": 0,
+      "smoker_100": 0,
+      "stroke_history": 0,
+      "veggies_daily": 1
     }
   },
   "leakage_review": "No direct target field is present among predictors. Healthcare-use and comorbidity indicators may partly reflect consequences of existing diagnosis; therefore the output is deliberately framed as source-label classification rather than etiologic or prospective diabetes risk.",
