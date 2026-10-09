@@ -1,9 +1,9 @@
 (()=>{
 'use strict';
-if(window.__HS_INTEGRATED_PREDICTIVE_0540__) return;
+if(window.__HS_INTEGRATED_PREDICTIVE_0541__) return;
+window.__HS_INTEGRATED_PREDICTIVE_0541__=true;
+// Preserve prior release markers so historical regression checks remain valid.
 window.__HS_INTEGRATED_PREDICTIVE_0540__=true;
-// Preserve the previous marker so historical regression checks can still
-// identify the 0.53.1-compatible integrated runtime.
 window.__HS_INTEGRATED_PREDICTIVE_0531__=true;
 
 const BUNDLE=window.__HS_PREDICTIVE_BUNDLE__||null;
@@ -18,9 +18,9 @@ document.getElementById('hs-router041')?.remove();
 // while updating only visible application-release branding.
 (function reconcileReleaseBranding(){
   const replacements=[
-    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.54.0'],
+    [/^MASSIVE PUBLIC DATA\s*·\s*0\.38$/i,'PREDICTIVE ENGINE · 0.54.1'],
     [/^HealthSolver\s+0\.38\.0\s*·\s*Massive Public Data \+ Clinical Coach Research Edition\s*·\s*Riccardo Scaringi\s*·\s*Non uso clinico\.?$/i,
-     'HealthSolver 0.54.0 · eICU Demo Hospital Death Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
+     'HealthSolver 0.54.1 · Scientific Semantics Remediation + eICU Demo Hospital Death Integration + Predictive-First UI + Clinical Coach Research Edition · Riccardo Scaringi · Non uso clinico.']
   ];
   const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
   const nodes=[];
@@ -123,7 +123,7 @@ wrap.className='card';
 wrap.innerHTML=`
   <div class="hs43-hero">
     <div>
-      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.54.0</div>
+      <div class="hs43-kicker">MOTORE PREDITTIVO · HEALTHSOLVER 0.54.1</div>
       <h2 class="hs43-title">Predizioni cliniche di ricerca</h2>
       <p class="hs43-sub">HealthSolver usa lo stesso dossier che hai già compilato per verificare quali modelli sono applicabili e calcolare le stime disponibili. Le funzioni predittive sono qui, in primo piano. Ogni nuovo database entra nello stesso registry e nello stesso dossier.</p>
     </div>
@@ -340,6 +340,7 @@ wrap.innerHTML=`
       <label>Sodio peggiore prime 24h (mEq/L)<input id="hs54_sodium" type="number" step="any"></label>
       <label>Creatinina peggiore prime 24h (mg/dL)<input id="hs54_creatinine" type="number" min="0" step="any"></label>
     </div>
+    <div class="notice" style="margin-top:10px"><b>Coerenza GCS:</b> nel source eICU, se il GCS è non valutabile per farmaci (<code>meds=1</code>), il GCS numerico non è disponibile. In quel caso HealthSolver ignora qualsiasi GCS numerico inserito e applica la stessa rappresentazione usata nello sviluppo.</div>
     <div class="notice" style="margin-top:10px"><b>Target:</b> <code>hospitalDischargeStatus = Expired</code> contro <code>Alive</code>. Non è mortalità a 24 ore, 30 o 90 giorni e non è una probabilità di sopravvivenza.</div>
     <div class="notice" style="margin-top:10px"><b>Leakage control:</b> nessun APACHE score o predicted mortality/LOS, nessun outcome/actual result, nessun campo di dimissione e nessun identificativo ospedale è usato come predittore. Lo stesso paziente non compare in più partizioni di sviluppo.</div>
     <div class="notice" style="margin-top:10px"><b>Validazione:</b> metriche interne patient-disjoint sulla demo eICU; non è validazione esterna, clinica o prospettica. Software di ricerca.</div>
@@ -463,11 +464,12 @@ function support2EncodedCase(model,age,sex){
 }
 function eicuEncodedCase(model,age,sex){
   if(!model) return {};
+  const gcsMeds=num('hs54_gcs_meds');
   const rawValues={
     age,
     sex:sex===1?'male':sex===0?'female':null,
-    gcs_total:num('hs54_gcs_total'),
-    gcs_unscorable_meds:num('hs54_gcs_meds'),
+    gcs_total:gcsMeds===1?null:num('hs54_gcs_total'),
+    gcs_unscorable_meds:gcsMeds,
     temperature:num('hs54_temperature'),
     respiratoryrate:num('hs54_respiratoryrate'),
     heartrate:num('hs54_heartrate'),
@@ -748,6 +750,16 @@ function runAll(){
 }
 $('hs42Run').addEventListener('click',runAll);
 $('hs42Refresh').addEventListener('click',renderCoverage);
+const syncEicuGcs=()=>{
+  const meds=$('hs54_gcs_meds'),gcs=$('hs54_gcs_total');
+  if(!meds||!gcs) return;
+  const blocked=meds.value==='1';
+  if(blocked) gcs.value='';
+  gcs.disabled=blocked;
+  gcs.title=blocked?'GCS numerico non disponibile quando il GCS è non valutabile per farmaci.':'';
+};
+$('hs54_gcs_meds')?.addEventListener('change',()=>{syncEicuGcs();renderCoverage();});
 host.addEventListener('input',e=>{if(e.target!==$('hs42Run')) renderCoverage();});
+syncEicuGcs();
 renderCoverage();
 })();
