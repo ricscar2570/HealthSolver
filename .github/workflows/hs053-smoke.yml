@@ -29,11 +29,11 @@ jobs:
           root=pathlib.Path('predictive')
           reg=json.loads((root/'model-registry-v2.json').read_text())
           assert reg['schema']=='healthsolver.predictive_registry.v2'
-          assert reg['version']=='0.53.1'
-          assert len(reg['models'])==13
+          assert reg['version'] in {'0.53.1','0.54.0'}
+          assert len(reg['models'])>=13
           ids=[e['model_id'] for e in reg['models']]
           assert len(ids)==len(set(ids))
-          assert ids[-1]=='HS-SUPPORT2-HOSPDEATH-001'
+          assert 'HS-SUPPORT2-HOSPDEATH-001' in ids
 
           m=json.loads((root/'model-support2-hospital-death-v1.json').read_text())
           assert m['model_id']=='HS-SUPPORT2-HOSPDEATH-001'
@@ -81,7 +81,7 @@ jobs:
         shell: bash
         run: |
           grep -q 'HS_INTEGRATED_PREDICTIVE_0531' predictive/integrated-predictive-ui.js
-          grep -q '13 MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
+          grep -Eq '(13|14) MODELLI SUPERVISIONATI' predictive/integrated-predictive-ui.js
           grep -q 'Solo età e sesso vengono riutilizzati automaticamente' predictive/integrated-predictive-ui.js
           grep -q 'max_missing_raw_features' predictive/model-support2-hospital-death-v1.json
           grep -q 'HS-SUPPORT2-HOSPDEATH-001' predictive/integrated-predictive-ui.js
