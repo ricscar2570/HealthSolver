@@ -99,6 +99,7 @@ jobs:
           assert live['in_app_guide_integrated'] is True
           assert live['in_app_guide_version']=='1.0.0'
           assert live['in_app_guide_embedded'] is True
+          assert live['in_app_guide_screenshots_embedded'] is True
           assert live['in_app_guide_screenshots']==8
           paths=['predictive/model-registry-v2.json','predictive/ensemble-intelligence-v1.json',
                  'predictive/common-outcome-transport-v1.json','predictive/common-outcome-transport-v1-report.json',
