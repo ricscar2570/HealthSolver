@@ -21,8 +21,8 @@
     "HS-SUPPORT2-HOSPDEATH-001",
     "HS-EICU-DEMO-HOSPDEATH-001"
   ],
-  "payload_parts": 7,
-  "source_sha256": "1ed44c285930d585830401121764bc2e3cd4a26bbccf26f8326e2392a8abf33a",
+  "payload_parts": 18,
+  "source_sha256": "f096ac91c1be98cb48024bb4e15f3757526c42212c92587fda1900e965859c58",
   "predictive_modules_embedded": true,
   "integrated_predictive_ui": true,
   "predictive_first_ui": true,
@@ -52,5 +52,6 @@
   "in_app_guide_integrated": true,
   "in_app_guide_version": "1.0.0",
   "in_app_guide_screenshots": 8,
-  "in_app_guide_embedded": true
+  "in_app_guide_embedded": true,
+  "in_app_guide_screenshots_embedded": true
 }
