@@ -1,4 +1,4 @@
-# HealthSolver 0.56.0 — Common-Outcome Transport Layer + Ensemble Intelligence + Predictive-First UI
+# HealthSolver 0.56.1 — Complete In-App Guide + Common-Outcome Transport + Ensemble Intelligence + Predictive-First UI
 
 **HealthSolver** is a browser-based clinical reasoning research application designed to structure complex clinical information and support transparent, evidence-aware analysis.
 
@@ -9,7 +9,7 @@
 **GitHub Pages:**  
 https://ricscar2570.github.io/HealthSolver/
 
-The current public build is deployed from the `gh-pages` branch and corresponds to **HealthSolver 0.56.0**.
+The current public build is deployed from the `gh-pages` branch and corresponds to **HealthSolver 0.56.1**.
 
 ## What HealthSolver does
 
@@ -1386,6 +1386,40 @@ The ensemble specification explicitly sets:
 - `no_recalibration = true`.
 
 A future true meta-model would require a common patient-level dataset with a predeclared outcome and index time, split-first training and independent validation. HealthSolver 0.55 deliberately does not pretend that such a dataset already exists.
+
+## Complete In-App Guide 0.56.1
+
+HealthSolver 0.56.1 adds a complete integrated user guide designed for a first-time user.
+
+The guide is accessible from:
+
+- the new **Guida completa** navigation entry;
+- the floating **? Guida** button;
+- an inline help button inside the predictive area;
+- a first-visit onboarding prompt.
+
+The guide includes:
+
+- a five-minute quick start;
+- a complete end-to-end workflow;
+- three visual flow diagrams;
+- detailed Clinical Coach and Expert Mode explanations;
+- explanations of all fourteen supervised model outputs;
+- dedicated sections for Ensemble Intelligence 0.55 and Common-Outcome Transport 0.56;
+- eight live screenshots captured from the published application;
+- interpretation tables;
+- worked usage examples;
+- troubleshooting;
+- FAQ;
+- glossary;
+- a quick-reference checklist;
+- internal search;
+- buttons that jump directly from the guide to real application sections;
+- responsive mobile layout.
+
+The screenshots are generated from the live application with Playwright and stored under `guide/assets/`. They are not mockups.
+
+The documentation layer is separate from the predictive core. No model coefficient, threshold, preprocessing rule, calibration parameter or registry entry is modified by 0.56.1.
 
 ## Common-Outcome Transport Layer 0.56
 
