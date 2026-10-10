@@ -1,0 +1,127 @@
+name: HealthSolver 0.56.1 In-App Guide Browser Audit
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'guide/**'
+      - '.github/workflows/hs0561-guide-browser-audit.yml'
+      - '.github/workflows/hs041-repack-pages.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Verify complete in-app guide
+        shell: bash
+        run: |
+          cat > guide-audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const base='https://ricscar2570.github.io/HealthSolver/';
+          const ok=(v,m)=>{if(!v)throw new Error(m)};
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1800}});
+          const errors=[];
+          page.on('pageerror',e=>errors.push('PAGE '+e.message));
+          page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE '+m.text())});
+          await page.goto(base+'?audit=guide',{waitUntil:'networkidle',timeout:120000});
+
+          const meta=await fetch(base+'version.json?audit=guide').then(r=>r.json());
+          ok(meta.version==='0.56.1','wrong version '+meta.version);
+          ok(meta.in_app_guide_integrated===true,'guide flag');
+          ok(meta.in_app_guide_version==='1.0.0','guide version');
+          ok(meta.in_app_guide_screenshots===8,'screenshot count metadata');
+
+          await page.waitForFunction(()=>window.__HS_GUIDE_STATE__?.loaded===true,{timeout:30000});
+          const state=await page.evaluate(()=>window.__HS_GUIDE_STATE__);
+          ok(state.version==='1.0.0','state version');
+          ok(state.sections>=15,'guide section count '+state.sections);
+
+          const nav=page.locator('aside .nav[data-page="guide"]');
+          ok(await nav.count()===1,'guide nav missing');
+          ok((await nav.innerText()).includes('Guida completa'),'guide nav text');
+          ok(await page.locator('#hsGuideFloat').count()===1,'floating guide button missing');
+
+          await nav.click(); await page.waitForTimeout(150);
+          ok(await page.locator('#page-guide').isVisible(),'guide page not visible');
+          const text=await page.locator('#page-guide').innerText();
+          for(const needle of [
+            'Come usare HealthSolver da zero','Primi 5 minuti','Diagramma del flusso completo',
+            'Clinical Coach','Expert Mode / Intelligence','Le 14 predizioni supervisionate',
+            'Common-Outcome Transport 0.56','Ensemble Intelligence 0.55','Come interpretare correttamente i risultati',
+            'Esempi d’uso','Risoluzione dei problemi','FAQ','Glossario essenziale'
+          ]) ok(text.includes(needle),'missing guide content '+needle);
+
+          ok(await page.locator('#page-guide section.hg-section').count()>=15,'sections missing');
+          ok(await page.locator('#page-guide .hg-flow').count()>=3,'flow diagrams missing');
+          ok(await page.locator('#page-guide .hg-step').count()>=10,'step cards missing');
+          ok(await page.locator('#page-guide details').count()>=10,'FAQ/details missing');
+          ok(await page.locator('#page-guide table').count()>=3,'reference tables missing');
+
+          const imgs=page.locator('#page-guide img[src^="guide/assets/"]');
+          ok(await imgs.count()===8,'expected eight guide screenshots');
+          for(let i=0;i<8;i++){
+            const im=imgs.nth(i);
+            await im.scrollIntoViewIfNeeded();
+            const loaded=await im.evaluate(el=>el.complete&&el.naturalWidth>100&&el.naturalHeight>100);
+            ok(loaded,'guide image '+i+' not loaded');
+            ok((await im.getAttribute('alt')||'').trim().length>5,'image alt '+i);
+          }
+
+          const search=page.locator('#hsGuideSearch');
+          await search.fill('Transport');
+          await page.waitForTimeout(80);
+          const visible=page.locator('#page-guide section.hg-section:not(.hg-hidden)');
+          ok(await visible.count()>=1,'search no results');
+          const searchText=(await visible.allInnerTexts()).join(' ');
+          ok(/Transport/i.test(searchText),'search irrelevant');
+          await search.fill('');
+
+          // In-guide navigation to a real application section.
+          await page.locator('[data-hs-open-page="coach"]').first().click(); await page.waitForTimeout(120);
+          ok(await page.locator('#page-coach').isVisible(),'guide-to-coach navigation');
+          ok(!(await page.locator('#page-guide').isVisible()),'guide should hide after app navigation');
+
+          // Floating help can reopen the guide from anywhere.
+          await page.locator('#hsGuideFloat').click(); await page.waitForTimeout(100);
+          ok(await page.locator('#page-guide').isVisible(),'floating guide reopen');
+
+          // Search and scroll remain usable after reopening.
+          await page.locator('#hsGuideSearch').fill('RAI');
+          ok(await page.locator('#hg-ensemble:not(.hg-hidden)').count()===1,'RAI search ensemble');
+          await page.locator('#hsGuideSearch').fill('');
+
+          // Mobile usability.
+          await page.setViewportSize({width:390,height:844});
+          await page.waitForTimeout(100);
+          const box=await page.locator('#page-guide').boundingBox();
+          ok(box&&box.width<=390,'guide mobile overflow root');
+          ok(await page.locator('#hsGuideFloat').isVisible(),'mobile floating help');
+          await page.screenshot({path:'HealthSolver-0.56.1-Guide-Mobile.png',fullPage:true});
+
+          const serious=errors.filter(x=>!/api\.fda\.gov/i.test(x));
+          console.log('GUIDE_ERRORS',JSON.stringify(errors));
+          ok(serious.length===0,'guide browser errors '+serious.join(' | '));
+          console.log('GUIDE_STATE',JSON.stringify(state));
+          console.log('HS0561 COMPLETE IN-APP GUIDE PASS');
+          await browser.close();
+          JS
+          node guide-audit.mjs | tee guide-audit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: healthsolver-0561-guide-audit
+          path: |
+            guide-audit.txt
+            HealthSolver-0.56.1-Guide-Mobile.png
+          retention-days: 14
