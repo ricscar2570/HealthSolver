@@ -64,9 +64,9 @@ const READY=async()=>{
   };
 
   try{
-    const res=await fetch('guide/in-app-guide.html?guide=1',{cache:'no-store'});
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    page.innerHTML=await res.text();
+    const guideHTML=window.__HS_GUIDE_HTML__;
+    if(typeof guideHTML!=='string'||guideHTML.length<1000) throw new Error('Contenuto guida incorporato mancante');
+    page.innerHTML=guideHTML;
 
     page.querySelectorAll('[data-hg-scroll]').forEach(btn=>btn.addEventListener('click',()=>{
       page.querySelector('#hg-'+btn.dataset.hgScroll)?.scrollIntoView({behavior:'smooth',block:'start'});
