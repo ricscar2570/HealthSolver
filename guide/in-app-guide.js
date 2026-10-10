@@ -86,7 +86,7 @@ const READY=async()=>{
     });
 
     const missingImgs=[];
-    page.querySelectorAll('img[src^="guide/assets/"]').forEach(img=>{
+    page.querySelectorAll('.hg-shot img').forEach(img=>{
       img.addEventListener('error',()=>{
         missingImgs.push(img.getAttribute('src'));
         const holder=document.createElement('div');
