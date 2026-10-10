@@ -45,6 +45,7 @@ jobs:
           pe=(main/'predictive'/'predictive-engine.js').read_text()
           integrated=(main/'predictive'/'integrated-predictive-ui.js').read_text()
           guide_js=(main/'guide'/'in-app-guide.js').read_text()
+          guide_html=(main/'guide'/'in-app-guide.html').read_text()
           registry=json.loads((main/'predictive'/'model-registry-v2.json').read_text())
           ensemble=json.loads((main/'predictive'/'ensemble-intelligence-v1.json').read_text())
           transport=json.loads((main/'predictive'/'common-outcome-transport-v1.json').read_text())
@@ -56,6 +57,8 @@ jobs:
           assert '</script>' not in pe.lower()
           assert '</script>' not in integrated.lower()
           assert '</script>' not in guide_js.lower()
+          assert '</script>' not in guide_html.lower()
+          guide_html_bundle=json.dumps(guide_html,ensure_ascii=False)
           assert '</script>' not in bundle.lower()
           assert '</script>' not in ensemble_bundle.lower()
           assert '</script>' not in transport_bundle.lower()
@@ -77,7 +80,7 @@ jobs:
               'sandbox=\\\"allow-scripts allow-downloads allow-modals allow-popups allow-popups-to-escape-sandbox\\\"',
               'sandbox=\\\"allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups allow-popups-to-escape-sandbox\\\"'
           )
-          overlay='\n<!-- HS_PREDICTIVE_OVERLAY_BEGIN -->\n<script>window.__HS_PREDICTIVE_BUNDLE__='+bundle+';window.__HS_ENSEMBLE_CONFIG__='+ensemble_bundle+';window.__HS_COMMON_OUTCOME_TRANSPORT__='+transport_bundle+';</script>\n<script>\n'+integrated+'\n'+guide_js+'\n</script>\n<!-- HS_PREDICTIVE_OVERLAY_END -->\n'
+          overlay='\n<!-- HS_PREDICTIVE_OVERLAY_BEGIN -->\n<script>window.__HS_PREDICTIVE_BUNDLE__='+bundle+';window.__HS_ENSEMBLE_CONFIG__='+ensemble_bundle+';window.__HS_COMMON_OUTCOME_TRANSPORT__='+transport_bundle+';window.__HS_GUIDE_HTML__='+guide_html_bundle+';</script>\n<script>\n'+integrated+'\n'+guide_js+'\n</script>\n<!-- HS_PREDICTIVE_OVERLAY_END -->\n'
           assert '</body>' in html.lower()
           pos=html.lower().rfind('</body>')
           html=html[:pos]+overlay+html[pos:]
@@ -164,6 +167,7 @@ jobs:
           v['common_outcome_transport_qualification']=transport['qualification_status']
           v['in_app_guide_integrated']=True
           v['in_app_guide_version']='1.0.0'
+          v['in_app_guide_embedded']=True
           v['in_app_guide_screenshots']=8
           v['code_audit_remediation']=True
           v['predictive_models']=[m['model_id'] for m in registry['models']]
