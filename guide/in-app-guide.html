@@ -1,0 +1,336 @@
+<style>
+#page-guide{max-width:1180px;margin:0 auto;padding-bottom:80px}
+#page-guide *{box-sizing:border-box}
+#page-guide .hg-hero{padding:30px;border-radius:22px;background:linear-gradient(135deg,#0d8f80,#17365f);color:#fff;margin-bottom:22px}
+#page-guide .hg-kicker{font-size:.78rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase;opacity:.86}
+#page-guide .hg-hero h1{font-size:clamp(2rem,4vw,3.4rem);line-height:1.03;margin:8px 0 10px}
+#page-guide .hg-hero p{font-size:1.08rem;line-height:1.55;max-width:900px;margin:0}
+#page-guide .hg-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+#page-guide .hg-actions button,#page-guide .hg-open-app{border:0;border-radius:10px;padding:11px 14px;font-weight:800;cursor:pointer}
+#page-guide .hg-actions button{background:#fff;color:#17365f}
+#page-guide .hg-open-app{background:#0d8f80;color:#fff}
+#page-guide .hg-warning{border-left:5px solid #d09a2d;background:#fff8e8;padding:14px 16px;border-radius:10px;margin:16px 0;line-height:1.5}
+#page-guide .hg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+#page-guide .hg-card{background:#fff;border:1px solid #d9e2ec;border-radius:14px;padding:17px}
+#page-guide .hg-card h3{margin:0 0 8px;font-size:1.05rem}
+#page-guide .hg-card p,#page-guide .hg-card li{line-height:1.5}
+#page-guide .hg-toc{position:sticky;top:0;z-index:3;background:rgba(255,255,255,.97);border:1px solid #d9e2ec;border-radius:14px;padding:14px;margin-bottom:20px;box-shadow:0 8px 24px rgba(20,40,70,.06)}
+#page-guide .hg-search{width:100%;padding:12px 14px;border:1px solid #b9c8d8;border-radius:10px;font-size:1rem;margin-bottom:10px}
+#page-guide .hg-toc-links{display:flex;flex-wrap:wrap;gap:7px}
+#page-guide .hg-toc-links a{font-size:.82rem;text-decoration:none;border:1px solid #c8d7e5;border-radius:999px;padding:6px 9px;color:#17365f;background:#f7fafc}
+#page-guide section.hg-section{scroll-margin-top:120px;margin:28px 0;padding:22px;background:#fff;border:1px solid #dce5ee;border-radius:16px}
+#page-guide section.hg-section h2{margin:0 0 8px;font-size:1.55rem;color:#17365f}
+#page-guide section.hg-section h3{margin-top:22px;color:#21496d}
+#page-guide .hg-lead{font-size:1.03rem;line-height:1.6;color:#44576b}
+#page-guide .hg-steps{counter-reset:step;display:grid;gap:12px;margin-top:16px}
+#page-guide .hg-step{counter-increment:step;display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;border:1px solid #dde6ee;border-radius:12px;padding:13px}
+#page-guide .hg-step:before{content:counter(step);display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#0d8f80;color:#fff;font-weight:900}
+#page-guide .hg-step b{display:block;margin-bottom:4px}
+#page-guide .hg-flow{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;margin:18px 0}
+#page-guide .hg-node{flex:1 1 150px;min-width:140px;border:2px solid #9db4c9;border-radius:12px;padding:12px;background:#f9fbfd;text-align:center;font-weight:800;display:flex;align-items:center;justify-content:center;min-height:74px}
+#page-guide .hg-arrow{display:grid;place-items:center;font-size:1.6rem;color:#73879b;font-weight:900}
+#page-guide .hg-shot{margin:18px 0;border:1px solid #d4dee8;border-radius:14px;overflow:hidden;background:#f6f8fa}
+#page-guide .hg-shot img{display:block;width:100%;height:auto;background:#eef2f5}
+#page-guide .hg-shot figcaption{padding:12px 14px;font-size:.9rem;line-height:1.5;background:#fff}
+#page-guide .hg-callouts{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-top:10px}
+#page-guide .hg-callout{padding:10px 12px;border-radius:10px;background:#eef9f7}
+#page-guide .hg-num{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#0d8f80;color:#fff;font-weight:900;margin-right:6px}
+#page-guide table{width:100%;border-collapse:collapse;margin:14px 0;font-size:.9rem}
+#page-guide th,#page-guide td{border-bottom:1px solid #dfe7ee;padding:10px;text-align:left;vertical-align:top}
+#page-guide th{background:#f5f8fb;color:#17365f}
+#page-guide code{background:#eef2f6;padding:2px 5px;border-radius:5px}
+#page-guide details{border:1px solid #dce5ee;border-radius:10px;padding:10px 12px;margin:9px 0;background:#fbfcfd}
+#page-guide summary{cursor:pointer;font-weight:800;color:#17365f}
+#page-guide .hg-tag{display:inline-block;padding:4px 8px;border-radius:999px;font-size:.75rem;font-weight:800;background:#eef9f7;color:#0a6d63;margin:2px}
+#page-guide .hg-bad{background:#fff0cf;color:#6c4700}
+#page-guide .hg-good{background:#eaf8ef;color:#226238}
+#page-guide .hg-quick{font-size:1.04rem}
+#page-guide .hg-hidden{display:none!important}
+#page-guide .hg-mini-ui{border:1px solid #bdcad6;border-radius:14px;overflow:hidden;margin:15px 0;background:#fff}
+#page-guide .hg-mini-head{background:#17365f;color:#fff;padding:11px 14px;font-weight:800}
+#page-guide .hg-mini-body{padding:14px}
+#page-guide .hg-mini-row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+#page-guide .hg-mini-field{flex:1 1 180px;border:1px solid #d4dde5;border-radius:8px;padding:9px;background:#f8fafc}
+#page-guide .hg-mini-result{border-left:5px solid #0d8f80;padding:10px 12px;background:#eef9f7;margin-top:10px}
+#hsGuideFloat{position:fixed;right:18px;bottom:18px;z-index:9999;border:0;border-radius:999px;padding:11px 16px;background:#17365f;color:#fff;font-weight:900;box-shadow:0 8px 24px rgba(0,0,0,.22);cursor:pointer}
+#hsGuideWelcome{position:fixed;inset:0;z-index:10000;background:rgba(8,20,35,.72);display:grid;place-items:center;padding:18px}
+#hsGuideWelcome .hg-modal{max-width:720px;background:#fff;border-radius:18px;padding:26px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+#hsGuideWelcome h2{margin:0 0 8px;color:#17365f}
+#hsGuideWelcome .actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}
+#hsGuideWelcome button{border:0;border-radius:10px;padding:11px 14px;font-weight:800;cursor:pointer}
+#hsGuideWelcome .primary{background:#0d8f80;color:#fff}
+@media(max-width:760px){
+  #page-guide{padding:0 4px 60px}
+  #page-guide .hg-hero{padding:22px}
+  #page-guide section.hg-section{padding:16px}
+  #page-guide .hg-toc{position:static}
+  #page-guide .hg-arrow{display:none}
+  #hsGuideFloat{right:10px;bottom:10px}
+}
+</style>
+
+<div class="hg-hero">
+  <div class="hg-kicker">HealthSolver · Guida completa integrata</div>
+  <h1>Come usare HealthSolver da zero</h1>
+  <p>Questa guida è pensata per chi non ha mai visto né provato l’applicazione. Spiega cosa fa HealthSolver, come compilare un caso, come attivare le funzioni predittive, come leggere i risultati e quali conclusioni non devono essere tratte.</p>
+  <div class="hg-actions">
+    <button data-hg-scroll="quickstart">Inizia in 5 minuti</button>
+    <button data-hg-scroll="workflow">Vedi il flusso completo</button>
+    <button data-hg-scroll="interpretation">Come leggere i risultati</button>
+    <button data-hg-scroll="faq">FAQ</button>
+  </div>
+</div>
+
+<div class="hg-warning"><b>Importante.</b> HealthSolver è software di ricerca. Non è un dispositivo medico, non formula diagnosi cliniche, non prescrive terapie e non deve sostituire il giudizio di professionisti sanitari qualificati.</div>
+
+<div class="hg-toc">
+  <input id="hsGuideSearch" class="hg-search" type="search" placeholder="Cerca nella guida: es. Ensemble, Coach, astensione, soglia, eICU...">
+  <div class="hg-toc-links">
+    <a href="#hg-overview">Panoramica</a><a href="#hg-quickstart">Primi 5 minuti</a><a href="#hg-workflow">Flusso</a>
+    <a href="#hg-coach">Clinical Coach</a><a href="#hg-expert">Expert Mode</a><a href="#hg-predict">Predizioni</a>
+    <a href="#hg-transport">Transport</a><a href="#hg-ensemble">Ensemble</a><a href="#hg-other">Altre sezioni</a>
+    <a href="#hg-interpretation">Interpretazione</a><a href="#hg-examples">Esempi</a><a href="#hg-troubleshooting">Problemi</a>
+    <a href="#hg-faq">FAQ</a><a href="#hg-glossary">Glossario</a>
+  </div>
+</div>
+
+<section id="hg-overview" class="hg-section" data-guide-search>
+  <h2>1. Che cos’è HealthSolver</h2>
+  <p class="hg-lead">HealthSolver è una web application browser-based per strutturare un caso clinico e sperimentare funzioni di analisi e machine learning su dati sanitari. L’app riunisce in un unico flusso raccolta guidata dei dati, analisi strutturata, modelli predittivi di ricerca, confronto con dataset pubblici, validazione e archiviazione locale.</p>
+  <div class="hg-grid">
+    <div class="hg-card"><h3>Raccoglie</h3><p>Sintomi, anamnesi, fattori di rischio, parametri vitali, laboratorio, reperti, osservazioni e dati specialistici.</p></div>
+    <div class="hg-card"><h3>Controlla</h3><p>Quali modelli possono essere applicati ai dati realmente disponibili e quando deve invece astenersi.</p></div>
+    <div class="hg-card"><h3>Calcola</h3><p>Le uscite dei 14 modelli supervisionati già integrati e, separatamente, i layer di sintesi 0.55 e 0.56.</p></div>
+    <div class="hg-card"><h3>Documenta</h3><p>Provenienza dei dati, metriche, limiti, target dei modelli e differenze fra dataset.</p></div>
+  </div>
+  <h3>Cosa non è</h3>
+  <p><span class="hg-tag hg-bad">NON diagnosi</span><span class="hg-tag hg-bad">NON prescrizione</span><span class="hg-tag hg-bad">NON triage clinico</span><span class="hg-tag hg-bad">NON dispositivo medico</span></p>
+</section>
+
+<section id="hg-quickstart" class="hg-section" data-guide-search>
+  <h2>2. Primi 5 minuti: il percorso più semplice</h2>
+  <p class="hg-lead">Se è la prima volta che apri HealthSolver, ignora inizialmente le funzioni avanzate. Segui questa sequenza.</p>
+  <div class="hg-steps">
+    <div class="hg-step"><div><b>Apri Clinical Coach</b>Inizia da un caso vuoto oppure da un caso già salvato. Inserisci almeno età, sesso e le informazioni cliniche di cui disponi.</div></div>
+    <div class="hg-step"><div><b>Compila il caso progressivamente</b>Non è necessario avere subito tutti i dati. Inserisci sintomi, anamnesi, parametri vitali, esami e osservazioni quando disponibili.</div></div>
+    <div class="hg-step"><div><b>Passa a Expert Mode / Intelligence</b>Qui trovi la vista strutturata del dossier e il motore predittivo. I dati comuni già inseriti vengono riutilizzati dove semanticamente compatibili.</div></div>
+    <div class="hg-step"><div><b>Guarda la copertura dei modelli</b>Ogni riquadro indica quanti input del relativo modello sono disponibili. Un modello può essere pronto oppure richiedere dati specialistici aggiuntivi.</div></div>
+    <div class="hg-step"><div><b>Premi “CALCOLA PREDIZIONI”</b>HealthSolver esegue solo i modelli applicabili. Dove i dati non bastano, il modello si astiene invece di fingere una stima affidabile.</div></div>
+    <div class="hg-step"><div><b>Leggi prima il nome del target</b>Ogni percentuale appartiene al proprio modello e al proprio dataset. Non confrontare automaticamente due percentuali come se fossero lo stesso rischio.</div></div>
+    <div class="hg-step"><div><b>Solo dopo guarda Ensemble e Transport</b>L’Ensemble 0.55 è una sintesi descrittiva; il Transport 0.56 è un esperimento cross-dataset a generalizzazione debole. Sono due cose diverse.</div></div>
+  </div>
+  <button class="hg-open-app" data-hs-open-page="coach">Apri ora Clinical Coach</button>
+</section>
+
+<section id="hg-workflow" class="hg-section" data-guide-search>
+  <h2>3. Diagramma del flusso completo</h2>
+  <div class="hg-flow">
+    <div class="hg-node">1<br>Raccogli il caso</div><div class="hg-arrow">→</div>
+    <div class="hg-node">2<br>Struttura i dati</div><div class="hg-arrow">→</div>
+    <div class="hg-node">3<br>Controlla la copertura</div><div class="hg-arrow">→</div>
+    <div class="hg-node">4<br>Esegui i modelli applicabili</div><div class="hg-arrow">→</div>
+    <div class="hg-node">5<br>Interpreta target e limiti</div>
+  </div>
+  <h3>Flusso predittivo interno</h3>
+  <div class="hg-flow">
+    <div class="hg-node">Dati del dossier</div><div class="hg-arrow">→</div>
+    <div class="hg-node">Mapping verso le feature</div><div class="hg-arrow">→</div>
+    <div class="hg-node">Controllo missing / astensione</div><div class="hg-arrow">→</div>
+    <div class="hg-node">Modello + calibrazione</div><div class="hg-arrow">→</div>
+    <div class="hg-node">Output del singolo target</div>
+  </div>
+  <h3>Flusso dei layer superiori</h3>
+  <div class="hg-flow">
+    <div class="hg-node">14 output individuali</div><div class="hg-arrow">→</div>
+    <div class="hg-node">Ensemble 0.55<br><small>sintesi descrittiva</small></div>
+  </div>
+  <div class="hg-flow">
+    <div class="hg-node">3 dataset con outcome ospedaliero</div><div class="hg-arrow">→</div>
+    <div class="hg-node">Feature comuni: età + sesso</div><div class="hg-arrow">→</div>
+    <div class="hg-node">Transport 0.56<br><small>modello sperimentale separato</small></div>
+  </div>
+</section>
+
+<section id="hg-coach" class="hg-section" data-guide-search>
+  <h2>4. Clinical Coach: costruire il caso senza perdersi</h2>
+  <p class="hg-lead">Il Clinical Coach serve a trasformare informazioni sparse in un dossier ordinato. È il punto di partenza consigliato per un nuovo utente.</p>
+  <figure class="hg-shot">
+    <img src="guide/assets/01-clinical-coach.png" alt="Schermata reale del Clinical Coach">
+    <figcaption><b>Schermata reale.</b> Il Coach accompagna la compilazione del caso. Le etichette e i controlli presenti nella tua versione live possono evolvere, ma il principio resta: inserire ciò che è noto senza inventare ciò che manca.</figcaption>
+  </figure>
+  <div class="hg-callouts">
+    <div class="hg-callout"><span class="hg-num">1</span><b>Nuovo caso:</b> usalo per partire senza dati preesistenti.</div>
+    <div class="hg-callout"><span class="hg-num">2</span><b>Dati anagrafici:</b> età e sesso alimentano più modelli quando compatibili.</div>
+    <div class="hg-callout"><span class="hg-num">3</span><b>Progressione:</b> puoi aggiungere sintomi, storia, vitali, esami e osservazioni passo per passo.</div>
+    <div class="hg-callout"><span class="hg-num">4</span><b>Dati mancanti:</b> lasciarli vuoti è preferibile a inserirli per supposizione.</div>
+  </div>
+  <button class="hg-open-app" data-hs-open-page="coach">Vai al Clinical Coach</button>
+</section>
+
+<section id="hg-expert" class="hg-section" data-guide-search>
+  <h2>5. Expert Mode / Intelligence</h2>
+  <p class="hg-lead">Expert Mode è la vista più completa. Qui il dossier strutturato incontra il motore predittivo, le analisi e gli strumenti avanzati.</p>
+  <figure class="hg-shot">
+    <img src="guide/assets/02-expert-mode-top.png" alt="Schermata reale di Expert Mode">
+    <figcaption>La parte superiore di Expert Mode contiene i dati del caso e il blocco predittivo integrato. Non è necessario compilare ogni campo dell’intera applicazione: ogni modello dichiara la propria copertura.</figcaption>
+  </figure>
+  <h3>Dati comuni e dati specialistici</h3>
+  <p>HealthSolver riutilizza automaticamente un dato comune solo quando il significato e l’unità sono compatibili. Per alcuni dataset servono invece campi specifici, per esempio valori del <b>giorno 3 SUPPORT2</b> o del <b>primo APACHE day eICU</b>. Questi non vengono sostituiti silenziosamente con misure generiche.</p>
+  <button class="hg-open-app" data-hs-open-page="intelligence">Apri Expert Mode</button>
+</section>
+
+<section id="hg-predict" class="hg-section" data-guide-search>
+  <h2>6. Le 14 predizioni supervisionate</h2>
+  <p class="hg-lead">Il badge “14 MODELLI SUPERVISIONATI” indica i modelli base del registry. Il numero resta 14 anche con Ensemble e Transport, perché questi ultimi sono layer separati.</p>
+  <figure class="hg-shot">
+    <img src="guide/assets/03-predictive-results.png" alt="Schermata reale dei risultati predittivi">
+    <figcaption>Schermata reale dopo l’esecuzione di un caso di test. I riquadri dei risultati devono essere letti uno alla volta, partendo dal titolo del target e dalle note semantiche.</figcaption>
+  </figure>
+  <h3>Come leggere una card</h3>
+  <div class="hg-mini-ui">
+    <div class="hg-mini-head">Esempio schematico di una card predittiva</div>
+    <div class="hg-mini-body">
+      <div class="hg-mini-row"><div class="hg-mini-field"><b>MODEL ID</b><br>Identifica in modo univoco il modello.</div><div class="hg-mini-field"><b>Titolo del target</b><br>Dice cosa viene realmente classificato.</div></div>
+      <div class="hg-mini-result"><b>XX.X%</b> — output calibrato del modello nel dominio del dataset sorgente.</div>
+      <p><b>Contributi principali:</b> mostrano quali feature hanno spinto maggiormente lo score in quel caso. Non equivalgono a causalità.</p>
+      <p><b>Metriche:</b> AUROC, Brier, AUPRC ecc. descrivono prestazioni della valutazione prevista dal protocollo, non garantiscono validità clinica universale.</p>
+    </div>
+  </div>
+  <h3>Astensione</h3>
+  <p>Se mancano troppi input o mancano variabili obbligatorie, il modello può mostrare <b>Astensione</b>. È un comportamento corretto: significa che HealthSolver rifiuta di produrre quella stima con dati insufficienti.</p>
+  <table>
+    <thead><tr><th>Stato</th><th>Significato</th><th>Cosa fare</th></tr></thead>
+    <tbody>
+      <tr><td>Pronto</td><td>Gli input rispettano la policy del modello.</td><td>Puoi eseguire la predizione.</td></tr>
+      <tr><td>Mancano dati</td><td>La copertura è insufficiente.</td><td>Inserisci solo dati realmente disponibili.</td></tr>
+      <tr><td>Astensione</td><td>Il modello non viene applicato.</td><td>Non interpretare l’assenza di stima come rischio zero.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="hg-transport" class="hg-section" data-guide-search>
+  <h2>7. Common-Outcome Transport 0.56</h2>
+  <p class="hg-lead">Il Transport Layer è un esperimento separato che tenta di apprendere un label comune di decesso intraospedaliero attraversando UCI Sepsis Survival, SUPPORT2 ed eICU Demo.</p>
+  <figure class="hg-shot">
+    <img src="guide/assets/04-transport-layer.png" alt="Schermata reale Common Outcome Transport 0.56">
+    <figcaption>Il pannello espone volutamente la dicitura <b>GENERALIZZAZIONE DEBOLE</b>. Non è un avviso cosmetico: deriva dalla validazione leave-one-source-out.</figcaption>
+  </figure>
+  <div class="hg-warning"><b>Perché solo età e sesso?</b> Sono le uniche feature pulitamente armonizzabili fra i tre dataset attualmente usati. HealthSolver non inventa una matrice comune delle 14 probabilità quando i dataset non contengono simultaneamente gli input necessari.</div>
+  <p>Il peggior AUROC leave-one-source-out è circa <b>0,530</b>, ottenuto quando SUPPORT2 è completamente escluso dall’addestramento e usato come sorgente mai vista. Per questo il modello è qualificato <code>WEAK_TRANSPORT_GENERALIZATION</code>.</p>
+  <p><span class="hg-tag hg-bad">NON score clinico di mortalità</span><span class="hg-tag hg-bad">NON triage</span><span class="hg-tag hg-bad">NON decisione terapeutica</span></p>
+</section>
+
+<section id="hg-ensemble" class="hg-section" data-guide-search>
+  <h2>8. Ensemble Intelligence 0.55</h2>
+  <p class="hg-lead">Ensemble Intelligence non è un nuovo modello clinico e non produce una “probabilità globale”. È una sintesi deterministica dei modelli applicabili rispetto alle loro soglie interne.</p>
+  <figure class="hg-shot">
+    <img src="guide/assets/05-ensemble-intelligence.png" alt="Schermata reale Ensemble Intelligence">
+    <figcaption>La scritta <b>NON È UNA PROBABILITÀ</b> è vincolante. Il Research Activation Index (RAI) serve a rappresentare dove si collocano le uscite rispetto alle soglie dei rispettivi modelli.</figcaption>
+  </figure>
+  <h3>Research Activation Index (RAI)</h3>
+  <p>Per ogni modello applicabile, la propria soglia decisionale viene mappata a 0,5. Le posizioni vengono poi mediate all’interno del dominio. Il valore risultante viene mostrato su scala 0–100.</p>
+  <p><b>RAI non significa:</b> probabilità, prevalenza, gravità, mortalità globale, certezza diagnostica o cut-off terapeutico.</p>
+  <h3>Concordanza core ospedaliera</h3>
+  <p>Confronta lo stato sopra/sotto soglia di Sepsis, SUPPORT2 ed eICU quando applicabili. Anche qui non viene creata una mortalità combinata.</p>
+</section>
+
+<section id="hg-other" class="hg-section" data-guide-search>
+  <h2>9. Le altre sezioni dell’app</h2>
+  <div class="hg-grid">
+    <div class="hg-card"><h3>Hub</h3><p>Raccoglie funzioni e percorsi di lavoro. Usalo per orientarti tra gli strumenti disponibili.</p><button class="hg-open-app" data-hs-open-page="hub">Apri Hub</button></div>
+    <div class="hg-card"><h3>Massive Public Data</h3><p>Area dedicata alle sorgenti dati pubbliche e alle funzioni collegate all’uso di dataset sanitari.</p><button class="hg-open-app" data-hs-open-page="massive">Apri Massive Public Data</button></div>
+    <div class="hg-card"><h3>Case</h3><p>Consente di lavorare con il modulo singolo e con casi di esempio, utile per test e comprensione isolata.</p><button class="hg-open-app" data-hs-open-page="case">Apri Case</button></div>
+    <div class="hg-card"><h3>Data / Training</h3><p>Contiene le funzioni di dati e training conservate nell’app. È una zona avanzata: non confondere un training sperimentale con validazione clinica.</p><button class="hg-open-app" data-hs-open-page="data">Apri Data</button></div>
+    <div class="hg-card"><h3>Validation</h3><p>Area per verifiche, ricalcolo e strumenti di validazione. Serve a misurare il comportamento del modello, non a “certificarlo” automaticamente.</p><button class="hg-open-app" data-hs-open-page="validation">Apri Validation</button></div>
+    <div class="hg-card"><h3>Archive</h3><p>Area di archiviazione dei casi e delle informazioni gestite localmente dall’app.</p><button class="hg-open-app" data-hs-open-page="archive">Apri Archive</button></div>
+    <div class="hg-card"><h3>Previous Functions</h3><p>Funzioni storiche preservate, incluse visita e laboratorio precedenti. Restano separate dal nuovo flusso predittivo.</p><button class="hg-open-app" data-hs-open-page="previous">Apri Previous Functions</button></div>
+  </div>
+  <figure class="hg-shot"><img src="guide/assets/06-hub.png" alt="Hub HealthSolver"><figcaption>Hub: punto di orientamento fra i moduli.</figcaption></figure>
+  <figure class="hg-shot"><img src="guide/assets/07-validation.png" alt="Validation HealthSolver"><figcaption>Validation: strumenti per valutare risultati e metriche.</figcaption></figure>
+  <figure class="hg-shot"><img src="guide/assets/08-archive.png" alt="Archive HealthSolver"><figcaption>Archive: gestione dei casi archiviati.</figcaption></figure>
+</section>
+
+<section id="hg-interpretation" class="hg-section" data-guide-search>
+  <h2>10. Come interpretare correttamente i risultati</h2>
+  <table>
+    <thead><tr><th>Elemento</th><th>Cosa significa</th><th>Cosa NON significa</th></tr></thead>
+    <tbody>
+      <tr><td>Percentuale del singolo modello</td><td>Output calibrato rispetto al target e alla coorte del modello.</td><td>Probabilità universale della malattia o dell’evento.</td></tr>
+      <tr><td>Soglia interna</td><td>Operating point scelto nel protocollo del modello.</td><td>Cut-off clinico o terapeutico.</td></tr>
+      <tr><td>Sopra soglia</td><td>Output oltre l’operating point interno.</td><td>Diagnosi positiva.</td></tr>
+      <tr><td>Astensione</td><td>Dati insufficienti o incompatibili con la policy.</td><td>Assenza di rischio.</td></tr>
+      <tr><td>AUROC</td><td>Capacità discriminativa nella valutazione descritta.</td><td>Accuratezza individuale del tuo caso.</td></tr>
+      <tr><td>Brier</td><td>Errore quadratico delle probabilità nel campione di valutazione.</td><td>Garanzia di calibrazione in ogni popolazione.</td></tr>
+      <tr><td>RAI</td><td>Posizione relativa alle soglie nei domini Ensemble.</td><td>Rischio globale.</td></tr>
+      <tr><td>Transport 0.56</td><td>Esperimento cross-dataset age+sex sul label ospedaliero comune.</td><td>Score clinico di mortalità.</td></tr>
+    </tbody>
+  </table>
+  <div class="hg-warning"><b>Regola pratica:</b> prima leggi <em>che cosa predice il modello</em>, poi guarda il numero. Mai il contrario.</div>
+</section>
+
+<section id="hg-examples" class="hg-section" data-guide-search>
+  <h2>11. Esempi d’uso</h2>
+  <h3>Esempio A — Caso incompleto</h3>
+  <div class="hg-steps">
+    <div class="hg-step"><div><b>Inserisci età, sesso e pochi dati clinici.</b>Molti modelli risulteranno non pronti.</div></div>
+    <div class="hg-step"><div><b>Aggiorna copertura.</b>Osserva quali modelli richiedono dati mancanti.</div></div>
+    <div class="hg-step"><div><b>Calcola.</b>I modelli applicabili producono un output; gli altri si astengono.</div></div>
+    <div class="hg-step"><div><b>Conclusione corretta.</b>Non interpretare gli astenuti come “negativi”.</div></div>
+  </div>
+  <h3>Esempio B — Caso critical care con dati specifici</h3>
+  <p>Se disponi realmente di valori SUPPORT2 giorno 3 o eICU first-APACHE-day, apri i pannelli specialistici e inseriscili. La distinzione temporale è essenziale: un valore misurato “adesso” non diventa automaticamente un valore “giorno 3” o “peggiore nelle prime 24h”.</p>
+  <h3>Esempio C — Ensemble</h3>
+  <p>Dopo più predizioni applicabili, usa l’Ensemble per osservare copertura, co-attivazione, RAI e concordanza. Non sommare le percentuali dei modelli.</p>
+  <h3>Esempio D — Transport</h3>
+  <p>Con età e sesso disponibili, il Transport può produrre il proprio output. Devi però leggerlo insieme alla qualifica <code>WEAK_TRANSPORT_GENERALIZATION</code> e al peggior AUROC leave-one-source-out.</p>
+</section>
+
+<section id="hg-troubleshooting" class="hg-section" data-guide-search>
+  <h2>12. Risoluzione dei problemi</h2>
+  <details><summary>Un modello dice “mancano dati”.</summary><p>Apri il pannello specialistico relativo e verifica quali input sono richiesti. Non inserire valori inventati. Alcuni modelli consentono una quantità limitata di missing con imputazione training; altri richiedono campi obbligatori.</p></details>
+  <details><summary>Vedo una percentuale ma non capisco a cosa si riferisca.</summary><p>Leggi il titolo della card, l’ID del modello e la nota sotto il risultato. Il target può essere, per esempio, un label di dataset, una riammissione, una recidiva, un decesso intraospedaliero o un pattern diagnostico specifico.</p></details>
+  <details><summary>Perché due modelli danno percentuali molto diverse?</summary><p>Perché possono avere target, coorti, prevalenze, feature e orizzonti diversi. Non sono necessariamente in conflitto.</p></details>
+  <details><summary>Perché il Transport dice generalizzazione debole?</summary><p>Perché nella validazione leave-one-source-out il peggior AUROC è circa 0,530. HealthSolver mostra il limite invece di nasconderlo.</p></details>
+  <details><summary>Il browser non mostra subito l’ultima versione.</summary><p>Ricarica la pagina evitando cache. La versione corrente è mostrata nel branding dell’app e nei metadati pubblici.</p></details>
+  <details><summary>Posso usare un valore generico al posto di un valore temporale specifico?</summary><p>No. SUPPORT2 giorno 3 ed eICU first-APACHE-day hanno semantiche temporali specifiche. HealthSolver evita sostituzioni silenziose proprio per non falsare l’input.</p></details>
+</section>
+
+<section id="hg-faq" class="hg-section" data-guide-search>
+  <h2>13. FAQ</h2>
+  <details><summary>HealthSolver fa diagnosi?</summary><p>No. È software di ricerca e supporto alla strutturazione/analisi del caso.</p></details>
+  <details><summary>Una percentuale del 70% significa che ho il 70% di probabilità di avere quella malattia?</summary><p>Non necessariamente. Devi leggere la semantica del target, la coorte sorgente e lo stato di validazione del modello.</p></details>
+  <details><summary>Perché ci sono 14 modelli e poi Ensemble e Transport?</summary><p>I 14 sono modelli base supervisionati. Ensemble 0.55 è una sintesi descrittiva dei loro output. Transport 0.56 è un modello sperimentale separato su un outcome condiviso fra tre dataset.</p></details>
+  <details><summary>Il RAI è una probabilità?</summary><p>No. È un indice senza unità che normalizza la posizione rispetto alla soglia interna di ciascun modello.</p></details>
+  <details><summary>Posso confrontare direttamente il 60% di un modello con il 40% di un altro?</summary><p>Solo se sai che target, popolazione e semantica sono comparabili. Nella maggior parte dei modelli HealthSolver non lo sono.</p></details>
+  <details><summary>Cosa significa “research only”?</summary><p>Che il software e i modelli sono destinati a ricerca, sperimentazione e studio; non sono validati per uso clinico operativo.</p></details>
+  <details><summary>I dati mancanti diventano zero?</summary><p>No. A seconda del modello possono causare astensione oppure essere imputati secondo la policy congelata del training. L’Ensemble non tratta un modello astenuto come zero.</p></details>
+  <details><summary>Il Transport usa davvero tutti e 14 i modelli?</summary><p>No. E lo dichiara esplicitamente. Usa età e sesso perché sono l’intersezione pulita delle feature nei tre dataset con outcome ospedaliero condiviso.</p></details>
+</section>
+
+<section id="hg-glossary" class="hg-section" data-guide-search>
+  <h2>14. Glossario essenziale</h2>
+  <table>
+    <tbody>
+      <tr><th>Feature</th><td>Variabile usata come input dal modello.</td></tr>
+      <tr><th>Target / label</th><td>La variabile che il modello è stato addestrato a classificare o stimare.</td></tr>
+      <tr><th>Calibration</th><td>Procedura che cerca di rendere più coerenti gli output probabilistici con le frequenze osservate nel campione di calibrazione.</td></tr>
+      <tr><th>Threshold</th><td>Soglia interna usata per trasformare l’output in stato sopra/sotto soglia.</td></tr>
+      <tr><th>AUROC</th><td>Misura di discriminazione tra classi lungo tutte le soglie.</td></tr>
+      <tr><th>AUPRC</th><td>Area sotto la curva precision-recall, particolarmente informativa con classi sbilanciate.</td></tr>
+      <tr><th>Brier score</th><td>Errore quadratico medio delle probabilità; più basso è meglio nel contesto valutato.</td></tr>
+      <tr><th>Held-out test</th><td>Dati non usati per fitting/calibrazione, riservati alla valutazione.</td></tr>
+      <tr><th>LOSO transport</th><td>Leave-one-source-out: un intero dataset viene escluso dall’addestramento e usato come sorgente mai vista.</td></tr>
+      <tr><th>OOD</th><td>Out-of-distribution: valore fuori dal range osservato nel training o contesto non rappresentato.</td></tr>
+      <tr><th>Astensione</th><td>Decisione del modello di non produrre una stima con dati insufficienti.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="hg-reference" class="hg-section" data-guide-search>
+  <h2>15. Scheda rapida da tenere a mente</h2>
+  <p class="hg-quick"><b>Ordine consigliato:</b> Coach → Expert Mode → Copertura → Dati specialistici → Calcola predizioni → Leggi target → Controlla note/metriche → Ensemble → Transport → Validation/Archive se necessario.</p>
+  <p><span class="hg-tag hg-good">Dati reali disponibili</span> <span class="hg-tag hg-good">Target letto prima del numero</span> <span class="hg-tag hg-good">Astensione rispettata</span> <span class="hg-tag hg-good">Limiti verificati</span></p>
+  <p><span class="hg-tag hg-bad">Mai inventare dati mancanti</span> <span class="hg-tag hg-bad">Mai sommare percentuali eterogenee</span> <span class="hg-tag hg-bad">Mai usare RAI come rischio</span> <span class="hg-tag hg-bad">Mai usare Transport come score clinico</span></p>
+  <button class="hg-open-app" data-hs-open-page="coach">Comincia dal Coach</button>
+  <button class="hg-open-app" data-hs-open-page="intelligence">Vai alle predizioni</button>
+</section>
