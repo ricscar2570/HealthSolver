@@ -60,5 +60,6 @@ jobs:
           grep -q 'COMMON-OUTCOME TRANSPORT · 0.56' predictive/integrated-predictive-ui.js
           grep -q 'GENERALIZZAZIONE DEBOLE' predictive/integrated-predictive-ui.js
           grep -q 'window.__HS_COMMON_OUTCOME_TRANSPORT__' .github/workflows/hs041-repack-pages.yml
-          grep -q "v\['version'\]='0.56.0'" .github/workflows/hs041-repack-pages.yml
-          echo 'HS056 PACKAGING PASS'
+          grep -q "v\['version'\]='0.56.1'" .github/workflows/hs041-repack-pages.yml
+          grep -q "v\\['in_app_guide_integrated'\\]=True" .github/workflows/hs041-repack-pages.yml
+          echo 'HS056 + 0.56.1 GUIDE PACKAGING PASS'
