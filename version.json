@@ -22,7 +22,7 @@
     "HS-EICU-DEMO-HOSPDEATH-001"
   ],
   "payload_parts": 7,
-  "source_sha256": "2ed3497645a06616eebb457cbe99de0e0846119239e5850b31355a37dba7bdba",
+  "source_sha256": "75c13a33912685b707578671b972c77efefd8b8ab528f588f535618a1eb05b67",
   "predictive_modules_embedded": true,
   "integrated_predictive_ui": true,
   "predictive_first_ui": true,
