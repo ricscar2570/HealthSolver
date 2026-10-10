@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/hs-published-smoke.yml'
       - 'predictive/**'
+      - 'guide/**'
+      - '.github/workflows/hs041-repack-pages.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -63,7 +65,18 @@ jobs:
           assert remote_transport==local_transport,'public transport model differs from main'
           assert local_transport['base_predictive_model_count_preserved']==14
           assert local_transport['qualification_status']=='WEAK_TRANSPORT_GENERALIZATION'
-          print({'version':live['version'],'registry':local['version'],'models':ids,'ensemble':local_ensemble['version'],'transport':local_transport['version'],'transport_qualification':local_transport['qualification_status'],'source_sha256':live['source_sha256']})
+          guide_paths=[
+              'guide/in-app-guide.html','guide/in-app-guide.js',
+              'guide/assets/01-clinical-coach.png','guide/assets/02-expert-mode-top.png',
+              'guide/assets/03-predictive-results.png','guide/assets/04-transport-layer.png',
+              'guide/assets/05-ensemble-intelligence.png','guide/assets/06-hub.png',
+              'guide/assets/07-validation.png','guide/assets/08-archive.png'
+          ]
+          for gp in guide_paths:
+              with urllib.request.urlopen(f"https://ricscar2570.github.io/HealthSolver/{gp}?audit=published",timeout=30) as rr:
+                  remote_bytes=rr.read()
+              assert remote_bytes==pathlib.Path(gp).read_bytes(),gp
+          print({'version':live['version'],'registry':local['version'],'models':ids,'ensemble':local_ensemble['version'],'transport':local_transport['version'],'transport_qualification':local_transport['qualification_status'],'guide_files':len(guide_paths),'source_sha256':live['source_sha256']})
           PY
           curl -L --fail --retry 8 --retry-delay 3 "$base/predictive/integrated-predictive-ui.js?audit=published" -o live-ui.js
           cmp predictive/integrated-predictive-ui.js live-ui.js
