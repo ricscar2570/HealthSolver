@@ -1,5 +1,6 @@
-name: HealthSolver 0.56.0 Common Outcome Transport Repack
-# 0.56.0 common-outcome transport layer
+name: HealthSolver 0.56.1 In-App Complete Guide Repack
+# 0.56.1 complete in-app guide
+# preserves 0.56.0 common-outcome transport layer
 # preserves 0.55.0 deterministic ensemble-intelligence layer
 # final RAI terminology/public-parity repack
 # 0.52 final predictive-provenance repack
@@ -41,6 +42,7 @@ jobs:
           html=gzip.decompress(base64.b64decode(b64)).decode('utf-8')
           pe=(main/'predictive'/'predictive-engine.js').read_text()
           integrated=(main/'predictive'/'integrated-predictive-ui.js').read_text()
+          guide_js=(main/'guide'/'in-app-guide.js').read_text()
           registry=json.loads((main/'predictive'/'model-registry-v2.json').read_text())
           ensemble=json.loads((main/'predictive'/'ensemble-intelligence-v1.json').read_text())
           transport=json.loads((main/'predictive'/'common-outcome-transport-v1.json').read_text())
@@ -51,6 +53,7 @@ jobs:
           transport_bundle=json.dumps(transport,separators=(',',':'),ensure_ascii=False)
           assert '</script>' not in pe.lower()
           assert '</script>' not in integrated.lower()
+          assert '</script>' not in guide_js.lower()
           assert '</script>' not in bundle.lower()
           assert '</script>' not in ensemble_bundle.lower()
           assert '</script>' not in transport_bundle.lower()
@@ -72,7 +75,7 @@ jobs:
               'sandbox=\\\"allow-scripts allow-downloads allow-modals allow-popups allow-popups-to-escape-sandbox\\\"',
               'sandbox=\\\"allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups allow-popups-to-escape-sandbox\\\"'
           )
-          overlay='\n<!-- HS_PREDICTIVE_OVERLAY_BEGIN -->\n<script>window.__HS_PREDICTIVE_BUNDLE__='+bundle+';window.__HS_ENSEMBLE_CONFIG__='+ensemble_bundle+';window.__HS_COMMON_OUTCOME_TRANSPORT__='+transport_bundle+';</script>\n<script>\n'+integrated+'\n</script>\n<!-- HS_PREDICTIVE_OVERLAY_END -->\n'
+          overlay='\n<!-- HS_PREDICTIVE_OVERLAY_BEGIN -->\n<script>window.__HS_PREDICTIVE_BUNDLE__='+bundle+';window.__HS_ENSEMBLE_CONFIG__='+ensemble_bundle+';window.__HS_COMMON_OUTCOME_TRANSPORT__='+transport_bundle+';</script>\n<script>\n'+integrated+'\n'+guide_js+'\n</script>\n<!-- HS_PREDICTIVE_OVERLAY_END -->\n'
           assert '</body>' in html.lower()
           pos=html.lower().rfind('</body>')
           html=html[:pos]+overlay+html[pos:]
@@ -90,15 +93,15 @@ jobs:
           <html lang="it"><head>
           <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
           <meta name="robots" content="noindex,nofollow">
-          <title>HealthSolver 0.56.0 — Common-Outcome Transport Layer</title>
+          <title>HealthSolver 0.56.1 — Complete In-App Guide</title>
           <style>
           html,body{{margin:0;min-height:100%;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#0b1220;color:#e6edf7}}
           main{{max-width:780px;margin:10vh auto;padding:32px}}.card{{background:#121c2e;border:1px solid #25344e;border-radius:18px;padding:28px;box-shadow:0 16px 50px #0006}}
           h1{{margin:0 0 10px;font-size:clamp(26px,5vw,42px)}}p{{line-height:1.5;color:#b8c5d9}}
           progress{{width:100%;height:16px;margin:18px 0}}#err{{white-space:pre-wrap;color:#ffb4ab}}.small{{font-size:13px;color:#8fa2bf}}
           </style></head><body><main><div class="card">
-          <h1>HealthSolver 0.56.0</h1>
-          <p>Common-Outcome Transport Layer + Ensemble Intelligence + 14-Model Predictive-First UI + Clinical Coach Research Edition</p>
+          <h1>HealthSolver 0.56.1</h1>
+          <p>Complete In-App Guide + Common-Outcome Transport + Ensemble Intelligence + 14-Model Predictive-First UI</p>
           <progress id="p" max="{len(chunks)}" value="0"></progress>
           <div id="status" class="small">Preparazione applicazione.</div><pre id="err"></pre>
           </div></main>
@@ -129,8 +132,8 @@ jobs:
           </script></body></html>'''
           (pages/'index.html').write_text(loader)
           v=json.loads((pages/'version.json').read_text())
-          v['version']='0.56.0'
-          v['release']='Common-Outcome Transport Layer + Ensemble Intelligence + 14-Model Predictive-First UI + Clinical Coach Research Edition'
+          v['version']='0.56.1'
+          v['release']='Complete In-App Guide + Common-Outcome Transport Layer + Ensemble Intelligence + 14-Model Predictive-First UI + Clinical Coach Research Edition'
           v['source_sha256']=sha
           v['payload_parts']=len(chunks)
           v['predictive_modules_embedded']=True
@@ -157,6 +160,9 @@ jobs:
           v['common_outcome_transport_version']='1.0.0'
           v['common_outcome_transport_model_id']=transport['model_id']
           v['common_outcome_transport_qualification']=transport['qualification_status']
+          v['in_app_guide_integrated']=True
+          v['in_app_guide_version']='1.0.0'
+          v['in_app_guide_screenshots']=8
           v['code_audit_remediation']=True
           v['predictive_models']=[m['model_id'] for m in registry['models']]
           v['predictive_model_count']=len(registry['models'])
@@ -164,6 +170,10 @@ jobs:
           (pages/'version.json').write_text(json.dumps(v,indent=2)+'\n')
           # Keep the separately addressable predictive assets synchronized with
           # the exact registry/models embedded into the standalone payload.
+          public_guide=pages/'guide'
+          if public_guide.exists():
+              shutil.rmtree(public_guide)
+          shutil.copytree(main/'guide',public_guide)
           public_predictive=pages/'predictive'
           if public_predictive.exists():
               shutil.rmtree(public_predictive)
@@ -173,7 +183,7 @@ jobs:
           cd /tmp/hs-pages
           git config user.name "healthsolver-bot"
           git config user.email "healthsolver-bot@users.noreply.github.com"
-          git add index.html version.json docs/payload predictive
+          git add index.html version.json docs/payload predictive guide
           git diff --cached --stat
-          git commit -m "pages: release HealthSolver 0.56.0 common-outcome transport"
+          git commit -m "pages: release HealthSolver 0.56.1 complete in-app guide"
           git push origin HEAD:gh-pages
