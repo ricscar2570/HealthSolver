@@ -92,10 +92,13 @@ jobs:
               with urllib.request.urlopen(base+path+'?audit=056-master',timeout=45) as r:
                   return r.read()
           live=json.loads(remote('version.json'))
-          assert live['version']=='0.56.0'
+          assert live['version']=='0.56.1'
           assert live['predictive_model_count']==14
           assert live['common_outcome_transport_integrated'] is True
           assert live['common_outcome_transport_qualification']=='WEAK_TRANSPORT_GENERALIZATION'
+          assert live['in_app_guide_integrated'] is True
+          assert live['in_app_guide_version']=='1.0.0'
+          assert live['in_app_guide_screenshots']==8
           paths=['predictive/model-registry-v2.json','predictive/ensemble-intelligence-v1.json',
                  'predictive/common-outcome-transport-v1.json','predictive/common-outcome-transport-v1-report.json',
                  'predictive/integrated-predictive-ui.js','predictive/predictive-engine.js',
@@ -163,7 +166,7 @@ jobs:
           })) await set(id,v);
 
           const txt=await p.locator('#hs-predictive-integrated').innerText();
-          ok(txt.includes('MOTORE PREDITTIVO · HEALTHSOLVER 0.56.0'),'brand');
+          ok(txt.includes('MOTORE PREDITTIVO · HEALTHSOLVER 0.56.1'),'brand');
           ok(txt.includes('14 MODELLI SUPERVISIONATI'),'14 badge');
           ok(txt.includes('1 TRANSPORT LAYER SPERIMENTALE'),'transport badge');
           ok(await p.locator('#hs42Coverage .metric').count()===14,'coverage 14');
