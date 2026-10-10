@@ -1,0 +1,32 @@
+name: HealthSolver Guide CSP Diagnostic
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs-guide-csp-diagnostic.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect published standalone CSP
+        shell: bash
+        run: |
+          python - <<'PY'
+          import urllib.request,json,base64,gzip,re
+          base='https://ricscar2570.github.io/HealthSolver/'
+          with urllib.request.urlopen(base+'version.json?csp=1',timeout=30) as r:v=json.load(r)
+          parts=[]
+          for i in range(v['payload_parts']):
+              with urllib.request.urlopen(base+f'docs/payload/part-{i:02d}.b64?csp=1',timeout=30) as r:
+                  parts.append(r.read().decode().strip())
+          html=gzip.decompress(base64.b64decode(''.join(parts))).decode()
+          ms=re.findall(r'<meta[^>]+http-equiv=["\']Content-Security-Policy["\'][^>]*>',html,re.I)
+          print('CSP_META_COUNT',len(ms))
+          for m in ms: print('CSP_META',m)
+          print('GUIDE_MARKER', 'HS_IN_APP_GUIDE_V1' in html)
+          print('GUIDE_HTML_EMBEDDED', 'Come usare HealthSolver da zero' in html)
+          PY
