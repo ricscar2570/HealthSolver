@@ -1,0 +1,83 @@
+name: HealthSolver Guide Screenshot Capture
+on:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/hs-guide-screenshot-capture.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Capture current live application screens
+        shell: bash
+        run: |
+          mkdir -p guide/assets
+          cat > capture.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const base='https://ricscar2570.github.io/HealthSolver/';
+          const b=await chromium.launch({headless:true});
+          const p=await b.newPage({viewport:{width:1440,height:1200},deviceScaleFactor:1});
+          await p.goto(base+'?guide-capture=1',{waitUntil:'networkidle',timeout:120000});
+          const nav=async x=>{await p.locator('aside .nav[data-page="'+x+'"]').click();await p.waitForTimeout(180);};
+          const shot=async(name,selector)=>{const loc=p.locator(selector);await loc.screenshot({path:'guide/assets/'+name+'.png'});};
+
+          await nav('coach');
+          await shot('01-clinical-coach','#page-coach');
+
+          await nav('intelligence');
+          await shot('02-expert-mode-top','#page-intelligence');
+
+          await p.locator('#ciAge').fill('65');
+          const sex=p.locator('#ciSex');
+          const opts=await sex.locator('option').evaluateAll(os=>os.map(o=>({v:o.value,t:o.textContent.trim()})));
+          const male=opts.find(o=>/masch|male|^m$/i.test(o.t)||/^(m|male|maschio|1)$/i.test(o.v));
+          if(male) await sex.selectOption(male.v);
+          const set=async(id,v)=>{
+            const q=p.locator('#'+id); if(await q.count()!==1)return;
+            await q.evaluate((e,x)=>{e.value=String(x);e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));},v);
+          };
+          await set('hs51_episode_number',1);
+          for(const [id,v] of Object.entries({
+            hs53_dzgroup:'CHF',hs53_numco:2,hs53_scoma:0,hs53_hday:1,hs53_diabetes:0,hs53_dementia:0,hs53_ca:'no',
+            hs53_meanbp:77,hs53_wblc:10.5,hs53_hrt:100,hs53_resp:24,hs53_temp:36.7,hs53_crea:1.2,hs53_sod:137
+          })) await set(id,v);
+          for(const [id,v] of Object.entries({
+            hs54_gcs_total:15,hs54_gcs_meds:0,hs54_temperature:37,hs54_respiratoryrate:18,hs54_heartrate:82,
+            hs54_meanbp:85,hs54_glucose:120,hs54_sodium:140,hs54_creatinine:1.0
+          })) await set(id,v);
+          await p.locator('#hs42Run').click(); await p.waitForTimeout(450);
+          await shot('03-predictive-results','#hs-predictive-integrated');
+          await shot('04-transport-layer','#hs56Transport');
+          await shot('05-ensemble-intelligence','#hs55Ensemble');
+
+          await nav('hub'); await shot('06-hub','#page-hub');
+          await nav('validation'); await shot('07-validation','#page-validation');
+          await nav('archive'); await shot('08-archive','#page-archive');
+
+          await b.close();
+          console.log('GUIDE SCREENSHOTS PASS');
+          JS
+          node capture.mjs
+          file guide/assets/*.png
+      - name: Commit screenshots
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name "healthsolver-bot"
+          git config user.email "healthsolver-bot@users.noreply.github.com"
+          git add guide/assets/*.png
+          git diff --cached --quiet && exit 0
+          git commit -m "docs: add live screenshots for in-app guide"
+          git push
