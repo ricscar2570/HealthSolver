@@ -124,6 +124,13 @@ const READY=async()=>{
     modal.querySelector('[data-act="close"]')?.addEventListener('click',()=>{try{localStorage.setItem('hs-guide-seen-v1','1')}catch{};modal.remove();});
   }
 };
-if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>setTimeout(READY,0),{once:true});
-else setTimeout(READY,0);
+let __hsGuideBooted=false;
+const BOOT=()=>{
+  if(__hsGuideBooted) return;
+  __hsGuideBooted=true;
+  setTimeout(READY,0);
+};
+if(document.querySelector('aside')&&(document.querySelector('.main')||document.querySelector('main'))) BOOT();
+else if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',BOOT,{once:true});
+else BOOT();
 })();
