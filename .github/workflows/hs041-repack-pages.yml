@@ -47,6 +47,13 @@ jobs:
           integrated=(main/'predictive'/'integrated-predictive-ui.js').read_text()
           guide_js=(main/'guide'/'in-app-guide.js').read_text()
           guide_html=(main/'guide'/'in-app-guide.html').read_text()
+          guide_assets=sorted((main/'guide'/'assets').glob('*.png'))
+          assert len(guide_assets)==8,guide_assets
+          for asset in guide_assets:
+              token='guide/assets/'+asset.name
+              assert token in guide_html,token
+              uri='data:image/png;base64,'+base64.b64encode(asset.read_bytes()).decode('ascii')
+              guide_html=guide_html.replace(token,uri)
           registry=json.loads((main/'predictive'/'model-registry-v2.json').read_text())
           ensemble=json.loads((main/'predictive'/'ensemble-intelligence-v1.json').read_text())
           transport=json.loads((main/'predictive'/'common-outcome-transport-v1.json').read_text())
@@ -169,6 +176,7 @@ jobs:
           v['in_app_guide_integrated']=True
           v['in_app_guide_version']='1.0.0'
           v['in_app_guide_embedded']=True
+          v['in_app_guide_screenshots_embedded']=True
           v['in_app_guide_screenshots']=8
           v['code_audit_remediation']=True
           v['predictive_models']=[m['model_id'] for m in registry['models']]
