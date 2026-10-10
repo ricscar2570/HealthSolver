@@ -48,6 +48,7 @@ jobs:
           assert live.get('in_app_guide_integrated') is True,live
           assert live.get('in_app_guide_version')=='1.0.0',live
           assert live.get('in_app_guide_embedded') is True,live
+          assert live.get('in_app_guide_screenshots_embedded') is True,live
           assert live.get('in_app_guide_screenshots')==8,live
           assert len(ids)==len(set(ids))
           for e in local['models']:
