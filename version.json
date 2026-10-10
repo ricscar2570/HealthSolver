@@ -22,7 +22,7 @@
     "HS-EICU-DEMO-HOSPDEATH-001"
   ],
   "payload_parts": 7,
-  "source_sha256": "b05e4a53bacf2cf60ed32a8174024888666484eec7eb19fe01499f43f5c1c9f0",
+  "source_sha256": "3baf5329fa43f0497ae3f9853171ed7b9af7a39783dfbc79aed310c42a701942",
   "predictive_modules_embedded": true,
   "integrated_predictive_ui": true,
   "predictive_first_ui": true,
@@ -51,5 +51,6 @@
   "common_outcome_transport_qualification": "WEAK_TRANSPORT_GENERALIZATION",
   "in_app_guide_integrated": true,
   "in_app_guide_version": "1.0.0",
-  "in_app_guide_screenshots": 8
+  "in_app_guide_screenshots": 8,
+  "in_app_guide_embedded": true
 }
